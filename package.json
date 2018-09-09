@@ -1,0 +1,24 @@
+{
+  "name": "syndicate-ijs",
+  "version": "0.0.0",
+  "description": "Imperative Syndicate in the browser",
+  "homepage": "https://github.com/tonyg/syndicate",
+  "main": "src/main.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tonyg/syndicate"
+  },
+  "directories": {
+    "bin": "./bin"
+  },
+  "scripts": {
+    "clean": "rm -f dist/*",
+    "test": "mocha"
+  },
+  "author": "Tony Garnock-Jones <tonyg@ccs.neu.edu>",
+  "devDependencies": {
+    "expect.js": "^0.3.1",
+    "immutable": "^3.8.2",
+    "mocha": "^2.5.3"
+  }
+}
