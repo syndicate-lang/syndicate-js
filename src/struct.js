@@ -30,6 +30,10 @@ StructureType.prototype.equals = function (other) {
   return this.arity === other.arity && this.label === other.label;
 };
 
+StructureType.prototype.hashCode = function () {
+  return Immutable.List([this.label, this.arity]).hashCode();
+};
+
 StructureType.prototype.instantiate = function (fields) {
   return new Structure(this, fields);
 };
@@ -65,6 +69,33 @@ Structure.prototype.get = function (index) {
 Structure.prototype.set = function (index, value) {
   var s = this.clone();
   s[index] = s.fields[index] = value;
+  return s;
+};
+
+Structure.prototype.equals = function (other) {
+  if (!other) return false;
+  if (!(other instanceof Structure)) return false;
+  if (!other.meta.equals(this.meta)) return false;
+  for (let i = 0; i < this.length; i++) {
+    if (this[i] === other[i]) continue;
+    if (!this[i].equals(other[i])) return false;
+  }
+  return true;
+};
+
+Structure.prototype.hashCode = function () {
+  return Immutable.List(this.fields).unshift(this.meta).hashCode();
+};
+
+Structure.prototype.toString = function () {
+  let b = this.meta.label + "(";
+  let needComma = false;
+  for (let v of this.fields) {
+    if (needComma) b = b + ", ";
+    needComma = true;
+    b = b + JSON.stringify(v);
+  }
+  return b + ")";
 };
 
 function reviveStructs(j) {

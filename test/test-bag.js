@@ -1,8 +1,8 @@
 "use strict";
 
-var expect = require('expect.js');
-var Immutable = require('immutable');
-var Bag = require('../src/bag.js');
+const expect = require('chai').expect;
+const Immutable = require('immutable');
+const Bag = require('../src/bag.js');
 
 describe('immutable bag', function () {
   it('should be initializable from a set', function () {

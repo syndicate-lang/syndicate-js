@@ -17,7 +17,8 @@
   },
   "author": "Tony Garnock-Jones <tonyg@ccs.neu.edu>",
   "devDependencies": {
-    "expect.js": "^0.3.1",
+    "chai": "^4.2.0",
+    "chai-immutable": "^2.0.0-rc.2",
     "immutable": "^3.8.2",
     "mocha": "^2.5.3"
   }

@@ -1,444 +1,244 @@
 "use strict";
 
-var Immutable = require("immutable");
-var Struct = require('./struct.js');
-var $Special = require('./special.js');
-var Bag = require('./bag.js');
-var Assertions = require('./assertions.js');
+const Immutable = require("immutable");
+const Struct = require('./struct.js');
+const $Special = require('./special.js');
+const Bag = require('./bag.js');
+const Assertions = require('./assertions.js');
 
-function die(message) {
-  throw new Error(message);
+const EVENT_ADDED = +1;
+const EVENT_REMOVED = -1;
+const EVENT_MESSAGE = 0;
+
+function Index() {
+  this.allAssertions = Bag.Bag();
+  this.root = new Node(new Continuation(Immutable.Set()));
 }
 
-// "Skeletons" describe the indexed structure of a dataspace.
-// In particular, they efficiently connect assertions to matching interests.
-
-function emptySkeleton(cache) {
-  return new SkNode(new SkCont(cache));
-}
-
-function SkNode(cont) {
-  this.cont = cont;
+function Node(continuation) {
+  this.continuation = continuation;
   this.edges = Immutable.Map();
 }
 
-function SkCont(cache) {
-  this.cache = cache || Immutable.Map();
-  this.table = Immutable.Map();
+function Selector(popCount, index) {
+  this.popCount = popCount;
+  this.index = index;
 }
 
-function SkInterest(desc, constProj, key, varProj, handler, 
+function Continuation(cachedAssertions) {
+  this.cachedAssertions = cachedAssertions;
+  this.leafMap = Immutable.Map();
+}
 
+function Leaf(cachedAssertions) {
+  this.cachedAssertions = cachedAssertions;
+  this.handlerMap = Immutable.Map();
+}
 
+function Handler(cachedCaptures) {
+  this.cachedCaptures = cachedCaptures;
+  this.callbacks = Immutable.Set();
+}
 
-// A VisibilityRestriction describes ... TODO
-// (visibility-restriction SkProj Assertion)
-(struct visibility-restriction (path term) #:transparent)
+function projectPath(v, path) {
+  path.forEach((index) => { v = v.get(index); return true; });
+  return v;
+}
 
-// A ScopedAssertion is a VisibilityRestriction or an Assertion.
-// (Corollary: Instances of `visibility-restriction` can never be assertions.)
+function projectPaths(v, paths) {
+  return paths.map((path) => { return projectPath(v, path) });
+}
 
-// A `Skeleton` is a structural guard on an assertion: essentially,
-// specification of (the outline of) its shape; its silhouette.
-// Following a skeleton's structure leads to zero or more `SkCont`s.
-//
-//       Skeleton = (skeleton-node SkCont (AListof SkSelector (MutableHash SkClass SkNode)))
-//     SkSelector = (skeleton-selector Nat Nat)
-//        SkClass = StructType | (list-type Nat) | (vector-type Nat)
-//
-(struct skeleton-node (continuation [edges #:mutable]) #:transparent)
-(struct skeleton-selector (pop-count index) #:transparent)
-(struct list-type (arity) #:transparent)
-(struct vector-type (arity) #:transparent)
-//
-// A `SkDesc` is a single assertion silhouette, usually the
-// evaluation-result of `desc->skeleton-stx` from `pattern.rkt`.
-//
-// A `SkCont` is a *skeleton continuation*, a collection of "next
-// steps" after a `Skeleton` has matched the general outline of an
-// assertion.
-//
-// INVARIANT: At each level, the caches correspond to the
-// appropriately filtered and projected contents of the dataspace
-// containing the structures.
-//
-//      SkCont = (skeleton-continuation
-//                 (MutableSet ScopedAssertion)
-//                 (MutableHash SkProj (MutableHash SkKey SkConst)))
-//     SkConst = (skeleton-matched-constant
-//                 (MutableSet ScopedAssertion)
-//                 (MutableHash SkProj SkAcc))
-//       SkAcc = (skeleton-accumulator
-//                 (MutableBag SkKey)
-//                 (MutableSeteq (... -> Any)))
-//
-(struct skeleton-continuation (cache table) #:transparent)
-(struct skeleton-matched-constant (cache table) #:transparent)
-(struct skeleton-accumulator (cache handlers) #:transparent)
-//
-// A `SkProj` is a *skeleton projection*, a specification of loci
-// within a tree-shaped assertion to collect into a flat list.
-//
-//     SkProj = (Listof (Listof Nat))
-//
-// The outer list specifies elements of the flat list; the inner lists
-// specify paths via zero-indexed links to child nodes in the
-// tree-shaped assertion being examined. A precondition for use of a
-// `SkProj` is that the assertion being examined has been checked for
-// conformance to the skeleton being projected.
-//
-// A `SkKey` is the result of running a `SkProj` over a term,
-// extracting the values at the denoted locations.
-//
-//     SkKey = (Listof Any)
-//
-// Each `SkProj` in `SkCont` selects *constant* portions of the term
-// for more matching against the `SkKey`s in the table associated with
-// the `SkProj`. Each `SkProj` in `SkConst`, if any, selects
-// *variable* portions of the term to be given to the handler
-// functions in the associated `SkAcc`.
+function classOf(v) {
+  if (v instanceof Struct.Structure) {
+    return v.meta;
+  } else {
+    return v.size;
+  }
+}
 
-// A `SkInterest` is a specification for an addition to or removal
-// from an existing `Skeleton`.
-//
-//     SkInterest = (skeleton-interest SkDesc
-//                                     SkProj
-//                                     SkKey
-//                                     SkProj
-//                                     (... -> Any)
-//                                     (Option ((MutableBag SkKey) -> Any)))
-//
-// The `SkDesc` gives the silhouette. The first `SkProj` is the
-// constant-portion selector, to be matched against the `SkKey`. The
-// second `SkProj` is used on matching assertions to extract the
-// variable portions, to be passed to the handler function.
-//
-(struct skeleton-interest (desc
-                           const-selector
-                           const-value
-                           var-selector
-                           handler
-                           cleanup
-                           ) #:transparent)
+Node.prototype.extend = function(skeleton) {
+  function walkNode(path, node, popCount, index, skeleton) {
+    if (skeleton === null) {
+      return [popCount, node];
+    } else {
+      let selector = new Selector(popCount, index);
+      let cls = skeleton[0];
+      let table = node.edges.get(selector, false);
+      if (!table) {
+        table = Immutable.Map();
+        node.edges = node.edges.set(selector, table);
+      }
+      let nextNode = table.get(cls, false);
+      if (!nextNode) {
+        nextNode = new Node(new Continuation(
+          node.continuation.cachedAssertions.filter((a) => {
+            return classOf(project(a, path)) === cls;
+          })));
+        table = table.set(cls, nextNode);
+        node.edges = node.edges.set(selector, table);
+      }
 
-//---------------------------------------------------------------------------
+      popCount = 0;
+      index = 0;
+      path = path.push(index);
+      for (let i = 1; i < skeleton.length; i++) {
+        [popCount, nextNode] = walkNode(path, nextNode, popCount, index, skeleton[i]);
+        index++;
+        path = path.pop().push(index);
+      }
+      return [popCount + 1, nextNode];
+    }
+  }
 
-(define (make-empty-skeleton/cache cache)
-  (skeleton-node (skeleton-continuation cache
-                                        (make-hash))
-                 '()))
+  let [_popCount, finalNode] = walkNode(Immutable.List(), this, 0, 0, skeleton);
+  return finalNode.continuation;
+};
 
-(define (make-empty-skeleton)
-  (make-empty-skeleton/cache (make-hash)))
+Index.prototype.addHandler = function(skeleton, constPaths, constVals, capturePaths, callback) {
+  let continuation = this.root.extend(skeleton);
+  let constValMap = continuation.leafMap.get(constPaths, false);
+  if (!constValMap) {
+    constValMap = Immutable.Map();
+    continuation.leafMap = continuation.leafMap.set(constPaths, constValMap);
+  }
+  let leaf = constValMap.get(constVals, false);
+  if (!leaf) {
+    leaf = new Leaf(continuation.cachedAssertions.filter((a) => {
+      return projectPaths(a, constPaths).equals(constVals);
+    }));
+    constValMap = constValMap.set(constVals, leaf);
+    continuation.leafMap = continuation.leafMap.set(constPaths, constValMap);
+  }
+  let handler = leaf.handlerMap.get(capturePaths, false);
+  if (!handler) {
+    let cachedCaptures = Bag.Bag().withMutations((mutable) => {
+      leaf.cachedAssertions.forEach((a) => {
+        let captures = projectPaths(a, capturePaths);
+        mutable.set(captures, mutable.get(captures, 0) + 1);
+        return true;
+      })
+    });
+    handler = new Handler(cachedCaptures);
+    leaf.handlerMap = leaf.handlerMap.set(capturePaths, handler);
+  }
+  handler.callbacks = handler.callbacks.add(callback);
+  handler.cachedCaptures.forEach((captures) => {
+    callback(EVENT_ADDED, captures);
+    return true;
+  });
+};
 
-(define (skcont-add! c i)
-  (match-define (skeleton-interest _desc cs cv vs h _cleanup) i)
-  (define (make-matched-constant)
-    (define assertions (make-hash))
-    (hash-for-each (skeleton-continuation-cache c)
-                   (lambda (a _)
-                     (when (equal? (apply-projection (unscope-assertion a) cs) cv)
-                       (hash-set! assertions a #t))))
-    (skeleton-matched-constant assertions (make-hash)))
-  (define cvt (hash-ref! (skeleton-continuation-table c) cs make-hash))
-  (define sc (hash-ref! cvt cv make-matched-constant))
-  (define (make-accumulator)
-    (define cache (make-bag))
-    (hash-for-each (skeleton-matched-constant-cache sc)
-                   (lambda (a _)
-                     (unpack-scoped-assertion [restriction-path term] a)
-                     (when (or (not restriction-path) (equal? restriction-path vs))
-                       (bag-change! cache (apply-projection term vs) 1))))
-    (skeleton-accumulator cache (make-hasheq)))
-  (define acc (hash-ref! (skeleton-matched-constant-table sc) vs make-accumulator))
-  (hash-set! (skeleton-accumulator-handlers acc) h #t)
-  (for [(vars (in-bag (skeleton-accumulator-cache acc)))] (apply h '+ vars)))
+Index.prototype.removeHandler = function(skeleton, constPaths, constVals, capturePaths, callback) {
+  let continuation = this.root.extend(skeleton);
+  let constValMap = continuation.leafMap.get(constPaths, false);
+  if (!constValMap) return;
+  let leaf = constValMap.get(constVals, false);
+  if (!leaf) return;
+  let handler = leaf.handlerMap.get(capturePaths, false);
+  if (!handler) return;
+  handler.callbacks = handler.callbacks.remove(callback);
+  if (handler.callbacks.isEmpty()) {
+    leaf.handlerMap = leaf.handlerMap.remove(capturePaths);
+  }
+  if (leaf.handlerMap.isEmpty()) {
+    constValMap = constValMap.remove(constVals);
+  }
+  if (constValMap.isEmpty()) {
+    continuation.leafMap.remove(constPaths);
+  } else {
+    continuation.leafMap.set(constPaths, constValMap);
+  }
+};
 
-(define (skcont-remove! c i)
-  (match-define (skeleton-interest _desc cs cv vs h cleanup) i)
-  (define cvt (hash-ref (skeleton-continuation-table c) cs #f))
-  (when cvt
-    (define sc (hash-ref cvt cv #f))
-    (when sc
-      (define acc (hash-ref (skeleton-matched-constant-table sc) vs #f))
-      (when acc
-        (when (and cleanup (hash-has-key? (skeleton-accumulator-handlers acc) h))
-          (cleanup (skeleton-accumulator-cache acc)))
-        (hash-remove! (skeleton-accumulator-handlers acc) h)
-        (when (hash-empty? (skeleton-accumulator-handlers acc))
-          (hash-remove! (skeleton-matched-constant-table sc) vs)))
-      (when (hash-empty? (skeleton-matched-constant-table sc))
-        (hash-remove! cvt cv)))
-    (when (hash-empty? cvt)
-      (hash-remove! (skeleton-continuation-table c) cs))))
+Node.prototype.modify = function(outerValue, m_cont, m_leaf, m_handler) {
+  function walkNode(node, termStack) {
+    walkContinuation(node.continuation);
+    node.edges.forEach((table, selector) => {
+      let nextStack = termStack.withMutations((mutable) => {
+        let i = selector.popCount;
+        while (i--) { mutable.pop(); }
+      });
+      let nextValue = nextStack.first().get(selector.index);
+      let cls = classOf(nextValue);
+      let nextNode = table.get(cls, false);
+      if (nextNode) {
+        walkNode(nextNode, nextStack.push(nextValue));
+      }
+      return true;
+    });
+  }
 
-(define (term-matches-class? term class)
-  (cond
-    [(list-type? class) (and (list? term) (= (length term) (list-type-arity class)))]
-    [(vector-type? class) (and (vector? term) (= (vector-length term) (vector-type-arity class)))]
-    [(struct-type? class) (and (non-object-struct? term) (eq? (struct->struct-type term) class))]
-    [else (error 'term-matches-class? "Invalid class: ~v" class)]))
+  function walkContinuation(continuation) {
+    m_cont(continuation, outerValue);
+    continuation.leafMap.forEach((constValMap, constPaths) => {
+      let constVals = projectPaths(outerValue, constPaths);
+      let leaf = constValMap.get(constVals, false);
+      if (leaf) {
+        m_leaf(leaf, outerValue);
+        leaf.handlerMap.forEach((handler, capturePaths) => {
+          m_handler(handler, projectPaths(outerValue, capturePaths));
+          return true;
+        });
+      }
+      return true;
+    });
+  }
 
-(define (subterm-matches-class? term path class)
-  (term-matches-class? (apply-projection-path (unscope-assertion term) path) class))
+  walkNode(this, Immutable.Stack().push(Immutable.List([outerValue])));
+};
 
-(define (unscope-assertion scoped-assertion)
-  (match scoped-assertion
-    [(visibility-restriction _ term) term]
-    [term term]))
+function add_to_cont(c, v) { c.cachedAssertions = c.cachedAssertions.add(v); }
+function add_to_leaf(l, v) { l.cachedAssertions = l.cachedAssertions.add(v); }
+function add_to_handler(h, vs) {
+  let net;
+  ({bag: h.cachedCaptures, net: net} = Bag.change(h.cachedCaptures, vs, +1));
+  if (net === Bag.ABSENT_TO_PRESENT) {
+    h.callbacks.forEach((cb) => {
+      cb(EVENT_ADDED, vs);
+      return true;
+    });
+  }
+}
 
-(define-syntax-rule (unpack-scoped-assertion [path term] expr)
-  (define-values (path term)
-    (match expr
-      [(visibility-restriction p t) (values p t)]
-      [other (values #f other)])))
+function del_from_cont(c, v) { c.cachedAssertions = c.cachedAssertions.remove(v); }
+function del_from_leaf(l, v) { l.cachedAssertions = l.cachedAssertions.remove(v); }
+function del_from_handler(h, vs) {
+  h.cachedCaptures = Bag.change(h.cachedCaptures, vs, -1).bag;
+  h.callbacks.forEach((cb) => {
+    cb(EVENT_REMOVED, vs);
+    return true;
+  });
+}
 
-(define (update-path path pop-count index)
-  (append (drop-right path pop-count) (list index)))
+Index.prototype.adjustAssertion = function(outerValue, delta) {
+  let net;
+  ({bag: this.allAssertions, net: net} = Bag.change(this.allAssertions, outerValue, delta));
+  switch (net) {
+    case Bag.ABSENT_TO_PRESENT:
+      this.root.modify(outerValue, add_to_cont, add_to_leaf, add_to_handler);
+      break;
+    case Bag.PRESENT_TO_ABSENT:
+      this.root.modify(outerValue, del_from_cont, del_from_leaf, del_from_handler);
+      break;
+  }
+};
 
-(define (extend-skeleton! sk desc)
-  (define (walk-node! path sk pop-count index desc)
-    (match desc
-      [(list class-desc pieces ...)
-       (define class
-         (cond [(struct-type? class-desc) class-desc]
-               [(eq? class-desc 'list) (list-type (length pieces))]
-               [(eq? class-desc 'vector) (vector-type (length pieces))]
-               [else (error 'extend-skeleton! "Invalid class-desc: ~v" class-desc)]))
-       (define selector (skeleton-selector pop-count index))
-       (define table
-         (match (assoc selector (skeleton-node-edges sk))
-           [#f (let ((table (make-hash)))
-                 (set-skeleton-node-edges! sk (cons (cons selector table) (skeleton-node-edges sk)))
-                 table)]
-           [(cons _selector table) table]))
-       (define (make-skeleton-node-with-cache)
-         (define unfiltered (skeleton-continuation-cache (skeleton-node-continuation sk)))
-         (define filtered (make-hash))
-         (hash-for-each unfiltered
-                        (lambda (a _)
-                          (when (subterm-matches-class? a path class)
-                            (hash-set! filtered a #t))))
-         (make-empty-skeleton/cache filtered))
-       (define next (hash-ref! table class make-skeleton-node-with-cache))
-       (walk-edge! (update-path path pop-count 0) next 0 0 pieces)]
-      [_
-       (values pop-count sk)]))
-  (define (walk-edge! path sk pop-count index pieces)
-    (match pieces
-      ['()
-       (values (+ pop-count 1) sk)]
-      [(cons p pieces)
-       (let-values (((pop-count sk) (walk-node! path sk pop-count index p)))
-         (walk-edge! (update-path path 1 (+ index 1)) sk pop-count (+ index 1) pieces))]))
-  (let-values (((_pop-count sk) (walk-edge! '(0) sk 0 0 (list desc))))
-    sk))
+Index.prototype.addAssertion = function(v) { this.adjustAssertion(v, +1); };
+Index.prototype.removeAssertion = function (v) { this.adjustAssertion(v, -1); };
 
-(define (add-interest! sk i)
-  (let ((sk (extend-skeleton! sk (skeleton-interest-desc i))))
-    (skcont-add! (skeleton-node-continuation sk) i)))
+Index.prototype.sendMessage = function(v) {
+  this.root.modify(v, ()=>{}, ()=>{}, (h, vs) => {
+    h.callbacks.forEach((cb) => {
+      cb(EVENT_MESSAGE, vs);
+      return true;
+    });
+  });
+};
 
-(define (remove-interest! sk i)
-  (let ((sk (extend-skeleton! sk (skeleton-interest-desc i))))
-    (skcont-remove! (skeleton-node-continuation sk) i)))
+///////////////////////////////////////////////////////////////////////////
 
-(define (skeleton-modify! sk term0 modify-skcont! modify-skconst! modify-skacc!)
-  (unpack-scoped-assertion [restriction-path term0-term] term0)
-
-  (define (walk-node! sk term-stack)
-    (match-define (skeleton-node continuation edges) sk)
-
-    (modify-skcont! continuation term0)
-    (hash-for-each (skeleton-continuation-table continuation)
-                   (lambda (constant-proj key-proj-handler)
-                     (define constants (apply-projection term0-term constant-proj))
-                     (define proj-handler (hash-ref key-proj-handler constants #f))
-                     (when proj-handler
-                       (modify-skconst! proj-handler term0)
-                       (hash-for-each (skeleton-matched-constant-table proj-handler)
-                                      (lambda (variable-proj acc)
-                                        // (when restriction-path
-                                        //   (log-info "Restriction path ~v in effect; variable-proj is ~v, and term is ~v"
-                                        //             restriction-path
-                                        //             variable-proj
-                                        //             term0))
-                                        (when (or (not restriction-path)
-                                                  (equal? restriction-path variable-proj))
-                                          (define variables (apply-projection term0-term variable-proj))
-                                          (modify-skacc! acc variables term0)))))))
-
-    (for [(edge (in-list edges))]
-      (match-define (cons (skeleton-selector pop-count index) table) edge)
-      (define popped-stack (drop term-stack pop-count))
-      (define pieces (car popped-stack))
-      (define term (vector-ref pieces (+ index 1))) // adjust for struct identifier at beginning
-      (define entry (hash-ref table
-                              (cond [(non-object-struct? term) (struct->struct-type term)]
-                                    [(list? term) (list-type (length term))]
-                                    [(vector? term) (vector-type (vector-length term))]
-                                    [else #f])
-                              #f))
-      (when entry
-        (define new-pieces
-          (cond [(non-object-struct? term) (struct->vector term)]
-                [(list? term) (list->vector (cons 'list term))]
-                [(vector? term) (list->vector (cons 'list (vector->list term)))]))
-        (walk-node! entry (cons new-pieces popped-stack)))))
-
-  (walk-node! sk (list (vector 'list term0-term))))
-
-(define (add-term-to-skcont! skcont term)
-  (hash-set! (skeleton-continuation-cache skcont) term #t))
-(define (add-term-to-skconst! skconst term)
-  (hash-set! (skeleton-matched-constant-cache skconst) term #t))
-(define (add-term-to-skacc! skacc vars _term)
-  // (log-info ">>>>>> At addition time for ~v, cache has ~v"
-  //           _term
-  //           (hash-ref (skeleton-accumulator-cache skacc) vars 0))
-  (match (bag-change! (skeleton-accumulator-cache skacc) vars 1)
-    ['absent->present
-     (hash-for-each (skeleton-accumulator-handlers skacc)
-                    (lambda (handler _) (apply handler '+ vars)))]
-    // 'present->absent and 'absent->absent absurd
-    ['present->present
-     (void)]))
-
-(define (add-assertion! sk term)
-  (skeleton-modify! sk
-                    term
-                    add-term-to-skcont!
-                    add-term-to-skconst!
-                    add-term-to-skacc!))
-
-(define (remove-term-from-skcont! skcont term)
-  (hash-remove! (skeleton-continuation-cache skcont) term))
-(define (remove-term-from-skconst! skconst term)
-  (hash-remove! (skeleton-matched-constant-cache skconst) term))
-(define (remove-term-from-skacc! skacc vars _term)
-  (define cache (skeleton-accumulator-cache skacc))
-  // (log-info ">>>>>> At removal time for ~v, cache has ~v" _term (hash-ref cache vars 0))
-  (if (bag-member? cache vars)
-      (match (bag-change! cache vars -1)
-        ['present->absent
-         (hash-for-each (skeleton-accumulator-handlers skacc)
-                        (lambda (handler _) (apply handler '- vars)))]
-        // 'absent->absent and 'absent->present absurd
-        ['present->present
-         (void)])
-      (log-warning "Removing assertion not previously added: ~v" _term)))
-
-(define (remove-assertion! sk term)
-  (skeleton-modify! sk
-                    term
-                    remove-term-from-skcont!
-                    remove-term-from-skconst!
-                    remove-term-from-skacc!))
-
-(define (send-assertion! sk term)
-  (skeleton-modify! sk
-                    term
-                    void
-                    void
-                    (lambda (skacc vars _term)
-                      (hash-for-each (skeleton-accumulator-handlers skacc)
-                                     (lambda (handler _) (apply handler '! vars))))))
-
-// TODO: avoid repeated descent into `term` by factoring out prefixes of paths in `proj`
-(define (apply-projection term proj)
-  (for/list [(path (in-list proj))]
-    (apply-projection-path term path)))
-
-(define (apply-projection-path term path)
-  (for/fold [(term (list term))] [(index (in-list path))]
-    (cond [(non-object-struct? term) (vector-ref (struct->vector term) (+ index 1))]
-          [(list? term) (list-ref term index)]
-          [(vector? term) (vector-ref term index)]
-          [else (error 'apply-projection "Term representation not supported: ~v" term)])))
-
-//---------------------------------------------------------------------------
-
-(module+ test
-  (struct a (x y) #:transparent)
-  (struct b (v) #:transparent)
-  (struct c (v) #:transparent)
-  (struct d (x y z) #:transparent)
-
-  (define sk
-    (make-empty-skeleton/cache
-     (make-hash (for/list [(x (list (a (b 'bee) (b 'cat))
-                                    (a (b 'foo) (c 'bar))
-                                    (a (b 'foo) (c 'BAR))
-                                    (a (c 'bar) (b 'foo))
-                                    (a (c 'dog) (c 'fox))
-                                    (d (b 'DBX) (b 'DBY) (b 'DBZ))
-                                    (d (c 'DCX) (c 'DCY) (c 'DCZ))
-                                    (b 'zot)
-                                    123))]
-                  (cons x #t)))))
-
-  (define i1
-    (skeleton-interest (list struct:a (list struct:b #f) #f)
-                       '((0 0 0))
-                       '(foo)
-                       '((0 1))
-                       (lambda (op . bindings)
-                         (printf "xAB HANDLER: ~v ~v\n" op bindings))
-                       (lambda (vars)
-                         (printf "xAB CLEANUP: ~v\n" vars))))
-
-  (add-interest! sk i1)
-
-  (void (extend-skeleton! sk (list struct:a (list struct:b #f) #f)))
-  (void (extend-skeleton! sk (list struct:a #f (list struct:c #f))))
-  (void (extend-skeleton! sk (list struct:a #f (list struct:c (list struct:b #f)))))
-  (void (extend-skeleton! sk (list struct:a #f #f)))
-  (void (extend-skeleton! sk (list struct:c #f)))
-  (void (extend-skeleton! sk (list struct:b #f)))
-  (void (extend-skeleton! sk (list struct:d (list struct:b #f) #f (list struct:b #f))))
-  (void (extend-skeleton! sk (list struct:d (list struct:b #f) #f (list struct:c #f))))
-  (void (extend-skeleton! sk (list struct:d (list struct:c #f) #f (list struct:b #f))))
-  (void (extend-skeleton! sk (list struct:d (list struct:c #f) #f (list struct:c #f))))
-  (check-eq? sk (extend-skeleton! sk #f))
-
-  (add-interest! sk
-                 (skeleton-interest (list struct:d (list struct:b #f) #f (list struct:c #f))
-                                    '((0 2 0))
-                                    '(DCZ)
-                                    '((0) (0 0) (0 0 0) (0 1))
-                                    (lambda (op . bindings)
-                                      (printf "DBC HANDLER: ~v ~v\n" op bindings))
-                                    (lambda (vars)
-                                      (printf "DBC CLEANUP: ~v\n" vars))))
-
-  (remove-assertion! sk (a (b 'foo) (c 'bar)))
-  (remove-assertion! sk (d (b 'B1) (b 'DBY) (c 'DCZ)))
-  (add-assertion! sk (d (b 'B1) (b 'DBY) (c 'DCZ)))
-  (add-assertion! sk (d (b 'BX) (b 'DBY) (c 'DCZ)))
-  (add-assertion! sk (d (b 'B1) (b 'DBY) (c 'CX)))
-  (add-assertion! sk (d (b 'B1) (b 'DBY) (c 'DCZ)))
-  (add-assertion! sk (d (b 'BX) (b 'DBY) (c 'DCZ)))
-  (add-assertion! sk (d (b 'B1) (b 'DBY) (c 'CX)))
-
-  (add-interest! sk
-                 (skeleton-interest (list struct:d #f (list struct:b #f) #f)
-                                    '((0 1 0))
-                                    '(DBY)
-                                    '((0 0) (0 2))
-                                    (lambda (op . bindings)
-                                      (printf "xDB HANDLER: ~v ~v\n" op bindings))
-                                    (lambda (vars)
-                                      (printf "xDB CLEANUP: ~v\n" vars))))
-
-  (send-assertion! sk (d (b 'BX) (b 'DBY) (c 'DCZ)))
-  (send-assertion! sk (d (b 'BX) (b 'DBY) (c 'DCZ)))
-
-  (remove-assertion! sk (d (b 'B1) (b 'DBY) (c 'DCZ)))
-  (remove-assertion! sk (d (b 'BX) (b 'DBY) (c 'DCZ)))
-  (remove-assertion! sk (d (b 'B1) (b 'DBY) (c 'CX)))
-  (remove-assertion! sk (d (b 'B1) (b 'DBY) (c 'DCZ)))
-  (remove-assertion! sk (d (b 'BX) (b 'DBY) (c 'DCZ)))
-  (remove-assertion! sk (d (b 'B1) (b 'DBY) (c 'CX)))
-  // sk
-
-  (remove-interest! sk i1)
-  )
+module.exports.EVENT_ADDED = EVENT_ADDED;
+module.exports.EVENT_REMOVED = EVENT_REMOVED;
+module.exports.EVENT_MESSAGE = EVENT_MESSAGE;
+module.exports.Index = Index;
