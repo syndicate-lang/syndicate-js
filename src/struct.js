@@ -1,11 +1,11 @@
 "use strict";
 // "Structures": Simple named-tuple-like records.
 
-var Immutable = require("immutable");
-var $Special = require('./special.js');
+const Immutable = require("immutable");
+const $Special = require('./special.js');
 
 /* Defined here rather than elsewhere because we need it in makeConstructor. */
-var __ = new $Special("wildcard"); /* wildcard marker */
+const __ = new $Special("wildcard"); /* wildcard marker */
 
 function StructureType(label, arity) {
   this.label = label;

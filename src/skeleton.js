@@ -6,6 +6,8 @@ const $Special = require('./special.js');
 const Bag = require('./bag.js');
 const Assertions = require('./assertions.js');
 
+const __ = Struct.__;
+
 const EVENT_ADDED = +1;
 const EVENT_REMOVED = -1;
 const EVENT_MESSAGE = 0;
@@ -101,7 +103,8 @@ Node.prototype.extend = function(skeleton) {
   return finalNode.continuation;
 };
 
-Index.prototype.addHandler = function(skeleton, constPaths, constVals, capturePaths, callback) {
+Index.prototype.addHandler = function(analysisResults, callback) {
+  let {skeleton, constPaths, constVals, capturePaths} = analysisResults;
   let continuation = this.root.extend(skeleton);
   let constValMap = continuation.leafMap.get(constPaths, false);
   if (!constValMap) {
@@ -135,7 +138,8 @@ Index.prototype.addHandler = function(skeleton, constPaths, constVals, capturePa
   });
 };
 
-Index.prototype.removeHandler = function(skeleton, constPaths, constVals, capturePaths, callback) {
+Index.prototype.removeHandler = function(analysisResults, callback) {
+  let {skeleton, constPaths, constVals, capturePaths} = analysisResults;
   let continuation = this.root.extend(skeleton);
   let constValMap = continuation.leafMap.get(constPaths, false);
   if (!constValMap) return;
@@ -248,7 +252,68 @@ Index.prototype.sendMessage = function(v) {
 
 ///////////////////////////////////////////////////////////////////////////
 
+// The name argument should be a string or null; it defaults to null.
+// The pattern argument defaults to wildcard, __.
+function Capture(name, pattern) {
+  this.name = name;
+  this.pattern = (typeof pattern === 'undefined' ? __ : pattern);
+}
+
+// Abbreviation: _$(...) <==> new Capture(...)
+function _$(name, pattern) {
+  return new Capture(name, pattern);
+}
+
+function isCapture(x) { return x instanceof Capture || x === _$; }
+function captureName(x) { return x instanceof Capture ? x.name : null; }
+function capturePattern(x) { return x instanceof Capture ? x.pattern : __; }
+
+///////////////////////////////////////////////////////////////////////////
+
+function analyzeAssertion(a) {
+  let constPaths = Immutable.List();
+  let constVals = Immutable.List();
+  let capturePaths = Immutable.List();
+
+  function walk(path, a) {
+    let cls = classOf(a);
+    if (cls !== null) {
+      let arity = (typeof cls === 'number') ? cls : cls.arity;
+      let result = [cls];
+      for (let i = 0; i < arity; i++) {
+        result.push(walk(path.push(i), step(a, i)));
+      }
+      return result;
+    } else {
+      if (isCapture(a)) {
+        capturePaths = capturePaths.push(path);
+        return walk(path, capturePattern(a));
+      } else if (a === __) {
+        return null;
+      } else {
+        constPaths = constPaths.push(path);
+        constVals = constVals.push(a);
+        return null;
+      }
+    }
+  }
+
+  let skeleton = walk(Immutable.List(), Immutable.fromJS(a));
+
+  return { skeleton, constPaths, constVals, capturePaths };
+}
+
+///////////////////////////////////////////////////////////////////////////
+
 module.exports.EVENT_ADDED = EVENT_ADDED;
 module.exports.EVENT_REMOVED = EVENT_REMOVED;
 module.exports.EVENT_MESSAGE = EVENT_MESSAGE;
 module.exports.Index = Index;
+
+module.exports.Capture = Capture;
+module.exports._$ = _$;
+module.exports.isCapture = isCapture;
+module.exports.captureName = captureName;
+module.exports.capturePattern = capturePattern;
+
+module.exports.analyzeAssertion = analyzeAssertion;

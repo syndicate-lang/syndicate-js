@@ -9,6 +9,8 @@ const Immutable = require('immutable');
 const Syndicate = require('../src/main.js');
 const Skeleton = Syndicate.Skeleton;
 const Struct = Syndicate.Struct;
+const __ = Syndicate.__;
+const _$ = Syndicate._$;
 
 const Event = Struct.makeConstructor('Event', ['label', 'type', 'values']);
 
@@ -26,34 +28,85 @@ function skeletonTrace(f) {
   return traceHolder.trace;
 }
 
-describe('skeleton tests', () => {
+describe('skeleton', () => {
 
   const A = Struct.makeConstructor('A', ['x', 'y']);
   const B = Struct.makeConstructor('B', ['v']);
   const C = Struct.makeConstructor('C', ['v']);
 
+  describe('pattern analysis', () => {
+    it('should handle leaf captures', () => {
+      expect(Immutable.fromJS(Skeleton.analyzeAssertion(A(B(_$), _$))))
+        .to.equal(Immutable.fromJS({skeleton: [A.meta, [B.meta, null], null],
+                                    constPaths: Immutable.fromJS([]),
+                                    constVals: Immutable.fromJS([]),
+                                    capturePaths: Immutable.fromJS([[0, 0], [1]])}));
+    });
+    it('should handle atomic constants', () => {
+      expect(Immutable.fromJS(Skeleton.analyzeAssertion(A(B("x"), _$))))
+        .to.equal(Immutable.fromJS({skeleton: [A.meta, [B.meta, null], null],
+                                    constPaths: Immutable.fromJS([[0, 0]]),
+                                    constVals: Immutable.fromJS(["x"]),
+                                    capturePaths: Immutable.fromJS([[1]])}));
+    });
+    it('should handle complex constants (1)', () => {
+      // Marker: (***)
+      // Really this comes about when compiled code has no static
+      // visibility into the value of a constant, and that constant
+      // will end up being complex at runtime. We can't properly test
+      // that situation without the static analysis half of the code.
+      // TODO later.
+      let complexPlaceholder = new Object();
+      expect(Immutable.fromJS(Skeleton.analyzeAssertion(A(complexPlaceholder, C(_$)))))
+        .to.equal(Immutable.fromJS({skeleton: [A.meta, null, [C.meta, null]],
+                                    constPaths: Immutable.fromJS([[0]]),
+                                    constVals: Immutable.fromJS([complexPlaceholder]),
+                                    capturePaths: Immutable.fromJS([[1, 0]])}));
+    });
+    it('should handle complex constants (2)', () => {
+      // Marker: (***)
+      // Really this comes about when compiled code has no static
+      // visibility into the value of a constant, and that constant
+      // will end up being complex at runtime. We can't properly test
+      // that situation without the static analysis half of the code.
+      // TODO later.
+      expect(Immutable.fromJS(Skeleton.analyzeAssertion(A(B(B("y")), _$("rhs", C(__))))))
+        .to.equal(Immutable.fromJS({skeleton: [A.meta, [B.meta, [B.meta, null]], [C.meta, null]],
+                                    constPaths: Immutable.fromJS([[0, 0, 0]]),
+                                    constVals: Immutable.fromJS(["y"]),
+                                    capturePaths: Immutable.fromJS([[1]])}));
+    });
+    it('should handle list patterns with discards', () => {
+      expect(Immutable.fromJS(Skeleton.analyzeAssertion([__, __])))
+        .to.equal(Immutable.fromJS({skeleton: [2, null, null],
+                                    constPaths: Immutable.fromJS([]),
+                                    constVals: Immutable.fromJS([]),
+                                    capturePaths: Immutable.fromJS([])}));
+    });
+    it('should handle list patterns with constants and captures', () => {
+      expect(Immutable.fromJS(Skeleton.analyzeAssertion(["hi", _$, _$])))
+        .to.equal(Immutable.fromJS({skeleton: [3, null, null, null],
+                                    constPaths: Immutable.fromJS([[0]]),
+                                    constVals: Immutable.fromJS(["hi"]),
+                                    capturePaths: Immutable.fromJS([[1],[2]])}));
+    });
+  });
+
   describe('nested structs', () => {
     let trace = skeletonTrace((i, traceHolder) => {
-      i.addHandler([A.meta, [B.meta, null], null],
-                   Immutable.fromJS([]),
-                   Immutable.fromJS([]),
-                   Immutable.fromJS([[0, 0], [1]]),
-                   eventCallback(traceHolder, "AB"));
-      i.addHandler([A.meta, [B.meta, null], null],
-                   Immutable.fromJS([[0, 0]]),
-                   Immutable.fromJS(["x"]),
-                   Immutable.fromJS([[1]]),
-                   eventCallback(traceHolder, "ABx"));
-      i.addHandler([A.meta, null, [C.meta, null]],
-                   Immutable.fromJS([[0]]),
-                   Immutable.fromJS([B("y")]),
-                   Immutable.fromJS([[1, 0]]),
-                   eventCallback(traceHolder, "AByC"));
-      i.addHandler([A.meta, [B.meta, null], [C.meta, null]],
-                   Immutable.fromJS([[0, 0]]),
-                   Immutable.fromJS([B("y")]),
-                   Immutable.fromJS([[1]]),
-                   eventCallback(traceHolder, "ABByC"));
+      i.addHandler(Skeleton.analyzeAssertion(A(B(_$), _$)), eventCallback(traceHolder, "AB"));
+      i.addHandler(Skeleton.analyzeAssertion(A(B("x"), _$)), eventCallback(traceHolder, "ABx"));
+      let complexConstantPattern1 = {skeleton: [A.meta, null, [C.meta, null]],
+                                    constPaths: Immutable.fromJS([[0]]),
+                                    constVals: Immutable.fromJS([B("y")]),
+                                    capturePaths: Immutable.fromJS([[1, 0]])};
+      // ^ See comment in 'should handle complex constants (1)' test above (marked (***)).
+      i.addHandler(complexConstantPattern1, eventCallback(traceHolder, "AByC"));
+      let complexConstantPattern2 = {skeleton: [A.meta, [B.meta, null], [C.meta, null]],
+                                     constPaths: Immutable.fromJS([[0, 0]]),
+                                     constVals: Immutable.fromJS([B("y")]),
+                                     capturePaths: Immutable.fromJS([[1]])};
+      i.addHandler(complexConstantPattern2, eventCallback(traceHolder, "ABByC"));
 
       i.addAssertion(A(B("x"),C(1)));
       i.addAssertion(A(B("y"),C(2)));
@@ -76,11 +129,7 @@ describe('skeleton tests', () => {
 
   describe('simple detail-erasing trace', () => {
     let trace = skeletonTrace((i, traceHolder) => {
-      i.addHandler([2, null, null],
-                   Immutable.fromJS([]),
-                   Immutable.fromJS([]),
-                   Immutable.fromJS([]),
-                   eventCallback(traceHolder, "2-EVENT"));
+      i.addHandler(Skeleton.analyzeAssertion([__, __]), eventCallback(traceHolder, "2-EVENT"));
 
       i.addAssertion(["hi", 123]);
       i.addAssertion(["hi", 234]);
@@ -98,16 +147,8 @@ describe('skeleton tests', () => {
 
   describe('simple list assertions trace', () => {
     let trace = skeletonTrace((i, traceHolder) => {
-      i.addHandler([3, null, null, null],
-                   Immutable.fromJS([[0]]),
-                   Immutable.fromJS(["hi"]),
-                   Immutable.fromJS([[1],[2]]),
-                   eventCallback(traceHolder, "3-EVENT"));
-      i.addHandler([2, null, null],
-                   Immutable.fromJS([]),
-                   Immutable.fromJS([]),
-                   Immutable.fromJS([]),
-                   eventCallback(traceHolder, "2-EVENT"));
+      i.addHandler(Skeleton.analyzeAssertion(["hi", _$, _$]), eventCallback(traceHolder, "3-EVENT"));
+      i.addHandler(Skeleton.analyzeAssertion([__, __]), eventCallback(traceHolder, "2-EVENT"));
 
       i.addAssertion(["hi", 123, 234]);
       i.addAssertion(["hi", 999, 999]);
