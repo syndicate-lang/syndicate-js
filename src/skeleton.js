@@ -40,21 +40,27 @@ function Handler(cachedCaptures) {
   this.callbacks = Immutable.Set();
 }
 
+function classOf(v) {
+  if (v instanceof Struct.Structure) {
+    return v.meta;
+  } else if (v instanceof Immutable.List) {
+    return v.size;
+  } else {
+    throw new Error("Assertion contains unsupported data type: " + v.toString());
+  }
+}
+
+function step(v, index) {
+  return v.get(index);
+}
+
 function projectPath(v, path) {
-  path.forEach((index) => { v = v.get(index); return true; });
+  path.forEach((index) => { v = step(v, index); return true; });
   return v;
 }
 
 function projectPaths(v, paths) {
   return paths.map((path) => { return projectPath(v, path) });
-}
-
-function classOf(v) {
-  if (v instanceof Struct.Structure) {
-    return v.meta;
-  } else {
-    return v.size;
-  }
 }
 
 Node.prototype.extend = function(skeleton) {
@@ -159,7 +165,7 @@ Node.prototype.modify = function(outerValue, m_cont, m_leaf, m_handler) {
         let i = selector.popCount;
         while (i--) { mutable.pop(); }
       });
-      let nextValue = nextStack.first().get(selector.index);
+      let nextValue = step(nextStack.first(), selector.index);
       let cls = classOf(nextValue);
       let nextNode = table.get(cls, false);
       if (nextNode) {
