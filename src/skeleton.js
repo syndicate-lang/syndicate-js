@@ -204,11 +204,14 @@ function add_to_handler(h, vs) {
 function del_from_cont(c, v) { c.cachedAssertions = c.cachedAssertions.remove(v); }
 function del_from_leaf(l, v) { l.cachedAssertions = l.cachedAssertions.remove(v); }
 function del_from_handler(h, vs) {
-  h.cachedCaptures = Bag.change(h.cachedCaptures, vs, -1).bag;
-  h.callbacks.forEach((cb) => {
-    cb(EVENT_REMOVED, vs);
-    return true;
-  });
+  let net;
+  ({bag: h.cachedCaptures, net: net} = Bag.change(h.cachedCaptures, vs, -1));
+  if (net === Bag.PRESENT_TO_ABSENT) {
+    h.callbacks.forEach((cb) => {
+      cb(EVENT_REMOVED, vs);
+      return true;
+    });
+  }
 }
 
 Index.prototype.adjustAssertion = function(outerValue, delta) {
