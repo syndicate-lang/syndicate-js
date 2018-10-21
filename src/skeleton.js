@@ -222,6 +222,7 @@ function del_from_handler(h, vs) {
 
 Index.prototype.adjustAssertion = function(outerValue, delta) {
   let net;
+  outerValue = Immutable.fromJS(outerValue);
   ({bag: this.allAssertions, net: net} = Bag.change(this.allAssertions, outerValue, delta));
   switch (net) {
     case Bag.ABSENT_TO_PRESENT:
@@ -237,7 +238,7 @@ Index.prototype.addAssertion = function(v) { this.adjustAssertion(v, +1); };
 Index.prototype.removeAssertion = function (v) { this.adjustAssertion(v, -1); };
 
 Index.prototype.sendMessage = function(v) {
-  this.root.modify(v, ()=>{}, ()=>{}, (h, vs) => {
+  this.root.modify(Immutable.fromJS(v), ()=>{}, ()=>{}, (h, vs) => {
     h.callbacks.forEach((cb) => {
       cb(EVENT_MESSAGE, vs);
       return true;

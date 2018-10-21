@@ -39,17 +39,17 @@ describe('skeleton tests', () => {
                    Immutable.fromJS([]),
                    eventCallback(traceHolder, "2-EVENT"));
 
-      i.addAssertion(Immutable.fromJS(["hi", 123]));
-      i.addAssertion(Immutable.fromJS(["hi", 234]));
-      i.removeAssertion(Immutable.fromJS(["hi", 123]));
-      i.removeAssertion(Immutable.fromJS(["hi", 234]));
+      i.addAssertion(["hi", 123]);
+      i.addAssertion(["hi", 234]);
+      i.removeAssertion(["hi", 123]);
+      i.removeAssertion(["hi", 234]);
     });
 
     it('should have one add and one remove', () => {
       expect(trace)
         .to.equal(Immutable.List([
-          Event("2-EVENT", Skeleton.EVENT_ADDED, Immutable.List([])),
-          Event("2-EVENT", Skeleton.EVENT_REMOVED, Immutable.List([]))]));
+          Event("2-EVENT", Skeleton.EVENT_ADDED, []),
+          Event("2-EVENT", Skeleton.EVENT_REMOVED, [])]));
     });
   });
 
@@ -66,21 +66,21 @@ describe('skeleton tests', () => {
                    Immutable.fromJS([]),
                    eventCallback(traceHolder, "2-EVENT"));
 
-      i.addAssertion(Immutable.fromJS(["hi", 123, 234]));
-      i.addAssertion(Immutable.fromJS(["hi", 999, 999]));
-      i.addAssertion(Immutable.fromJS(["hi", 123]));
-      i.addAssertion(Immutable.fromJS(["hi", 123, 234]));
-      i.sendMessage(Immutable.fromJS(["hi", 303]));
-      i.sendMessage(Immutable.fromJS(["hi", 303, 404]));
-      i.sendMessage(Immutable.fromJS(["hi", 303, 404, 808]));
-      i.removeAssertion(Immutable.fromJS(["hi", 123, 234]));
-      i.removeAssertion(Immutable.fromJS(["hi", 999, 999]));
-      i.removeAssertion(Immutable.fromJS(["hi", 123, 234]));
-      i.addAssertion(Immutable.fromJS(["hi", 123]));
-      i.addAssertion(Immutable.fromJS(["hi", 234]));
-      i.removeAssertion(Immutable.fromJS(["hi", 123]));
-      i.removeAssertion(Immutable.fromJS(["hi", 123]));
-      i.removeAssertion(Immutable.fromJS(["hi", 234]));
+      i.addAssertion(["hi", 123, 234]);
+      i.addAssertion(["hi", 999, 999]);
+      i.addAssertion(["hi", 123]);
+      i.addAssertion(["hi", 123, 234]);
+      i.sendMessage(["hi", 303]);
+      i.sendMessage(["hi", 303, 404]);
+      i.sendMessage(["hi", 303, 404, 808]);
+      i.removeAssertion(["hi", 123, 234]);
+      i.removeAssertion(["hi", 999, 999]);
+      i.removeAssertion(["hi", 123, 234]);
+      i.addAssertion(["hi", 123]);
+      i.addAssertion(["hi", 234]);
+      i.removeAssertion(["hi", 123]);
+      i.removeAssertion(["hi", 123]);
+      i.removeAssertion(["hi", 234]);
     });
 
     it('should have 8 entries', () => {
@@ -89,18 +89,18 @@ describe('skeleton tests', () => {
     it('should have a correct 3-EVENT subtrace', () => {
       expect(trace.filter((e) => { return e[0] === "3-EVENT"; }))
         .to.equal(Immutable.List([
-          Event("3-EVENT", Skeleton.EVENT_ADDED, Immutable.List([123, 234])),
-          Event("3-EVENT", Skeleton.EVENT_ADDED, Immutable.List([999, 999])),
-          Event("3-EVENT", Skeleton.EVENT_MESSAGE, Immutable.List([303, 404])),
-          Event("3-EVENT", Skeleton.EVENT_REMOVED, Immutable.List([999, 999])),
-          Event("3-EVENT", Skeleton.EVENT_REMOVED, Immutable.List([123, 234]))]));
+          Event("3-EVENT", Skeleton.EVENT_ADDED, [123, 234]),
+          Event("3-EVENT", Skeleton.EVENT_ADDED, [999, 999]),
+          Event("3-EVENT", Skeleton.EVENT_MESSAGE, [303, 404]),
+          Event("3-EVENT", Skeleton.EVENT_REMOVED, [999, 999]),
+          Event("3-EVENT", Skeleton.EVENT_REMOVED, [123, 234])]));
     });
     it('should have a correct 2-EVENT subtrace', () => {
       expect(trace.filter((e) => { return e[0] === "2-EVENT"; }))
         .to.equal(Immutable.List([
-          Event("2-EVENT", Skeleton.EVENT_ADDED, Immutable.List([])),
-          Event("2-EVENT", Skeleton.EVENT_MESSAGE, Immutable.List([])),
-          Event("2-EVENT", Skeleton.EVENT_REMOVED, Immutable.List([]))]));
+          Event("2-EVENT", Skeleton.EVENT_ADDED, []),
+          Event("2-EVENT", Skeleton.EVENT_MESSAGE, []),
+          Event("2-EVENT", Skeleton.EVENT_REMOVED, [])]));
     });
     // trace.forEach((e) => { console.log(e.toString()) });
   });

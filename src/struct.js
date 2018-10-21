@@ -54,7 +54,7 @@ function Structure(meta, fields) {
   this.length = meta.arity;
   this.fields = fields.slice(0);
   for (var i = 0; i < fields.length; i++) {
-    this[i] = fields[i];
+    this[i] = fields[i] = Immutable.fromJS(fields[i]);
   }
 }
 
