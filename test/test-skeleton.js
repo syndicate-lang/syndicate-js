@@ -13,13 +13,14 @@ const Struct = Syndicate.Struct;
 const Event = Struct.makeConstructor('Event', ['label', 'type', 'values']);
 
 function eventCallback(traceHolder, label) {
-  return (e, vs) => {
-    traceHolder.trace = traceHolder.trace.push(Event(label, e, vs));
-  };
+  return (e, vs) => { traceHolder.push(Event(label, e, vs)) };
 }
 
 function skeletonTrace(f) {
-  let traceHolder = {trace: Immutable.List()};
+  let traceHolder = {
+    trace: Immutable.List(),
+    push: function (e) { this.trace = this.trace.push(e); }
+  };
   let i = new Skeleton.Index();
   f(i, traceHolder);
   return traceHolder.trace;
@@ -30,6 +31,48 @@ describe('skeleton tests', () => {
   const A = Struct.makeConstructor('A', ['x', 'y']);
   const B = Struct.makeConstructor('B', ['v']);
   const C = Struct.makeConstructor('C', ['v']);
+
+  describe('nested structs', () => {
+    let trace = skeletonTrace((i, traceHolder) => {
+      i.addHandler([A.meta, [B.meta, null], null],
+                   Immutable.fromJS([]),
+                   Immutable.fromJS([]),
+                   Immutable.fromJS([[0, 0], [1]]),
+                   eventCallback(traceHolder, "AB"));
+      i.addHandler([A.meta, [B.meta, null], null],
+                   Immutable.fromJS([[0, 0]]),
+                   Immutable.fromJS(["x"]),
+                   Immutable.fromJS([[1]]),
+                   eventCallback(traceHolder, "ABx"));
+      i.addHandler([A.meta, null, [C.meta, null]],
+                   Immutable.fromJS([[0]]),
+                   Immutable.fromJS([B("y")]),
+                   Immutable.fromJS([[1, 0]]),
+                   eventCallback(traceHolder, "AByC"));
+      i.addHandler([A.meta, [B.meta, null], [C.meta, null]],
+                   Immutable.fromJS([[0, 0]]),
+                   Immutable.fromJS([B("y")]),
+                   Immutable.fromJS([[1]]),
+                   eventCallback(traceHolder, "ABByC"));
+
+      i.addAssertion(A(B("x"),C(1)));
+      i.addAssertion(A(B("y"),C(2)));
+      i.addAssertion(A(B(B("y")),C(2)));
+      i.addAssertion(A(B("z"),C(3)));
+    });
+
+    // trace.forEach((e) => { console.log(e.toString()) });
+
+    expect(trace)
+      .to.equal(Immutable.List([
+        Event("AB", Skeleton.EVENT_ADDED, ["x", C(1)]),
+        Event("ABx", Skeleton.EVENT_ADDED, [C(1)]),
+        Event("AB", Skeleton.EVENT_ADDED, ["y", C(2)]),
+        Event("AByC", Skeleton.EVENT_ADDED, [2]),
+        Event("AB", Skeleton.EVENT_ADDED, [B("y"), C(2)]),
+        Event("ABByC", Skeleton.EVENT_ADDED, [C(2)]),
+        Event("AB", Skeleton.EVENT_ADDED, ["z", C(3)])]));
+  });
 
   describe('simple detail-erasing trace', () => {
     let trace = skeletonTrace((i, traceHolder) => {
@@ -102,7 +145,6 @@ describe('skeleton tests', () => {
           Event("2-EVENT", Skeleton.EVENT_MESSAGE, []),
           Event("2-EVENT", Skeleton.EVENT_REMOVED, [])]));
     });
-    // trace.forEach((e) => { console.log(e.toString()) });
   });
 
 });

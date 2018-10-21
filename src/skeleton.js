@@ -46,7 +46,7 @@ function classOf(v) {
   } else if (v instanceof Immutable.List) {
     return v.size;
   } else {
-    throw new Error("Assertion contains unsupported data type: " + v.toString());
+    return null;
   }
 }
 

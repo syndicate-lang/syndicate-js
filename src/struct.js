@@ -78,6 +78,7 @@ Structure.prototype.equals = function (other) {
   if (!other.meta.equals(this.meta)) return false;
   for (let i = 0; i < this.length; i++) {
     if (this[i] === other[i]) continue;
+    if (typeof this[i].equals !== 'function') return false;
     if (!this[i].equals(other[i])) return false;
   }
   return true;
