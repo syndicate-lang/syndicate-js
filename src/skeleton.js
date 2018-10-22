@@ -62,7 +62,7 @@ function projectPath(v, path) {
 }
 
 function projectPaths(v, paths) {
-  return paths.map((path) => { return projectPath(v, path) });
+  return paths.map((path) => projectPath(v, path));
 }
 
 Node.prototype.extend = function(skeleton) {
@@ -80,9 +80,8 @@ Node.prototype.extend = function(skeleton) {
       let nextNode = table.get(cls, false);
       if (!nextNode) {
         nextNode = new Node(new Continuation(
-          node.continuation.cachedAssertions.filter((a) => {
-            return classOf(project(a, path)) === cls;
-          })));
+          node.continuation.cachedAssertions.filter(
+            (a) => classOf(project(a, path)) === cls)));
         table = table.set(cls, nextNode);
         node.edges = node.edges.set(selector, table);
       }
@@ -113,9 +112,8 @@ Index.prototype.addHandler = function(analysisResults, callback) {
   }
   let leaf = constValMap.get(constVals, false);
   if (!leaf) {
-    leaf = new Leaf(continuation.cachedAssertions.filter((a) => {
-      return projectPaths(a, constPaths).equals(constVals);
-    }));
+    leaf = new Leaf(continuation.cachedAssertions.filter(
+      (a) => projectPaths(a, constPaths).equals(constVals)));
     constValMap = constValMap.set(constVals, leaf);
     continuation.leafMap = continuation.leafMap.set(constPaths, constValMap);
   }
