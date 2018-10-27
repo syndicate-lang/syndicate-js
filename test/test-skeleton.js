@@ -145,6 +145,50 @@ describe('skeleton', () => {
     });
   });
 
+  describe('handler added after assertion (1)', () => {
+    let trace = skeletonTrace((i, traceHolder) => {
+      i.addAssertion(["hi", 123, 234]);
+      i.addHandler(Skeleton.analyzeAssertion(["hi", _$, _$]), eventCallback(traceHolder, "X"));
+      i.removeAssertion(["hi", 123, 234]);
+    });
+
+    it('should get two events', () => {
+      expect(trace).to.equal(Immutable.List([
+        Event("X", Skeleton.EVENT_ADDED, [123, 234]),
+        Event("X", Skeleton.EVENT_REMOVED, [123, 234])]));
+    });
+  });
+
+  describe('handler added after assertion (2)', () => {
+    let trace = skeletonTrace((i, traceHolder) => {
+      i.addAssertion(["hi", 123, 234]);
+      i.addHandler(Skeleton.analyzeAssertion(_$), eventCallback(traceHolder, "X"));
+      i.removeAssertion(["hi", 123, 234]);
+    });
+
+    it('should get two events', () => {
+      expect(trace).to.equal(Immutable.List([
+        Event("X", Skeleton.EVENT_ADDED, [["hi", 123, 234]]),
+        Event("X", Skeleton.EVENT_REMOVED, [["hi", 123, 234]])]));
+    });
+  });
+
+  describe('handler removed before assertion removed', () => {
+    let trace = skeletonTrace((i, traceHolder) => {
+      i.addAssertion(["hi", 123, 234]);
+      let h = Skeleton.analyzeAssertion(["hi", _$, _$]);
+      h.callback = eventCallback(traceHolder, "X")
+      i.addHandler(h, h.callback);
+      i.removeHandler(h, h.callback);
+      i.removeAssertion(["hi", 123, 234]);
+    });
+
+    it('should get one event', () => {
+      expect(trace).to.equal(Immutable.List([
+        Event("X", Skeleton.EVENT_ADDED, [123, 234])]));
+    });
+  });
+
   describe('simple list assertions trace', () => {
     let trace = skeletonTrace((i, traceHolder) => {
       i.addHandler(Skeleton.analyzeAssertion(["hi", _$, _$]), eventCallback(traceHolder, "3-EVENT"));

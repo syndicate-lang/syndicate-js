@@ -48,6 +48,10 @@ MutableBag.prototype.entries = function () {
   return this._items.entries();
 };
 
+MutableBag.prototype.snapshot = function () {
+  return this._items;
+};
+
 ///////////////////////////////////////////////////////////////////////////
 
 const Bag = Immutable.Map;

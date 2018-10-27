@@ -27,6 +27,14 @@ function Selector(popCount, index) {
   this.index = index;
 }
 
+Selector.prototype.equals = function (other) {
+  return (this.popCount === other.popCount) && (this.index === other.index);
+};
+
+Selector.prototype.hashCode = function () {
+  return (this.popCount * 5) + this.index;
+};
+
 function Continuation(cachedAssertions) {
   this.cachedAssertions = cachedAssertions;
   this.leafMap = Immutable.Map();
@@ -81,7 +89,7 @@ Node.prototype.extend = function(skeleton) {
       if (!nextNode) {
         nextNode = new Node(new Continuation(
           node.continuation.cachedAssertions.filter(
-            (a) => classOf(project(a, path)) === cls)));
+            (a) => classOf(projectPath(a, path)) === cls)));
         table = table.set(cls, nextNode);
         node.edges = node.edges.set(selector, table);
       }
@@ -130,7 +138,7 @@ Index.prototype.addHandler = function(analysisResults, callback) {
     leaf.handlerMap = leaf.handlerMap.set(capturePaths, handler);
   }
   handler.callbacks = handler.callbacks.add(callback);
-  handler.cachedCaptures.forEach((captures) => {
+  handler.cachedCaptures.forEach((_count, captures) => {
     callback(EVENT_ADDED, captures);
     return true;
   });
@@ -254,7 +262,7 @@ Index.prototype.sendMessage = function(v) {
 // The pattern argument defaults to wildcard, __.
 function Capture(name, pattern) {
   this.name = name;
-  this.pattern = (typeof pattern === 'undefined' ? __ : pattern);
+  this.pattern = (pattern === void 0 ? __ : pattern);
 }
 
 // Abbreviation: _$(...) <==> new Capture(...)

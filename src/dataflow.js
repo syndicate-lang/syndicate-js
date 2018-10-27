@@ -76,7 +76,7 @@ Graph.prototype.repairDamage = function (repairNode) {
 
 Graph.prototype.defineObservableProperty = function (obj, prop, value, maybeOptions) {
   var graph = this;
-  var options = typeof maybeOptions === 'undefined' ? {} : maybeOptions;
+  var options = maybeOptions === void 0 ? {} : maybeOptions;
   var objectId = options.objectId || '__' + prop;
   Object.defineProperty(obj, prop, {
     configurable: true,
