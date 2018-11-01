@@ -247,17 +247,20 @@ export default declare((api, options) => {
         }));
       },
 
-      DataspaceStatement(path, state) {
+      GroundDataspaceStatement(path, state) {
         const { node } = path;
-        let uid = path.scope.generateUidIdentifier("ds");
-        // TODO: name! Also this is a ground DS not a nested one. FIXME
-        path.replaceWith(template(`{ let DS = new DATASPACE(function () { BODY });
-                                     while (DS.runScripts()) ; }`)({
-                                       DS: uid,
-                                       DATASPACE: state.DataspaceID,
-                                       // NAME: node.name || t.nullLiteral(),
-                                       BODY: node.body
-                                     }));
+        if (node.id) {
+          path.replaceWith(template(`let G = (new SYNDICATE.Ground.Ground(function () { BODY }).start());`)({
+            G: node.id,
+            SYNDICATE: state.SyndicateID,
+            BODY: node.body
+          }));
+        } else {
+          path.replaceWith(template(`(new SYNDICATE.Ground.Ground(function () { BODY }).start());`)({
+            SYNDICATE: state.SyndicateID,
+            BODY: node.body
+          }));
+        }
       },
 
       FieldDeclarationStatement(path, state) {

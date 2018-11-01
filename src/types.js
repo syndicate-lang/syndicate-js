@@ -39,13 +39,13 @@ defineType("SpawnStatement", {
   },
 });
 
-defineType("DataspaceStatement", {
-  builder: ["name", "body"],
-  visitor: ["name", "body"],
+defineType("GroundDataspaceStatement", {
+  builder: ["id", "body"],
+  visitor: ["id", "body"],
   aliases: ["Statement"],
   fields: {
-    name: {
-      validate: assertNodeType("Expression"),
+    id: {
+      validate: assertNodeType("Identifier"),
       optional: true,
     },
     body: {

@@ -18,7 +18,8 @@
 
 import * as t from "@babel/types";
 
-function spawnlikeStatement(node) {
+export function SpawnStatement(node) {
+  this.word("spawn");
   this.space();
   if (node.name) {
     this.word("named");
@@ -29,14 +30,16 @@ function spawnlikeStatement(node) {
   this.printBlock(node);
 }
 
-export function SpawnStatement(node) {
-  this.word("spawn");
-  spawnlikeStatement.call(this, node);
-}
-
-export function DataspaceStatement(node) {
+export function GroundDataspaceStatement(node) {
+  this.word("ground");
+  this.space();
   this.word("dataspace");
-  spawnlikeStatement.call(this, node);
+  this.space();
+  if (this.id) {
+    this.print(node.id, node);
+    this.space();
+  }
+  this.print(node.body, node);
 }
 
 export function FieldDeclarationStatement(node) {

@@ -57,12 +57,26 @@ export default class SyndicateParser extends _original_Parser {
                 return this.finishNode(node, "FieldDeclarationStatement");
               }
 
-              if (this.isContextual("dataspace")) {
-                return this.parseSpawnlikeStatement("DataspaceStatement");
+              if (this.isContextual("ground")) {
+                this.next();
+                this.expectContextual("dataspace");
+                const node = this.startNode();
+                if (this.match(tt.name)) {
+                  node.id = this.parseIdentifier();
+                }
+                node.body = this.parseStatement();
+                return this.finishNode(node, "GroundDataspaceStatement");
               }
 
               if (this.isContextual("spawn")) {
-                return this.parseSpawnlikeStatement("SpawnStatement");
+                this.next();
+                const node = this.startNode();
+                if (this.isContextual("named")) {
+                  this.next();
+                  node.name = this.parseExpression();
+                }
+                node.body = this.parseStatement();
+                return this.finishNode(node, "SpawnStatement");
               }
 
               if (this.isContextual("assert")) {
@@ -145,17 +159,6 @@ export default class SyndicateParser extends _original_Parser {
         throw err;
       }
     }
-  }
-
-  parseSpawnlikeStatement(type) {
-    const node = this.startNode();
-    this.next();
-    if (this.isContextual("named")) {
-      this.next();
-      node.name = this.parseExpression();
-    }
-    node.body = this.parseStatement();
-    return this.finishNode(node, type);
   }
 
   parseEventHandlerEndpoint(terminal, pseudoEventsAllowed) {
