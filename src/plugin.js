@@ -225,7 +225,7 @@ export default declare((api, options) => {
         state.StructID = path.scope.generateUidIdentifier("Struct");
         path.unshiftContainer(
           'body',
-          template(`const SYNDICATE = require('syndicate-ijs');
+          template(`const SYNDICATE = require("@syndicate-lang/core");
                     const IMMUTABLE = SYNDICATE.Immutable;
                     const DATASPACE = SYNDICATE.Dataspace;
                     const SKELETON = SYNDICATE.Skeleton;
