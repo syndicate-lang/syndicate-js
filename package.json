@@ -1,27 +1,26 @@
 {
-  "name": "syndicate-ijs",
+  "name": "@syndicate-lang/core",
   "version": "0.0.0",
   "description": "Imperative Syndicate in the browser",
-  "homepage": "https://github.com/tonyg/syndicate",
-  "main": "src/main.js",
+  "homepage": "https://github.com/syndicate-lang/syndicate-js-core",
+  "license": "GPL-3.0+",
   "repository": {
     "type": "git",
-    "url": "git://github.com/tonyg/syndicate"
-  },
-  "directories": {
-    "bin": "./bin"
+    "url": "git://github.com/syndicate-lang/syndicate-js-core"
   },
   "scripts": {
     "clean": "rm -f dist/*",
     "test": "mocha",
     "cover": "nyc --reporter=html mocha"
   },
-  "author": "Tony Garnock-Jones <tonyg@ccs.neu.edu>",
+  "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "devDependencies": {
     "chai": "^4.2.0",
     "chai-immutable": "^2.0.0-rc.2",
-    "immutable": "^3.8.2",
     "mocha": "^2.5.3",
     "nyc": "^13.1.0"
+  },
+  "dependencies": {
+    "immutable": "^3.8.2"
   }
 }
