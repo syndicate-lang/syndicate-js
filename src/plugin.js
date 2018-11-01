@@ -24,7 +24,7 @@ import traverse from "@babel/traverse";
 
 function maybeTerminalWrap(state, terminal, ast) {
   if (terminal) {
-    return template(`DATASPACE.currentFacet().stop(() => { AST })`)({
+    return template(`DATASPACE._currentFacet.stop(() => { AST })`)({
       DATASPACE: state.DataspaceID,
       AST: ast
     });
@@ -172,7 +172,7 @@ function translateEndpoint(state, path, expectedEvt) {
   let _evt = path.scope.generateUidIdentifier("evt");
   let _vs = path.scope.generateUidIdentifier("vs");
   path.replaceWith(template(
-    `DATASPACE.currentFacet().addEndpoint(function () {
+    `DATASPACE._currentFacet.addEndpoint(function () {
        let HANDLER = {
          skeleton: SKELETON,
          constPaths: CONSTPATHS,
@@ -181,7 +181,7 @@ function translateEndpoint(state, path, expectedEvt) {
          callback: DATASPACE.wrap((EVT, VS) => {
            if (EVT === EXPECTED) {
              INITS;
-             DATASPACE.currentFacet().actor.scheduleScript(() => {
+             DATASPACE._currentFacet.actor.scheduleScript(() => {
                BODY;
              });
            }
@@ -218,6 +218,7 @@ export default declare((api, options) => {
 
     visitor: {
       Program(path, state) {
+        let savedGlobalFacetUid = path.scope.generateUidIdentifier("savedGlobalFacet");
         state.ImmutableID = path.scope.generateUidIdentifier("Immutable");
         state.SyndicateID = path.scope.generateUidIdentifier("Syndicate");
         state.DataspaceID = path.scope.generateUidIdentifier("Dataspace");
@@ -229,12 +230,30 @@ export default declare((api, options) => {
                     const IMMUTABLE = SYNDICATE.Immutable;
                     const DATASPACE = SYNDICATE.Dataspace;
                     const SKELETON = SYNDICATE.Skeleton;
-                    const STRUCT = SYNDICATE.Struct;`)({
+                    const STRUCT = SYNDICATE.Struct;
+                    let SAVEDGLOBALFACET = DATASPACE._currentFacet;
+                    DATASPACE._currentFacet = new SYNDICATE._Dataspace.ActionCollector();`)({
                       IMMUTABLE: state.ImmutableID,
                       SYNDICATE: state.SyndicateID,
                       DATASPACE: state.DataspaceID,
                       SKELETON: state.SkeletonID,
                       STRUCT: state.StructID,
+                      SAVEDGLOBALFACET: savedGlobalFacetUid,
+                    }));
+        path.pushContainer(
+          'body',
+          template(`module.exports[DATASPACE.BootSteps] = {
+                      module: module,
+                      steps: DATASPACE._currentFacet.actions
+                    };
+                    DATASPACE._currentFacet = SAVEDGLOBALFACET;
+                    SAVEDGLOBALFACET = null;
+                    if (require.main === module) {
+                      SYNDICATE.bootModule(module);
+                    }`)({
+                      DATASPACE: state.DataspaceID,
+                      SYNDICATE: state.SyndicateID,
+                      SAVEDGLOBALFACET: savedGlobalFacetUid,
                     }));
       },
 
@@ -245,22 +264,6 @@ export default declare((api, options) => {
           NAME: node.name || t.nullLiteral(),
           BODY: node.body
         }));
-      },
-
-      GroundDataspaceStatement(path, state) {
-        const { node } = path;
-        if (node.id) {
-          path.replaceWith(template(`let G = (new SYNDICATE.Ground.Ground(function () { BODY }).start());`)({
-            G: node.id,
-            SYNDICATE: state.SyndicateID,
-            BODY: node.body
-          }));
-        } else {
-          path.replaceWith(template(`(new SYNDICATE.Ground.Ground(function () { BODY }).start());`)({
-            SYNDICATE: state.SyndicateID,
-            BODY: node.body
-          }));
-        }
       },
 
       FieldDeclarationStatement(path, state) {
@@ -279,7 +282,7 @@ export default declare((api, options) => {
       AssertionEndpointStatement(path, state) {
         const { node } = path;
         if (node.test) {
-          path.replaceWith(template(`DATASPACE.currentFacet().addEndpoint(function () {
+          path.replaceWith(template(`DATASPACE._currentFacet.addEndpoint(function () {
                                        return (TEST) ? [TEMPLATE, null] : [void 0, null];
                                      });`)({
                                        DATASPACE: state.DataspaceID,
@@ -287,7 +290,7 @@ export default declare((api, options) => {
                                        TEMPLATE: node.template,
                                      }));
         } else {
-          path.replaceWith(template(`DATASPACE.currentFacet().addEndpoint(function () {
+          path.replaceWith(template(`DATASPACE._currentFacet.addEndpoint(function () {
                                        return [TEMPLATE, null];
                                      });`)({
                                        DATASPACE: state.DataspaceID,
@@ -298,7 +301,7 @@ export default declare((api, options) => {
 
       DataflowStatement(path, state) {
         const { node } = path;
-        path.replaceWith(template(`DATASPACE.currentFacet().addDataflow(function () { BODY });`)({
+        path.replaceWith(template(`DATASPACE._currentFacet.addDataflow(function () { BODY });`)({
           DATASPACE: state.DataspaceID,
           BODY: node.body,
         }));
@@ -308,7 +311,7 @@ export default declare((api, options) => {
         const { node } = path;
         switch (node.triggerType) {
           case "dataflow":
-            path.replaceWith(template(`DATASPACE.currentFacet().addDataflow(function () {
+            path.replaceWith(template(`DATASPACE._currentFacet.addDataflow(function () {
                                          if (PATTERN) { BODY }
                                        });`)({
                                          DATASPACE: state.DataspaceID,
@@ -336,14 +339,14 @@ export default declare((api, options) => {
       PseudoEventHandler(path, state) {
         const { node } = path;
         if (node.triggerType === "start") {
-          path.replaceWith(template(`DATASPACE.currentFacet().actor.scheduleScript(() => {
+          path.replaceWith(template(`DATASPACE._currentFacet.actor.scheduleScript(() => {
                                        BODY;
                                      });`)({
                                        DATASPACE: state.DataspaceID,
                                        BODY: node.body,
                                      }));
         } else {
-          path.replaceWith(template(`DATASPACE.currentFacet().addStopScript(function () {
+          path.replaceWith(template(`DATASPACE._currentFacet.addStopScript(function () {
                                        BODY;
                                      });`)({
                                        DATASPACE: state.DataspaceID,
@@ -367,6 +370,14 @@ export default declare((api, options) => {
         path.replaceWith(template(`DATASPACE.send(BODY);`)({
           DATASPACE: state.DataspaceID,
           BODY: node.body
+        }));
+      },
+
+      ActivationExpression(path, state) {
+        const { node } = path;
+        path.replaceWith(template.expression(`DATASPACE.activate(MODULE)`)({
+          DATASPACE: state.DataspaceID,
+          MODULE: node.moduleExpr,
         }));
       },
     },

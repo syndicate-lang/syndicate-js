@@ -19,6 +19,36 @@
 import { _original_Parser, tokTypes as tt } from "@babel/parser";
 
 export default class SyndicateParser extends _original_Parser {
+  // Overrides ExpressionParser.parseMaybeAssign
+  parseMaybeAssign(noIn, refShorthandDefaultPos, afterLeftParse, refNeedsArrowPos) {
+    let previousError = null;
+
+    if (this.isContextual("activate")) {
+      let result = this.withBacktracking(
+        () => {
+          this.next();
+          const node = this.startNode();
+          node.moduleExpr = this.parseMaybeAssign(noIn, refShorthandDefaultPos, afterLeftParse, refNeedsArrowPos);
+          return this.finishNode(node, "ActivationExpression");
+        },
+        (err) => {
+          previousError = err;
+          return null;
+        });
+      if (result) return result;
+    }
+
+    try {
+      return super.parseMaybeAssign(noIn, refShorthandDefaultPos, afterLeftParse, refNeedsArrowPos);
+    } catch (err) {
+      if (err instanceof SyntaxError && previousError && previousError.pos >= err.pos) {
+        throw previousError;
+      } else {
+        throw err;
+      }
+    }
+  }
+
   // Overrides StatementParser.parseStatementContent
   parseStatementContent(declaration, topLevel) {
     let previousError = null;
@@ -55,17 +85,6 @@ export default class SyndicateParser extends _original_Parser {
                 }
                 this.semicolon();
                 return this.finishNode(node, "FieldDeclarationStatement");
-              }
-
-              if (this.isContextual("ground")) {
-                this.next();
-                this.expectContextual("dataspace");
-                const node = this.startNode();
-                if (this.match(tt.name)) {
-                  node.id = this.parseIdentifier();
-                }
-                node.body = this.parseStatement();
-                return this.finishNode(node, "GroundDataspaceStatement");
               }
 
               if (this.isContextual("spawn")) {

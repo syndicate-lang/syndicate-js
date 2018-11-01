@@ -30,18 +30,6 @@ export function SpawnStatement(node) {
   this.printBlock(node);
 }
 
-export function GroundDataspaceStatement(node) {
-  this.word("ground");
-  this.space();
-  this.word("dataspace");
-  this.space();
-  if (this.id) {
-    this.print(node.id, node);
-    this.space();
-  }
-  this.print(node.body, node);
-}
-
 export function FieldDeclarationStatement(node) {
   this.word("field");
   this.space();
@@ -127,4 +115,10 @@ export function MessageSendStatement(node) {
   this.space();
   this.print(node.body, node);
   this.semicolon();
+}
+
+export function ActivationExpression(node) {
+  this.word("activate");
+  this.space();
+  this.print(node.moduleExpr, node);
 }

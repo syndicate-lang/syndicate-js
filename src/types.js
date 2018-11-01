@@ -39,21 +39,6 @@ defineType("SpawnStatement", {
   },
 });
 
-defineType("GroundDataspaceStatement", {
-  builder: ["id", "body"],
-  visitor: ["id", "body"],
-  aliases: ["Statement"],
-  fields: {
-    id: {
-      validate: assertNodeType("Identifier"),
-      optional: true,
-    },
-    body: {
-      validate: assertNodeType("Statement"),
-    },
-  },
-});
-
 defineType("FieldDeclarationStatement", {
   builder: ["member", "init"],
   visitor: ["member", "init"],
@@ -159,6 +144,17 @@ defineType("MessageSendStatement", {
   aliases: ["Statement"],
   fields: {
     body: {
+      validate: assertNodeType("Expression"),
+    },
+  },
+});
+
+defineType("ActivationExpression", {
+  builder: ["moduleExpr"],
+  visitor: ["moduleExpr"],
+  aliases: ["Expression"],
+  fields: {
+    moduleExpr: {
       validate: assertNodeType("Expression"),
     },
   },

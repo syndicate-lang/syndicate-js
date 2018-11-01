@@ -21,22 +21,27 @@
 // syntactic extensions to JS.
 
 //---------------------------------------------------------------------------
-// (0) Replace the `isStatement` function with a non-hard-coded
-// version that checks the contents of FLIPPED_ALIAS_KEYS at the time
-// of the call.
+// (0) Replace the `isStatement` and `isExpression` functions with
+// non-hard-coded versions that check the contents of
+// FLIPPED_ALIAS_KEYS at the time of each call.
 //
 // This allows our later extensions to be picked up correctly.
 //
 var Validators = require("@babel/types/lib/validators/generated");
 var shallowEqual = require("@babel/types/lib/utils/shallowEqual");
-var _isStatement = Validators.isStatement;
-Validators.isStatement = function (node, opts) {
-  if (node && Types.FLIPPED_ALIAS_KEYS["Statement"].indexOf(node.type) !== -1) {
-    return typeof opts === "undefined" || shallowEqual.default(node, opts);
-  } else {
-    return _isStatement(node, opts);
-  }
-};
+
+function _isX(X, previous) {
+  return (node, opts) => {
+    if (node && Types.FLIPPED_ALIAS_KEYS[X].indexOf(node.type) !== -1) {
+      return typeof opts === "undefined" || shallowEqual.default(node, opts);
+    } else {
+      return previous(node, opts);
+    }
+  };
+}
+
+Validators.isStatement = _isX("Statement", Validators.isStatement);
+Validators.isExpression = _isX("Expression", Validators.isExpression);
 
 //---------------------------------------------------------------------------
 // (1) Load the core parser in modifiable form.
