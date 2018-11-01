@@ -4,6 +4,9 @@
   "description": "Imperative Syndicate in the browser",
   "homepage": "https://github.com/syndicate-lang/syndicate-js-core",
   "license": "GPL-3.0+",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git://github.com/syndicate-lang/syndicate-js-core"
