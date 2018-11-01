@@ -1,0 +1,22 @@
+{
+  "name": "@syndicate-lang/syntax",
+  "version": "0.0.0",
+  "homepage": "https://github.com/syndicate-lang/syndicate-js-syntax",
+  "license": "GPL-3.0+",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/syndicate-lang/syndicate-js-syntax"
+  },
+  "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
+  "devDependencies": {
+    "@babel/cli": "^7.1.2",
+    "@babel/core": "^7.1.2",
+    "@babel/preset-env": "^7.1.0"
+  },
+  "dependencies": {
+    "@babel/polyfill": "^7.0.0"
+  },
+  "bin": {
+    "syndicate-babel": "./bin/syndicate-babel.js"
+  }
+}
