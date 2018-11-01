@@ -5,6 +5,9 @@ const Skeleton = require('./skeleton.js');
 const Dataspace = require('./dataspace.js');
 const Assertions = require('./assertions.js');
 
+module.exports.Immutable = require('immutable');
+// ^ for use by import machinery in syntactic extensions
+
 module.exports.Bag = require("./bag.js");
 module.exports.Struct = Struct;
 module.exports.Skeleton = Skeleton;
