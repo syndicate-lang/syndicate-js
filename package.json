@@ -3,11 +3,17 @@
   "version": "0.0.0",
   "homepage": "https://github.com/syndicate-lang/syndicate-js-syntax",
   "license": "GPL-3.0+",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git://github.com/syndicate-lang/syndicate-js-syntax"
   },
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
+  "scripts": {
+    "prepare": "make build"
+  },
   "devDependencies": {
     "@babel/cli": "^7.1.2",
     "@babel/core": "^7.1.2",
