@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/core",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Imperative Syndicate in the browser",
   "homepage": "https://github.com/syndicate-lang/syndicate-js-core",
   "license": "GPL-3.0+",
