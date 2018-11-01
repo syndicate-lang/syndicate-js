@@ -20,6 +20,7 @@
 const Struct = require('./struct.js');
 const Skeleton = require('./skeleton.js');
 const Dataspace = require('./dataspace.js');
+const Ground = require('./ground.js');
 const Assertions = require('./assertions.js');
 
 module.exports.Immutable = require('immutable');
@@ -33,6 +34,7 @@ module.exports._$ = Skeleton._$;
 
 module.exports._Dataspace = Dataspace;
 module.exports.Dataspace = Dataspace.Dataspace;
+module.exports.Ground = Ground;
 
 module.exports._Assertions = Assertions;
 module.exports.Observe = Assertions.Observe;

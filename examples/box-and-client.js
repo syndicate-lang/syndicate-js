@@ -21,6 +21,7 @@ const Immutable = require('immutable');
 const Syndicate = require('../src/index.js');
 const Skeleton = Syndicate.Skeleton;
 const Dataspace = Syndicate.Dataspace;
+const Ground = Syndicate.Ground.Ground;
 const Struct = Syndicate.Struct;
 const __ = Syndicate.__;
 const _$ = Syndicate._$;
@@ -32,7 +33,7 @@ const N = 100000;
 
 console.time('box-and-client-' + N.toString());
 
-let ds = new Dataspace(() => {
+new Ground(() => {
   Dataspace.spawn('box', function () {
     Dataspace.declareField(this, 'value', 0);
     Dataspace.currentFacet().addEndpoint(() => {
@@ -73,12 +74,6 @@ let ds = new Dataspace(() => {
       return [Syndicate.Observe(BoxState(_$)), handler];
     });
   });
-});
-
-// console.log('--- starting ---');
-while (ds.runScripts()) {
-  // console.log('--- runScripts boundary ---');
-}
-// console.log('--- done ---');
-
-console.timeEnd('box-and-client-' + N.toString());
+}).start().stopHandler = () => {
+  console.timeEnd('box-and-client-' + N.toString());
+};
