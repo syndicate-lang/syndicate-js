@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/syntax",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "homepage": "https://github.com/syndicate-lang/syndicate-js-syntax",
   "license": "GPL-3.0+",
   "publishConfig": {
