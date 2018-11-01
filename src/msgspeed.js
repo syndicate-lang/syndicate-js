@@ -23,7 +23,7 @@ const N = 100000;
 
 console.time('msgspeed-' + N.toString());
 
-dataspace {
+ground dataspace G {
   spawn {
     on start {
       << 0;
@@ -38,4 +38,6 @@ dataspace {
   }
 }
 
-console.timeEnd('msgspeed-' + N.toString());
+G.stopHandler = () => {
+  console.timeEnd('msgspeed-' + N.toString());
+};

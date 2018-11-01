@@ -23,7 +23,7 @@ const N = 10;
 
 console.time('box-and-client-' + N.toString());
 
-dataspace {
+ground dataspace G {
   spawn named 'box' {
     field this.value = 0;
     assert Protocol.BoxState(this.value);
@@ -42,4 +42,6 @@ dataspace {
   }
 }
 
-console.timeEnd('box-and-client-' + N.toString());
+G.stopHandler = () => {
+  console.timeEnd('box-and-client-' + N.toString());
+};
