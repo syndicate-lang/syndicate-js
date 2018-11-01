@@ -11,9 +11,9 @@
   "devDependencies": {
     "@babel/core": "^7.1.2",
     "@babel/preset-env": "^7.1.0",
-    "@syndicate-lang/syntax": "^0.x"
+    "@syndicate-lang/syntax": ">=0.0.1"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.x"
-  },
+    "@syndicate-lang/core": ">=0.0.1"
+  }
 }

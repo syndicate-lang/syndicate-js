@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-var Dataspace = require('syndicate-ijs').Dataspace;
+var Dataspace = require('@syndicate-lang/core').Dataspace;
 
 const N = 100000;
 
