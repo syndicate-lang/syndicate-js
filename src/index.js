@@ -41,3 +41,5 @@ module.exports.Observe = Assertions.Observe;
 module.exports.Seal = Assertions.Seal;
 module.exports.Inbound = Assertions.Inbound;
 module.exports.Outbound = Assertions.Outbound;
+
+module.exports.bootModule = Ground.bootModule;

@@ -74,6 +74,6 @@ new Ground(() => {
       return [Syndicate.Observe(BoxState(_$)), handler];
     });
   });
-}).start().stopHandler = () => {
+}).start().addStopHandler(() => {
   console.timeEnd('box-and-client-' + N.toString());
-};
+});

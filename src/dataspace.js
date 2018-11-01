@@ -38,20 +38,26 @@ const PRIORITY = Object.freeze({
   _count: 6
 });
 
-function Dataspace(bootProc) {
+function Dataspace(container, bootProc) {
   this.nextId = 0;
+  this.container = container;
   this.index = new Skeleton.Index();
   this.dataflow = new Dataflow.Graph();
   this.runnable = Immutable.List();
   this.pendingActions = Immutable.List([
     new ActionGroup(null, Immutable.List([new Spawn(null, bootProc, Immutable.Set())]))]);
+  this.activatedModules = Immutable.Set();
 }
 
 // Parameters
 Dataspace._currentFacet = null;
 Dataspace._inScript = true;
 
-Dataspace.currentFacet = function () { return Dataspace._currentFacet; };
+Dataspace.BootSteps = Symbol('SyndicateBootSteps');
+
+Dataspace.currentFacet = function () {
+  return Dataspace._currentFacet;
+};
 
 Dataspace.withNonScriptContext = function (thunk) {
   let savedInScript = Dataspace._inScript;
@@ -84,11 +90,36 @@ Dataspace.wrap = function (f) {
   return function () {
     let actuals = arguments;
     return Dataspace.withCurrentFacet(savedFacet, function () {
-      return f.apply(f.fields, actuals);
+      return f.apply(savedFacet.fields, actuals);
     });
   };
 };
 
+Dataspace.wrapExternal = function (f) {
+  let savedFacet = Dataspace._currentFacet;
+  let ac = savedFacet.actor;
+  return function () {
+    let actuals = arguments;
+    ac.dataspace.container.start();
+    ac.pushScript(function () {
+      Dataspace.withCurrentFacet(savedFacet, function () {
+        f.apply(this, actuals);
+      });
+    });
+  };
+};
+
+Dataspace.backgroundTask = function (k) {
+  let ground = Dataspace._currentFacet.actor.dataspace.container;
+  let active = true;
+  ground.backgroundTaskCount++;
+  return k(() => {
+    if (active) {
+      ground.backgroundTaskCount--;
+      active = false;
+    }
+  });
+};
 
 Dataspace.referenceField = function (obj, prop) {
   if (!(prop in obj)) {
@@ -162,7 +193,7 @@ Dataspace.prototype.addActor = function (name, bootProc, initialAssertions) {
   ac.addFacet(null, () => {
     // Root facet is a dummy "system" facet that exists to hold
     // one-or-more "user" "root" facets.
-    ac.addFacet(Dataspace.currentFacet(), bootProc);
+    ac.addFacet(Dataspace._currentFacet, bootProc);
     // ^ The "true root", user-visible facet.
     initialAssertions.forEach((a) => { ac.adhocRetract(a); });
   });
@@ -326,7 +357,7 @@ Message.prototype.perform = function (ds, ac) {
 };
 
 Dataspace.send = function (body) {
-  Dataspace._currentFacet.actor.enqueueScriptAction(new Message(body));
+  Dataspace._currentFacet.enqueueScriptAction(new Message(body));
 };
 
 function Spawn(name, bootProc, initialAssertions) {
@@ -340,8 +371,7 @@ Spawn.prototype.perform = function (ds, ac) {
 };
 
 Dataspace.spawn = function (name, bootProc, initialAssertions) {
-  let a = new Spawn(name, bootProc, initialAssertions);
-  Dataspace._currentFacet.actor.enqueueScriptAction(a);
+  Dataspace._currentFacet.enqueueScriptAction(new Spawn(name, bootProc, initialAssertions));
 };
 
 function Quit() { // TODO: rename? Perhaps to Cleanup?
@@ -361,7 +391,28 @@ DeferredTurn.prototype.perform = function (ds, ac) {
 };
 
 Dataspace.deferTurn = function (continuation) {
-  Dataspace._currentFacet.actor.enqueueScriptAction(new DeferredTurn(Dataspace.wrap(continuation)));
+  Dataspace._currentFacet.enqueueScriptAction(new DeferredTurn(Dataspace.wrap(continuation)));
+};
+
+function Activation(mod) {
+  this.mod = mod;
+}
+
+Activation.prototype.perform = function (ds, ac) {
+  if (!ds.activatedModules.includes(this.mod)) {
+    ds.activatedModules = ds.activatedModules.add(this.mod);
+    this.mod.exports[Dataspace.BootSteps].steps.forEach((a) => {
+      a.perform(ds, ac);
+    });
+  }
+};
+
+Dataspace.activate = function (modExports) {
+  let { module } = modExports[Dataspace.BootSteps] || {};
+  if (module) {
+    Dataspace._currentFacet.enqueueScriptAction(new Activation(module));
+  }
+  return modExports;
 };
 
 function ActionGroup(actor, actions) {
@@ -473,6 +524,10 @@ Facet.prototype.addDataflow = function (subjectFun, priority) {
   });
 };
 
+Facet.prototype.enqueueScriptAction = function (action) {
+  this.actor.enqueueScriptAction(action);
+};
+
 Facet.prototype.toString = function () {
   let s = 'Facet(' + this.actor.id;
   if (this.actor.name !== void 0) s = s + ',' + JSON.stringify(this.actor.name);
@@ -483,6 +538,14 @@ Facet.prototype.toString = function () {
     f = f.parent;
   }
   return s + ')';
+};
+
+function ActionCollector() {
+  this.actions = [];
+}
+
+ActionCollector.prototype.enqueueScriptAction = function (a) {
+  this.actions.push(a);
 };
 
 function Endpoint(facet, isDynamic, updateFun) {
@@ -536,3 +599,4 @@ Endpoint.prototype.toString = function () {
 ///////////////////////////////////////////////////////////////////////////
 
 module.exports.Dataspace = Dataspace;
+module.exports.ActionCollector = ActionCollector;

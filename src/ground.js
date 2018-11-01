@@ -7,8 +7,9 @@ function Ground(bootProc) {
   this.stepperId = null;
   this.stepping = false;
   this.startingFuel = 1000;
-  this.dataspace = new Dataspace(bootProc);
-  this.stopHandler = function () {};
+  this.dataspace = new Dataspace(this, bootProc);
+  this.stopHandlers = [];
+  this.backgroundTaskCount = 0;
 }
 
 Ground.prototype.start = function () {
@@ -32,8 +33,9 @@ Ground.prototype._step = function () {
     if (stillBusy) {
       this.start();
     } else {
-      if (this.stopHandler) {
-        this.stopHandler(this);
+      if (!this.backgroundTaskCount) {
+        this.stopHandlers.forEach((h) => h());
+        this.stopHandlers = [];
       }
     }
   } finally {
@@ -48,4 +50,15 @@ Ground.prototype.stop = function () {
   }
 };
 
+Ground.prototype.addStopHandler = function (h) {
+  this.stopHandlers.push(h);
+};
+
+function bootModule(mod) {
+  let g = new Ground(() => {
+    Dataspace.activate(mod.exports);
+  }).start();
+}
+
 module.exports.Ground = Ground;
+module.exports.bootModule = bootModule;
