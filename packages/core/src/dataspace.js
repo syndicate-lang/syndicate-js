@@ -113,12 +113,13 @@ Dataspace.backgroundTask = function (k) {
   let ground = Dataspace._currentFacet.actor.dataspace.container;
   let active = true;
   ground.backgroundTaskCount++;
-  return k(() => {
+  function finish() {
     if (active) {
       ground.backgroundTaskCount--;
       active = false;
     }
-  });
+  }
+  return k ? k(finish) : finish;
 };
 
 Dataspace.referenceField = function (obj, prop) {
