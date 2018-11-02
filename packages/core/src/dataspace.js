@@ -79,9 +79,9 @@ Dataspace.withCurrentFacet = function (facet, thunk) {
   } catch (e) {
     let a = facet.actor;
     a.abandonQueuedWork();
-    a._terminate();
+    a._terminate(false);
     Dataspace._currentFacet = savedFacet;
-    throw e;
+    console.error(e);
   }
 };
 
@@ -89,8 +89,8 @@ Dataspace.wrap = function (f) {
   let savedFacet = Dataspace._currentFacet;
   return function () {
     let actuals = arguments;
-    return Dataspace.withCurrentFacet(savedFacet, function () {
-      return f.apply(savedFacet.fields, actuals);
+    Dataspace.withCurrentFacet(savedFacet, function () {
+      f.apply(savedFacet.fields, actuals);
     });
   };
 };
@@ -304,13 +304,15 @@ Actor.prototype.addFacet = function (parentFacet, bootProc, checkInScript) {
   });
 };
 
-Actor.prototype._terminate = function () {
+Actor.prototype._terminate = function (emitPatches) {
   // Abruptly terminates an entire actor, without running stop-scripts etc.
-  this.pushScript(() => {
-    this.adhocAssertions.snapshot().forEach((_count, a) => { this.retract(a); });
-  });
+  if (emitPatches) {
+    this.pushScript(() => {
+      this.adhocAssertions.snapshot().forEach((_count, a) => { this.retract(a); });
+    });
+  }
   if (this.rootFacet) {
-    this.rootFacet._abort();
+    this.rootFacet._abort(emitPatches);
   }
   this.pushScript(() => { this.enqueueScriptAction(new Quit()); });
 };
@@ -448,18 +450,18 @@ function Facet(actor, parent) {
   }
 }
 
-Facet.prototype._abort = function () {
+Facet.prototype._abort = function (emitPatches) {
   this.isLive = false;
-  this.children.forEach((child) => { child._abort(); });
-  this.retractAssertionsAndSubscriptions();
+  this.children.forEach((child) => { child._abort(emitPatches); });
+  this.retractAssertionsAndSubscriptions(emitPatches);
 };
 
-Facet.prototype.retractAssertionsAndSubscriptions = function () {
+Facet.prototype.retractAssertionsAndSubscriptions = function (emitPatches) {
   let ac = this.actor;
   let ds = ac.dataspace;
   ac.pushScript(() => {
     this.endpoints.forEach((ep) => {
-      ep.destroy(ds, ac, this);
+      ep.destroy(ds, ac, this, emitPatches);
     });
     this.endpoints = Immutable.Map();
   });
@@ -490,14 +492,14 @@ Facet.prototype._terminate = function () {
       });
     });
 
-    this.retractAssertionsAndSubscriptions();
+    this.retractAssertionsAndSubscriptions(true);
     ac.pushScript(() => {
       if (parent) {
         if (parent.isInert()) {
           parent._terminate();
         }
       } else {
-        ac._terminate();
+        ac._terminate(true);
       }
     }, PRIORITY.GC);
   }
@@ -578,8 +580,8 @@ Endpoint.prototype._install = function (ds, ac, assertion, handler) {
   if (this.handler) { ds.subscribe(this.handler); }
 };
 
-Endpoint.prototype._uninstall = function (ds, ac) {
-  ac.retract(this.assertion);
+Endpoint.prototype._uninstall = function (ds, ac, emitPatches) {
+  if (emitPatches) { ac.retract(this.assertion); }
   if (this.handler) { ds.unsubscribe(this.handler); }
 };
 
@@ -587,17 +589,17 @@ Endpoint.prototype.refresh = function (ds, ac, facet) {
   let [newAssertion, newHandler] = this.updateFun.call(facet.fields);
   newAssertion = Immutable.fromJS(newAssertion);
   if (!Immutable.is(newAssertion, this.assertion)) {
-    this._uninstall(ds, ac);
+    this._uninstall(ds, ac, true);
     this._install(ds, ac, newAssertion, newHandler);
   }
 };
 
-Endpoint.prototype.destroy = function (ds, ac, facet) {
+Endpoint.prototype.destroy = function (ds, ac, facet, emitPatches) {
   ds.dataflow.forgetSubject([facet, this.id]);
   // ^ TODO: this won't work because of object identity problems! Why
   // does the Racket implementation do this, when the old JS
   // implementation doesn't?
-  this._uninstall(ds, ac);
+  this._uninstall(ds, ac, emitPatches);
 };
 
 Endpoint.prototype.toString = function () {
