@@ -51,9 +51,7 @@ spawn named 'driver-timer/TimeLaterThan' {
     let finish = Dataspace.backgroundTask();
     on start {
       let delta = deadlineMS - (+(new Date()));
-      console.log('Observation of TimeLaterThan', deadlineMS, delta);
       handle = setTimeout(Dataspace.wrapExternal(() => {
-        console.log('Firing TimeLaterThan', deadlineMS);
         handle = null;
         finish();
         finish = null;
@@ -63,7 +61,6 @@ spawn named 'driver-timer/TimeLaterThan' {
       }), delta);
     }
     on stop {
-      console.log('Retraction of observation of TimeLaterThan', deadlineMS);
       if (handle) {
         clearTimeout(handle);
         handle = null;
