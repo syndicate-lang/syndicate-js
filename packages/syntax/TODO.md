@@ -1,0 +1,12 @@
+ - `during`
+ - `define/query`
+ - [DONE] activation
+ - web pack
+ - drivers
+    - timer
+    - alert
+ - `defer` statement
+ - [DONE] remove ground dataspace syntax
+ - some kind of `stop facet` statement
+    - put a Symbol on the fields blob?
+ - `react`
