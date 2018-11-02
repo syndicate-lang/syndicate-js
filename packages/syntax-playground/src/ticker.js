@@ -16,8 +16,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { Dataspace } from "@syndicate-lang/core";
-
 const Timer = activate require("@syndicate-lang/driver-timer");
 const TimeLaterThan = Timer.TimeLaterThan;
 
