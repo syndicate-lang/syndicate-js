@@ -7,10 +7,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/syndicate-lang/syndicate-js-core"
-  },
+  "repository": "github:syndicate-lang/syndicate-js",
   "scripts": {
     "clean": "rm -f dist/*",
     "test": "mocha",

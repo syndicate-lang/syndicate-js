@@ -6,10 +6,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/syndicate-lang/syndicate-js-syntax"
-  },
+  "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "scripts": {
     "prepare": "make build"

@@ -4,10 +4,7 @@
   "version": "0.0.1",
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/syntax-playground",
   "license": "GPL-3.0+",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/syndicate-lang/syndicate-js-syntax-test"
-  },
+  "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "devDependencies": {
     "@babel/core": "^7.1.2",
