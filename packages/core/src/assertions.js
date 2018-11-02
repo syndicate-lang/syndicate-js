@@ -27,3 +27,4 @@ module.exports.Observe = Struct.makeConstructor('Observe', ['specification']);
 module.exports.Seal = Seal;
 module.exports.Inbound = Struct.makeConstructor('Inbound', ['assertion']);
 module.exports.Outbound = Struct.makeConstructor('Outbound', ['assertion']);
+module.exports.Instance = Struct.makeConstructor('Instance', ['uniqueId']);

@@ -88,14 +88,7 @@ export default class SyndicateParser extends _original_Parser {
               }
 
               if (this.isContextual("spawn")) {
-                this.next();
-                const node = this.startNode();
-                if (this.isContextual("named")) {
-                  this.next();
-                  node.name = this.parseExpression();
-                }
-                node.body = this.parseStatement();
-                return this.finishNode(node, "SpawnStatement");
+                return this.parseSpawnStatement();
               }
 
               if (this.isContextual("assert")) {
@@ -125,6 +118,25 @@ export default class SyndicateParser extends _original_Parser {
 
               if (this.isContextual("on")) {
                 return this.parseEventHandlerEndpoint(false, true);
+              }
+
+              if (this.isContextual("during")) {
+                this.next();
+                const node = this.startNode();
+                node.pattern = this.parseExpression();
+                if (this.isContextual("spawn")) {
+                  node.body = this.parseSpawnStatement();
+                } else {
+                  node.body = this.parseStatement();
+                }
+                return this.finishNode(node, "DuringStatement");
+              }
+
+              if (this.isContextual("react")) {
+                this.next();
+                const node = this.startNode();
+                node.body = this.parseStatement();
+                return this.finishNode(node, "SyndicateReactStatement");
               }
 
               if (this.isContextual("assertion") || this.isContextual("message")) {
@@ -180,6 +192,17 @@ export default class SyndicateParser extends _original_Parser {
     }
   }
 
+  parseSpawnStatement() {
+    this.next();
+    const node = this.startNode();
+    if (this.isContextual("named")) {
+      this.next();
+      node.name = this.parseExpression();
+    }
+    node.body = this.parseStatement();
+    return this.finishNode(node, "SpawnStatement");
+  }
+
   parseEventHandlerEndpoint(terminal, pseudoEventsAllowed) {
     this.expectContextual("on");
     const node = this.startNode();
@@ -187,6 +210,7 @@ export default class SyndicateParser extends _original_Parser {
     if (this.match(tt.parenL)) {
       node.terminal = terminal;
       node.triggerType = "dataflow";
+      node.isDynamic = true;
       node.pattern = this.parseExpression();
       node.body = this.parseStatement();
       return this.finishNode(node, "EventHandlerEndpoint");
@@ -213,6 +237,7 @@ export default class SyndicateParser extends _original_Parser {
       case "message":
         node.triggerType = this.state.value;
         this.next();
+        node.isDynamic = this.parseMaybeSnapshot();
         node.terminal = terminal;
         node.pattern = this.parseExpression();
         node.body = this.parseStatement();
@@ -220,6 +245,16 @@ export default class SyndicateParser extends _original_Parser {
 
       default:
         this.unexpected(null, "Unknown event handler trigger type");
+    }
+  }
+
+  parseMaybeSnapshot() {
+    if (this.match(tt.colon)) {
+      this.next();
+      this.expectContextual("snapshot");
+      return false;
+    } else {
+      return true;
     }
   }
 }

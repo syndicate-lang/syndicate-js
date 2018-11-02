@@ -81,8 +81,8 @@ defineType("DataflowStatement", {
 });
 
 defineType("EventHandlerEndpoint", {
-  builder: ["terminal", "triggerType", "pattern", "body"],
-  visitor: ["terminal", "triggerType", "pattern", "body"],
+  builder: ["terminal", "triggerType", "isDynamic", "pattern", "body"],
+  visitor: ["terminal", "triggerType", "isDynamic", "pattern", "body"],
   aliases: ["Statement"],
   fields: {
     terminal: {
@@ -90,6 +90,9 @@ defineType("EventHandlerEndpoint", {
     },
     triggerType: {
       validate: assertOneOf("asserted", "retracted", "message", "dataflow"),
+    },
+    isDynamic: {
+      validate: assertOneOf(true, false),
     },
     pattern: {
       validate: assertNodeType("Expression"),
@@ -156,6 +159,31 @@ defineType("ActivationExpression", {
   fields: {
     moduleExpr: {
       validate: assertNodeType("Expression"),
+    },
+  },
+});
+
+defineType("DuringStatement", {
+  builder: ["pattern", "body"],
+  visitor: ["pattern", "body"],
+  aliases: ["Statement"],
+  fields: {
+    pattern: {
+      validate: assertNodeType("Expression"),
+    },
+    body: {
+      validate: assertNodeType("Statement"),
+    },
+  },
+});
+
+defineType("SyndicateReactStatement", {
+  builder: ["body"],
+  visitor: ["body"],
+  aliases: ["Statement"],
+  fields: {
+    body: {
+      validate: assertNodeType("Statement"),
     },
   },
 });

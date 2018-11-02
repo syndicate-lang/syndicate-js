@@ -18,9 +18,14 @@
 
 import { declare } from "@babel/helper-plugin-utils";
 import { types as t } from "@babel/core";
-import { cloneDeep } from "@babel/types";
+import { cloneDeep, isLiteral } from "@babel/types";
 import template from "@babel/template";
 import traverse from "@babel/traverse";
+import builder from "@babel/types/lib/builders/builder";
+
+function syndicateTemplate(str) {
+  return template(str, { plugins: [ "syndicate" ] });
+}
 
 function maybeTerminalWrap(state, terminal, ast) {
   if (terminal) {
@@ -125,7 +130,7 @@ function compilePattern(state, patternPath) {
               assn.push(a);
               syndicatePath.pop();
             }
-            return [t.arrayExpression(skel), t.callExpression(pattern.callee, assn)];
+            return [t.arrayExpression(skel), t.callExpression(cloneDeep(pattern.callee), assn)];
           } else {
             pushConstant(pattern);
             return [t.nullLiteral(), pattern];
@@ -145,7 +150,9 @@ function compilePattern(state, patternPath) {
         }
 
       default:
-        console.error('Unsupported pattern node type', pattern);
+        if (!isLiteral(pattern)) {
+          console.error('Unsupported pattern node type', pattern);
+        }
         pushConstant(pattern);
         return [t.nullLiteral(), pattern];
     }
@@ -164,6 +171,25 @@ function compilePattern(state, patternPath) {
       ASSERTION: assertion
     }),
   };
+}
+
+function instantiatePatternToPattern(state, patternPath) {
+  patternPath.node = cloneDeep(patternPath.node);
+  patternPath.traverse({
+    CallExpression(path) {
+      if (isCaptureIdentifier(path.node.callee)) {
+        path.replaceWith(t.identifier(path.node.callee.name.slice(1)));
+        path.skip();
+      }
+    },
+    Identifier(path) {
+      if (isCaptureIdentifier(path.node)) {
+        path.replaceWith(t.identifier(path.node.name.slice(1)));
+        path.skip();
+      }
+    },
+  });
+  return patternPath.node;
 }
 
 function translateEndpoint(state, path, expectedEvt) {
@@ -188,7 +214,7 @@ function translateEndpoint(state, path, expectedEvt) {
          })
        };
        return [ASSERTION, HANDLER];
-     });`)({
+     }, ISDYNAMIC);`)({
        DATASPACE: state.DataspaceID,
        HANDLER: path.scope.generateUidIdentifier("handler"),
        SKELETON: info.skeletonAst,
@@ -205,6 +231,7 @@ function translateEndpoint(state, path, expectedEvt) {
        })),
        BODY: maybeTerminalWrap(state, node.terminal, node.body),
        ASSERTION: info.assertionAst,
+       ISDYNAMIC: t.booleanLiteral(node.isDynamic),
      }));
 }
 
@@ -311,13 +338,10 @@ export default declare((api, options) => {
         const { node } = path;
         switch (node.triggerType) {
           case "dataflow":
-            path.replaceWith(template(`DATASPACE._currentFacet.addDataflow(function () {
-                                         if (PATTERN) { BODY }
-                                       });`)({
-                                         DATASPACE: state.DataspaceID,
-                                         PATTERN: node.pattern,
-                                         BODY: maybeTerminalWrap(state, node.terminal, node.body),
-                                       }));
+            path.replaceWith(syndicateTemplate(`dataflow { if (PATTERN) { BODY } }`)({
+              PATTERN: node.pattern,
+              BODY: maybeTerminalWrap(state, node.terminal, node.body),
+            }));
             break;
 
           case "asserted":
@@ -379,6 +403,60 @@ export default declare((api, options) => {
           DATASPACE: state.DataspaceID,
           MODULE: node.moduleExpr,
         }));
+      },
+
+      DuringStatement(path, state) {
+        const { node } = path;
+        if (node.body.type === "SpawnStatement") {
+          let idId = path.scope.generateUidIdentifier("id");
+          let instId = path.scope.generateUidIdentifier("inst");
+          path.replaceWith(syndicateTemplate(
+            `on asserted PATTERN1 {
+               let IDID = SYNDICATE.genUuid();
+               let INSTID = SYNDICATE.Instance(IDID);
+               react {
+                 stop on asserted INSTID react {
+                   stop on retracted INSTID;
+                   stop on retracted :snapshot PATTERN2;
+                 }
+                 stop on retracted :snapshot PATTERN2 react {
+                   stop on asserted INSTID;
+                 }
+               }
+               spawn {
+                 assert INSTID;
+                 stop on retracted SYNDICATE.Observe(INSTID);
+                 BODY
+               }
+             }`)({
+               PATTERN1: node.pattern,
+               PATTERN2: instantiatePatternToPattern(state, path.get('pattern')),
+               BODY: node.body,
+               SYNDICATE: state.SyndicateID,
+               IDID: idId,
+               INSTID: instId,
+             }));
+        } else {
+          // during
+          path.replaceWith(syndicateTemplate(
+            `on asserted PATTERN1 react on retracted :snapshot PATTERN2 BODY`)({
+              PATTERN1: node.pattern,
+              PATTERN2: instantiatePatternToPattern(state, path.get('pattern')),
+              BODY: node.body,
+            }));
+        }
+      },
+
+      SyndicateReactStatement(path, state) {
+        const { node } = path;
+        path.replaceWith(template(
+          `DATASPACE._currentFacet.actor.addFacet(
+             DATASPACE._currentFacet,
+             function () { BODY },
+             true);`)({
+               DATASPACE: state.DataspaceID,
+               BODY: node.body,
+             }));
       },
     },
   };

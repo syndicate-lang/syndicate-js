@@ -78,6 +78,10 @@ export function EventHandlerEndpoint(node) {
   } else {
     this.word(node.triggerType);
     this.space();
+    if (!node.isDynamic) {
+      this.word(":snapshot");
+      this.space();
+    }
     this.print(node.pattern, node);
   }
   this.space();
@@ -121,4 +125,18 @@ export function ActivationExpression(node) {
   this.word("activate");
   this.space();
   this.print(node.moduleExpr, node);
+}
+
+export function DuringStatement(node) {
+  this.word("during");
+  this.space();
+  this.print(node.pattern, node);
+  this.space();
+  this.print(node.body, node);
+}
+
+export function SyndicateReactStatement(node) {
+  this.word("react");
+  this.space();
+  this.print(node.body, node);
 }
