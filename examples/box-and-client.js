@@ -73,6 +73,17 @@ new Ground(() => {
       });
       return [Syndicate.Observe(BoxState(_$)), handler];
     });
+    Dataspace.currentFacet().addEndpoint(() => {
+      let handler = Skeleton.analyzeAssertion(BoxState(__));
+      handler.callback = Dataspace.wrap((evt, vs) => {
+        if (evt === Skeleton.EVENT_REMOVED) {
+          Dataspace.currentFacet().actor.scheduleScript(() => {
+            console.log('box gone');
+          });
+        }
+      });
+      return [Syndicate.Observe(BoxState(__)), handler];
+    });
   });
 }).start().addStopHandler(() => {
   console.timeEnd('box-and-client-' + N.toString());

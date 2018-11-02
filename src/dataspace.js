@@ -200,11 +200,19 @@ Dataspace.prototype.addActor = function (name, bootProc, initialAssertions) {
 };
 
 Dataspace.prototype.applyPatch = function (ac, delta) {
+  let removals = [];
   delta.forEach((count, a) => {
     if (a !== void 0) {
-      this.index.adjustAssertion(a, count);
+      if (count > 0) {
+        this.index.adjustAssertion(a, count);
+      } else {
+        removals.push([count, a]);
+      }
       ac.cleanupChanges.change(a, -count);
     }
+  });
+  removals.forEach(([count, a]) => {
+    this.index.adjustAssertion(a, count);
   });
 };
 
