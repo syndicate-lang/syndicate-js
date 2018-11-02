@@ -1,7 +1,7 @@
 {
   "name": "@syndicate-lang/syntax-playground",
   "private": true,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/syntax-playground",
   "license": "GPL-3.0+",
   "repository": "github:syndicate-lang/syndicate-js",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@syndicate-lang/core": "^0.0.6",
-    "@syndicate-lang/driver-timer": "^0.0.1",
+    "@syndicate-lang/driver-timer": "^0.0.2",
     "webpack": "^4.23.1",
     "webpack-cli": "^3.1.2"
   }
