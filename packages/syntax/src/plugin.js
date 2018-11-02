@@ -431,7 +431,7 @@ export default declare((api, options) => {
              }`)({
                PATTERN1: node.pattern,
                PATTERN2: instantiatePatternToPattern(state, path.get('pattern')),
-               BODY: node.body,
+               BODY: node.body.body, // the body of the SPAWN, which is itself the body of `node`
                SYNDICATE: state.SyndicateID,
                IDID: idId,
                INSTID: instId,
@@ -439,11 +439,14 @@ export default declare((api, options) => {
         } else {
           // during
           path.replaceWith(syndicateTemplate(
-            `on asserted PATTERN1 react on retracted :snapshot PATTERN2 BODY`)({
-              PATTERN1: node.pattern,
-              PATTERN2: instantiatePatternToPattern(state, path.get('pattern')),
-              BODY: node.body,
-            }));
+            `on asserted PATTERN1 react {
+               stop on retracted :snapshot PATTERN2;
+               BODY
+             }`)({
+               PATTERN1: node.pattern,
+               PATTERN2: instantiatePatternToPattern(state, path.get('pattern')),
+               BODY: node.body,
+             }));
         }
       },
 
