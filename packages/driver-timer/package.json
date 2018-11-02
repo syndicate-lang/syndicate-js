@@ -6,6 +6,9 @@
   "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "license": "GPL-3.0+",
+  "publishConfig": {
+    "access": "public"
+  },
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-timer",
   "devDependencies": {
     "@babel/core": "^7.1.2",
