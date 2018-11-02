@@ -1,7 +1,7 @@
 {
   "name": "@syndicate-lang/syntax-playground",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/syntax-playground",
   "license": "GPL-3.0+",
   "repository": {
@@ -12,10 +12,10 @@
   "devDependencies": {
     "@babel/core": "^7.1.2",
     "@babel/preset-env": "^7.1.0",
-    "@syndicate-lang/syntax": ">=0.0.1"
+    "@syndicate-lang/syntax": "^0.0.7"
   },
   "dependencies": {
-    "@syndicate-lang/core": ">=0.0.1",
+    "@syndicate-lang/core": "^0.0.5",
     "webpack": "^4.23.1",
     "webpack-cli": "^3.1.2"
   }
