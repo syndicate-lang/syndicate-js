@@ -21,23 +21,22 @@ var Dataspace = require('@syndicate-lang/core').Dataspace;
 
 const N = 100000;
 
-console.time('msgspeed-' + N.toString());
-
-ground dataspace G {
-  spawn {
-    on start {
-      << 0;
-    }
-    on message $v {
-      if (v === N) {
-        Dataspace.currentFacet().stop(() => { });
-      } else {
-        << v + 1;
-      }
+spawn {
+  on start {
+    << 0;
+  }
+  on message $v {
+    if (v === N) {
+      Dataspace.currentFacet().stop(() => { });
+    } else {
+      << v + 1;
     }
   }
 }
 
-G.stopHandler = () => {
-  console.timeEnd('msgspeed-' + N.toString());
-};
+console.time('msgspeed-' + N.toString());
+spawn {
+  Dataspace.currentFacet().actor.dataspace.container.addStopHandler(() => {
+    console.timeEnd('msgspeed-' + N.toString());
+  });
+}

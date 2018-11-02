@@ -1,4 +1,3 @@
-"use strict";
 //---------------------------------------------------------------------------
 // @syndicate-lang/syntax-test, a demo of Syndicate extensions to JS.
 // Copyright (C) 2016-2018 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
@@ -17,37 +16,31 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-const Protocol = require("./protocol.js");
-const Dataspace = require("@syndicate-lang/core").Dataspace;
+import { Dataspace } from "@syndicate-lang/core";
 
-activate require("./ticker.js");
+message type Tick();
 
-const N = 10;
+spawn named 'ticker' {
+  field this.counter = 0;
 
-spawn named 'box' {
-  field this.value = 0;
-  assert Protocol.BoxState(this.value);
-  stop on (this.value === N);
-  on message Protocol.SetBox($newValue) {
-    this.value = newValue;
-    console.log('box updated value', newValue);
+  on start { console.log('ticker starting'); }
+  on stop  { console.log('ticker stopping'); }
+
+  on message Tick() {
+    this.counter++;
+    console.log('tick', new Date(), this.counter);
+    if (this.counter < 5) {
+      Dataspace.backgroundTask((finish) => {
+        setTimeout(Dataspace.wrapExternal(() => {
+          << Tick();
+          finish();
+        }), 1000);
+      });
+    }
   }
-}
 
-spawn named 'client' {
-  on asserted Protocol.BoxState($v) {
-    console.log('client sending SetBox', v + 1);
-    << Protocol.SetBox(v + 1);
+  on start {
+    console.log('sending first tick');
+    << Tick();
   }
-
-  on retracted Protocol.BoxState(_) {
-    console.log('box gone');
-  }
-}
-
-console.time('box-and-client-' + N.toString());
-spawn {
-  Dataspace.currentFacet().actor.dataspace.container.addStopHandler(() => {
-    console.timeEnd('box-and-client-' + N.toString());
-  });
 }
