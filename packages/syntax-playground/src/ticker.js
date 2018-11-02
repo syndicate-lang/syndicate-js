@@ -18,29 +18,22 @@
 
 import { Dataspace } from "@syndicate-lang/core";
 
-message type Tick();
+const Timer = activate require("@syndicate-lang/driver-timer");
+const TimeLaterThan = Timer.TimeLaterThan;
 
 spawn named 'ticker' {
   field this.counter = 0;
+  field this.deadline = +(new Date());
 
   on start { console.log('ticker starting'); }
   on stop  { console.log('ticker stopping'); }
 
-  on message Tick() {
+  on asserted TimeLaterThan(this.deadline) {
     this.counter++;
     console.log('tick', new Date(), this.counter);
-    if (this.counter < 5) {
-      Dataspace.backgroundTask((finish) => {
-        setTimeout(Dataspace.wrapExternal(() => {
-          << Tick();
-          finish();
-        }), 1000);
-      });
-    }
+    this.deadline += 1000;
   }
 
-  on start {
-    console.log('sending first tick');
-    << Tick();
-  }
+  stop on (this.counter == 5);
 }
+
