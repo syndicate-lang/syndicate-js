@@ -12,12 +12,17 @@ function Ground(bootProc) {
   this.backgroundTaskCount = 0;
 }
 
+Ground._resolved = Promise.resolve();
+Ground.laterCall = function (thunk) {
+  Ground._resolved.then(thunk);
+};
+
 Ground.prototype.start = function () {
   if (!this.stepperId) {
-    this.stepperId = setTimeout(() => {
+    this.stepperId = Ground.laterCall(() => {
       this.stepperId = null;
       this._step();
-    }, 0);
+    });
   }
   return this; // allows chaining start() immediately after construction
 };
