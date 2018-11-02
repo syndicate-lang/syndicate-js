@@ -60,7 +60,7 @@ spawn named 'driver-timer/TimeLaterThan' {
         react {
           assert TimeLaterThan(deadlineMS);
         }
-      }, delta));
+      }), delta);
     }
     on stop {
       console.log('Retraction of observation of TimeLaterThan', deadlineMS);
