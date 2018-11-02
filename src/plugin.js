@@ -53,9 +53,9 @@ function hasCapturesOrDiscards(nodePath) {
   return result;
 }
 
-const _discardAst = template.expression(`DATASPACE.__`, { placeholderPattern: /^[A-Z]+$/ });
+const _discardAst = template.expression(`SYNDICATE.__`, { placeholderPattern: /^[A-Z]+$/ });
 function discardAst(state) {
-  return _discardAst({ DATASPACE: state.DataspaceID });
+  return _discardAst({ SYNDICATE: state.SyndicateID });
 }
 
 const _listAst = template.expression(`IMMUTABLE.List(VS)`);
