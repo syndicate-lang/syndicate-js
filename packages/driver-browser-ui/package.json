@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/driver-browser-ui",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Browser-based (DOM) UI for Syndicate/js",
   "main": "lib/index.js",
   "repository": "github:syndicate-lang/syndicate-js",
