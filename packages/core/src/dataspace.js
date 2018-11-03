@@ -74,6 +74,7 @@ Dataspace.withCurrentFacet = function (facet, thunk) {
   let savedFacet = Dataspace._currentFacet;
   Dataspace._currentFacet = facet;
   try {
+    // console.group('Facet', facet && facet.toString());
     let result = thunk();
     Dataspace._currentFacet = savedFacet;
     return result;
@@ -83,6 +84,8 @@ Dataspace.withCurrentFacet = function (facet, thunk) {
     a._terminate(false);
     Dataspace._currentFacet = savedFacet;
     console.error('Actor ' + a.toString() + ' exited with exception:', e);
+  } finally {
+    // console.groupEnd();
   }
 };
 
@@ -165,6 +168,7 @@ Dataspace.prototype.performPendingActions = function () {
   this.pendingActions = Immutable.List();
   groups.forEach((group) => {
     group.actions.forEach((action) => {
+      // console.log('[DATASPACE]', group.actor && group.actor.toString(), action);
       action.perform(this, group.actor);
       this.runPendingScripts();
     });
@@ -416,6 +420,7 @@ Activation.prototype.perform = function (ds, ac) {
   if (!ds.activatedModules.includes(this.mod)) {
     ds.activatedModules = ds.activatedModules.add(this.mod);
     this.mod.exports[Dataspace.BootSteps].steps.forEach((a) => {
+      // console.log('[ACTIVATION]', ac && ac.toString(), a);
       a.perform(ds, ac);
     });
   }
