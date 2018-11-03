@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/driver-timer",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Time and timer driver for Syndicate/js",
   "main": "lib/index.js",
   "repository": "github:syndicate-lang/syndicate-js",
@@ -13,7 +13,7 @@
   "devDependencies": {
     "@babel/core": "^7.1.2",
     "@babel/preset-env": "^7.1.0",
-    "@syndicate-lang/syntax": "^0.0.8"
+    "@syndicate-lang/syntax": "^0.0.9"
   },
   "dependencies": {
     "@syndicate-lang/core": "^0.0.6"
