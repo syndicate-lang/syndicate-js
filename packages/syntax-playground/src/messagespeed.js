@@ -23,13 +23,13 @@ const N = 100000;
 
 spawn {
   on start {
-    << 0;
+    ^ 0;
   }
   on message $v {
     if (v === N) {
       Dataspace.currentFacet().stop(() => { });
     } else {
-      << v + 1;
+      ^ v + 1;
     }
   }
 }

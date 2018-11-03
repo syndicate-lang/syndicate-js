@@ -54,8 +54,8 @@ export default class SyndicateParser extends _original_Parser {
     let previousError = null;
 
     switch (this.state.type) {
-      case tt.bitShift:
-        if (this.hasPlugin("syndicate") && (this.state.value === "<<")) {
+      case tt.bitwiseXOR:
+        if (this.hasPlugin("syndicate")) {
           let result = this.withBacktracking(
             () => {
               this.next();

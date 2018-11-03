@@ -37,7 +37,7 @@ spawn named 'box' {
 spawn named 'client' {
   on asserted Protocol.BoxState($v) {
     console.log('client sending SetBox', v + 1);
-    << Protocol.SetBox(v + 1);
+    ^ Protocol.SetBox(v + 1);
   }
 
   on retracted Protocol.BoxState(_) {

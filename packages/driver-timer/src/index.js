@@ -29,7 +29,7 @@ spawn named 'driver-timer/PeriodicTick' {
     let finish = Dataspace.backgroundTask();
     on start {
       handle = setInterval(Dataspace.wrapExternal(() => {
-        << PeriodicTick(intervalMS);
+        ^ PeriodicTick(intervalMS);
       }, intervalMS));
     }
     on stop {

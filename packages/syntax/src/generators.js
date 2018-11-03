@@ -115,7 +115,7 @@ export function SyndicateTypeDefinition(node) {
 }
 
 export function MessageSendStatement(node) {
-  this.token("<<");
+  this.token("^");
   this.space();
   this.print(node.body, node);
   this.semicolon();
