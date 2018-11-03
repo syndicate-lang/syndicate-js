@@ -10,6 +10,9 @@ function Ground(bootProc) {
   this.dataspace = new Dataspace(this, bootProc);
   this.stopHandlers = [];
   this.backgroundTaskCount = 0;
+  if (typeof window !== 'undefined') {
+    window._ground = this;
+  }
 }
 
 Ground._resolved = Promise.resolve();
