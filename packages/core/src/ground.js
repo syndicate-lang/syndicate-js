@@ -62,7 +62,12 @@ Ground.prototype.addStopHandler = function (h) {
 function bootModule(mod) {
   let g = new Ground(() => {
     Dataspace.activate(mod.exports);
-  }).start();
+  });
+  if (typeof document !== 'undefined') {
+    document.addEventListener("DOMContentLoaded", (e) => { g.start(); });
+  } else {
+    g.start();
+  }
 }
 
 module.exports.Ground = Ground;
