@@ -82,7 +82,7 @@ Dataspace.withCurrentFacet = function (facet, thunk) {
     a.abandonQueuedWork();
     a._terminate(false);
     Dataspace._currentFacet = savedFacet;
-    console.error(e);
+    console.error('Actor ' + a.toString() + ' exited with exception:', e);
   }
 };
 
