@@ -98,6 +98,7 @@ BabelParser.__setParser(require("./parser").default);
 // This is mostly optional, unless for some reason we want only the
 // syntax extension but not the transform (e.g. if the plugin omitted
 // its `visitor`).
+var Generator = require("@babel/generator"); // needed for _load override, below
 var Generators = require("@babel/generator/lib/generators");
 var SyndicateGenerators = require("./generators");
 Object.keys(SyndicateGenerators).forEach((f) => {
@@ -105,5 +106,24 @@ Object.keys(SyndicateGenerators).forEach((f) => {
 });
 
 //---------------------------------------------------------------------------
-// (5) At this point, we should (?) be able to load and use Babel
+// (5) Ensure that, no matter where we are when some module `require`s
+// one of our patched modules, we give them the patched version. This
+// is ultra disgusting.
+
+(function () {
+  const Module = require('module');
+  const _oldLoad = Module._load;
+  Module._load = function (request, parent) {
+    if (!parent) return _oldLoad.apply(this, arguments);
+    switch (request) {
+      case "@babel/parser": return BabelParser;
+      case "@babel/types": return Types;
+      case "@babel/generator": return Generator;
+      default: return _oldLoad.apply(this, arguments);
+    }
+  }
+})();
+
+//---------------------------------------------------------------------------
+// (6) At this point, we should (?) be able to load and use Babel
 // somewhat normally.

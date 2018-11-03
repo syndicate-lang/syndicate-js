@@ -16,8 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-const Timer = activate require("@syndicate-lang/driver-timer");
-const TimeLaterThan = Timer.TimeLaterThan;
+const { TimeLaterThan } = activate require("@syndicate-lang/driver-timer");
 
 spawn named 'ticker' {
   field this.counter = 0;
@@ -34,4 +33,3 @@ spawn named 'ticker' {
 
   stop on (this.counter == 5);
 }
-
