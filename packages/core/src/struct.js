@@ -73,6 +73,9 @@ function Structure(meta, fields) {
   this.fields = fields.slice(0);
   for (var i = 0; i < fields.length; i++) {
     this[i] = fields[i] = Immutable.fromJS(fields[i]);
+    if (this[i] === void 0) {
+      throw new Error("Structure: cannot contain undefined value at field " + i);
+    }
   }
 }
 
