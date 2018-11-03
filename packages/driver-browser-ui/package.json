@@ -1,0 +1,22 @@
+{
+  "name": "@syndicate-lang/driver-browser-ui",
+  "version": "0.0.0",
+  "description": "Browser-based (DOM) UI for Syndicate/js",
+  "main": "lib/index.js",
+  "repository": "github:syndicate-lang/syndicate-js",
+  "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
+  "license": "GPL-3.0+",
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-browser-ui",
+  "devDependencies": {
+    "@babel/core": "^7.1.2",
+    "@babel/preset-env": "^7.1.0",
+    "@syndicate-lang/syntax": "^0.0.9"
+  },
+  "dependencies": {
+    "@syndicate-lang/core": "^0.0.6",
+    "immutable": "^4.0.0-rc.12"
+  }
+}

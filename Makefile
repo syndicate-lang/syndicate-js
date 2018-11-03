@@ -1,4 +1,8 @@
-MAKEABLE_PACKAGES=syntax driver-timer syntax-playground
+MAKEABLE_PACKAGES=\
+	syntax \
+	driver-timer \
+	driver-browser-ui \
+	syntax-playground
 
 all:
 	for p in $(MAKEABLE_PACKAGES); do $(MAKE) -C packages/$$p; done
