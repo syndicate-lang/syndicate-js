@@ -47,6 +47,7 @@ function Dataspace(container, bootProc) {
   this.pendingActions = Immutable.List([
     new ActionGroup(null, Immutable.List([new Spawn(null, bootProc, Immutable.Set())]))]);
   this.activatedModules = Immutable.Set();
+  this.actors = Immutable.Set();
 }
 
 // Parameters
@@ -236,6 +237,7 @@ function Actor(dataspace, name, initialAssertions) {
   this.pendingActions = Immutable.List();
   this.adhocAssertions = new Bag.MutableBag(initialAssertions); // no negative counts allowed
   this.cleanupChanges = new Bag.MutableBag();  // negative counts allowed!
+  dataspace.actors = dataspace.actors.add(this);
 }
 
 Actor.prototype.runPendingScripts = function () {
@@ -391,6 +393,7 @@ function Quit() { // TODO: rename? Perhaps to Cleanup?
 
 Quit.prototype.perform = function (ds, ac) {
   ds.applyPatch(ac, ac.cleanupChanges.snapshot());
+  ds.actors = ds.actors.remove(ac);
 };
 
 function DeferredTurn(continuation) {
