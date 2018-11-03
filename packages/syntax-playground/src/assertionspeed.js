@@ -20,9 +20,7 @@
 const Protocol = require("./protocol.js");
 const Dataspace = require("@syndicate-lang/core").Dataspace;
 
-activate require("./ticker.js");
-
-const N = 10;
+const N = 100000;
 
 spawn named 'box' {
   field this.value = 0;
@@ -30,13 +28,13 @@ spawn named 'box' {
   stop on (this.value === N);
   on message Protocol.SetBox($newValue) {
     this.value = newValue;
-    console.log('box updated value', newValue);
+    // console.log('box updated value', newValue);
   }
 }
 
 spawn named 'client' {
   on asserted Protocol.BoxState($v) {
-    console.log('client sending SetBox', v + 1);
+    // console.log('client sending SetBox', v + 1);
     ^ Protocol.SetBox(v + 1);
   }
 
