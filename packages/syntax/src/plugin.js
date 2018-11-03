@@ -423,7 +423,7 @@ export default declare((api, options) => {
                    stop on asserted INSTID;
                  }
                }
-               spawn {
+               spawn named NAME {
                  assert INSTID;
                  stop on retracted SYNDICATE.Observe(INSTID);
                  BODY
@@ -431,6 +431,7 @@ export default declare((api, options) => {
              }`)({
                PATTERN1: node.pattern,
                PATTERN2: instantiatePatternToPattern(state, path.get('pattern')),
+               NAME: node.body.name || t.nullLiteral(),
                BODY: node.body.body, // the body of the SPAWN, which is itself the body of `node`
                SYNDICATE: state.SyndicateID,
                IDID: idId,
