@@ -27,8 +27,8 @@
 //
 // This allows our later extensions to be picked up correctly.
 //
-var Validators = require("@babel/types/lib/validators/generated");
-var shallowEqual = require("@babel/types/lib/utils/shallowEqual");
+const Validators = require("@babel/types/lib/validators/generated");
+const shallowEqual = require("@babel/types/lib/utils/shallowEqual");
 
 function _isX(X, previous) {
   return (node, opts) => {
@@ -56,7 +56,7 @@ Validators.isExpression = _isX("Expression", Validators.isExpression);
 //
 // Vile.
 //
-var BabelParser = require("./babel_parser");
+const BabelParser = require("./babel_parser");
 require.cache[require.resolve("@babel/parser")] = require.cache[require.resolve("./babel_parser")];
 
 //---------------------------------------------------------------------------
@@ -66,7 +66,7 @@ require.cache[require.resolve("@babel/parser")] = require.cache[require.resolve(
 // loading our extensions, followed by RESETTING the TYPES array to
 // include the new extensions as well as the original definitions.
 //
-var Types = require("@babel/types");
+const Types = require("@babel/types");
 require("./types");
 //
 // Now reset the TYPES array. This code is roughly equivalent to the
@@ -98,9 +98,9 @@ BabelParser.__setParser(require("./parser").default);
 // This is mostly optional, unless for some reason we want only the
 // syntax extension but not the transform (e.g. if the plugin omitted
 // its `visitor`).
-var Generator = require("@babel/generator"); // needed for _load override, below
-var Generators = require("@babel/generator/lib/generators");
-var SyndicateGenerators = require("./generators");
+const Generator = require("@babel/generator"); // needed for _load override, below
+const Generators = require("@babel/generator/lib/generators");
+const SyndicateGenerators = require("./generators");
 Object.keys(SyndicateGenerators).forEach((f) => {
   Generators[f] = SyndicateGenerators[f];
 });
