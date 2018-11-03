@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------
-// @syndicate-lang/syntax-test, a demo of Syndicate extensions to JS.
+// @syndicate-lang/driver-timer, a Syndicate driver for time-related events.
 // Copyright (C) 2016-2018 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 //
 // This program is free software: you can redistribute it and/or modify
