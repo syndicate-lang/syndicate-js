@@ -10,8 +10,13 @@
  - `define/query`
  - some kind of `stop facet` statement - put a Symbol on the fields blob?
  - web pack
+ - better autobuilding for smooth and fast dev; babel uses gulp?
+
+ - `spawn :let childVal = parentCalculation { ... }`
+ - pin down and fix the problems with facet field scope (!!)
 
  - drivers
     - [DONE] timer
-    - alert
-    - ui
+    - [DONE] ui
+    - alert?
+    - web
