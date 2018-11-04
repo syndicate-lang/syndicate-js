@@ -519,7 +519,9 @@ Facet.prototype.stop = function (continuation) {
     this.actor.scheduleScript(() => {
       this._terminate();
       this.actor.scheduleScript(() => {
-        continuation.call(this.fields); // TODO: is this the correct scope to use??
+        if (continuation) {
+          continuation.call(this.fields); // TODO: is this the correct scope to use??
+        }
       });
     });
   });
