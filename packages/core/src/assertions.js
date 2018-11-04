@@ -20,8 +20,20 @@
 var Struct = require('./struct.js');
 
 function Seal(contents) {
+  if (this === void 0) {
+    return new Seal(contents);
+  }
+
   this.contents = contents;
 }
+
+Seal.prototype.toJSON = function () {
+  // This definition is useless for actual transport, of course, but
+  // useful for debugging, inasmuch as it seals off the contents from
+  // the view of the JSON renderer, which has trouble with e.g. cyclic
+  // data.
+  return { '@seal': 0 };
+};
 
 module.exports.Observe = Struct.makeConstructor('Observe', ['specification']);
 module.exports.Seal = Seal;
