@@ -344,6 +344,20 @@ Actor.prototype.pendingPatch = function () {
 Actor.prototype.assert = function (a) { this.pendingPatch().adjust(a, +1); };
 Actor.prototype.retract = function (a) { this.pendingPatch().adjust(a, -1); };
 
+Actor.prototype.adhocRetract = function (a) {
+  a = Immutable.fromJS(a);
+  if (this.adhocAssertions.change(a, -1, true) === Bag.PRESENT_TO_ABSENT) {
+    this.retract(a);
+  }
+};
+
+Actor.prototype.adhocAssert = function (a) {
+  a = Immutable.fromJS(a);
+  if (this.adhocAssertions.change(a, +1) === Bag.ABSENT_TO_PRESENT) {
+    this.assert(a);
+  }
+};
+
 Actor.prototype.toString = function () {
   let s = 'Actor(' + this.id;
   if (this.name !== void 0) s = s + ',' + JSON.stringify(this.name);
@@ -360,7 +374,7 @@ Patch.prototype.perform = function (ds, ac) {
 
 Patch.prototype.adjust = function (a, count) {
   var _net;
-  ({bag: this.changes, net: _net} = Bag.change(this.changes, a, count));
+  ({bag: this.changes, net: _net} = Bag.change(this.changes, Immutable.fromJS(a), count));
 };
 
 function Message(body) {
@@ -369,7 +383,7 @@ function Message(body) {
 
 Message.prototype.perform = function (ds, ac) {
   if (this.body !== void 0) {
-    ds.index.sendMessage(this.body);
+    ds.index.sendMessage(Immutable.fromJS(this.body));
   }
 };
 

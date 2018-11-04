@@ -28,14 +28,14 @@ const __ = new $Special("wildcard"); /* wildcard marker */
 function StructureType(label, arity) {
   this.label = label;
   this.arity = arity;
-  this.pattern = this.instantiate(Immutable.Repeat(__, arity).toArray());
+  // this.pattern = this.instantiate(Immutable.Repeat(__, arity).toArray());
 
   var self = this;
   this.ctor = function () {
     return self.instantiate(Array.prototype.slice.call(arguments));
   };
   this.ctor.meta = this;
-  this.ctor.pattern = this.pattern;
+  // this.ctor.pattern = this.pattern;
   this.ctor.isClassOf = function (v) { return self.isClassOf(v); };
 }
 
@@ -68,9 +68,10 @@ function Structure(meta, fields) {
     throw new Error("Structure: cannot instantiate meta "+JSON.stringify(meta.label)+
                     " expecting "+meta.arity+" fields with "+fields.length+" fields");
   }
+  fields = fields.slice(0);
   this.meta = meta;
   this.length = meta.arity;
-  this.fields = fields.slice(0);
+  this.fields = fields;
   for (var i = 0; i < fields.length; i++) {
     this[i] = fields[i] = Immutable.fromJS(fields[i]);
     if (this[i] === void 0) {
@@ -98,9 +99,11 @@ Structure.prototype.equals = function (other) {
   if (!(other instanceof Structure)) return false;
   if (!other.meta.equals(this.meta)) return false;
   for (let i = 0; i < this.length; i++) {
-    if (this[i] === other[i]) continue;
-    if (typeof this[i].equals !== 'function') return false;
-    if (!this[i].equals(other[i])) return false;
+    const a = this[i];
+    const b = other[i];
+    if (a === b) continue;
+    if (!a || typeof a.equals !== 'function') return false;
+    if (!a.equals(b)) return false;
   }
   return true;
 };

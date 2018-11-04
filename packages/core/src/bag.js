@@ -77,7 +77,7 @@ const Bag = Immutable.Map;
 function fromSet(s) {
   return Bag().withMutations(function (b) {
     for (let v of Immutable.Set(s)) {
-      b = b.set(v, 1);
+      b = b.set(Immutable.fromJS(v), 1);
     }
   });
 }
