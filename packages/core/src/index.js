@@ -19,6 +19,7 @@
 
 const Struct = require('./struct.js');
 const Skeleton = require('./skeleton.js');
+const RandomID = require('./randomid.js');
 const Dataspace = require('./dataspace.js');
 const Ground = require('./ground.js');
 const Assertions = require('./assertions.js');
@@ -29,6 +30,7 @@ module.exports.Immutable = require('immutable');
 module.exports.Bag = require("./bag.js");
 module.exports.Struct = Struct;
 module.exports.Skeleton = Skeleton;
+module.exports.RandomID = RandomID;
 module.exports.__ = Struct.__;
 module.exports._$ = Skeleton._$;
 
@@ -45,6 +47,9 @@ module.exports.Instance = Assertions.Instance;
 
 module.exports.bootModule = Ground.bootModule;
 
+// These aren't so much "Universal" as they are "VM-wide-unique".
+let uuidIndex = 0;
+let uuidPrefix = '__@syndicate__' + RandomID.randomId(8) + '_';
 module.exports.genUuid = function () {
-  return Symbol('@syndicate-lang/core');
+  return uuidPrefix + uuidIndex++;
 };

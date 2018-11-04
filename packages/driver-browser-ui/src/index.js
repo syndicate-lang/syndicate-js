@@ -16,9 +16,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { Observe, Dataspace } from "@syndicate-lang/core";
-
-import { randomId } from "./randomid";
+import { RandomID, Observe, Dataspace } from "@syndicate-lang/core";
+const randomId = RandomID.randomId;
 
 import * as P from "./protocol";
 export * from "./protocol";
