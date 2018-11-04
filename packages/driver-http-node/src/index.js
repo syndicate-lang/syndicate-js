@@ -83,15 +83,15 @@ function _server(host, port, httpsOptions) {
     }
   }
 
-  during Observe(WebSocket(_, server, $path, _)) {
-    path = encodePath(path);
+  during Observe(WebSocket(_, server, $pathPattern, _)) {
+    const path = encodePath(pathPattern);
     on start {
-      if (!(path in wsHandlerMap)) wsHandlerMap[path] = 0;
-      wsHandlerMap[path]++;
+      if (!(path in wsHandlerMap)) wsHandlerMap[path] = {_count: 0, _path: pathPattern};
+      wsHandlerMap[path]._count++;
     }
     on stop {
-      wsHandlerMap[path]--;
-      if (wsHandlerMap[path] === 0) delete wsHandlerMap[path];
+      wsHandlerMap[path]._count--;
+      if (wsHandlerMap[path]._count === 0) delete wsHandlerMap[path];
     }
   }
 
@@ -178,45 +178,47 @@ function _server(host, port, httpsOptions) {
   function checkWSConnection(info, callback) {
     let url = parseUrl(info.req.url, true);
     let pieces = reqUrlPieces(url);
-    let handlerCount = mapLookup(wsHandlerMap, pieces);
-    if (!handlerCount) {
+    if (!mapLookup(wsHandlerMap, pieces)) {
       callback(false, 404, "Not found", {});
     } else {
       callback(true);
     }
   }
 
-  wss.on('connection', (ws, req) => {
-    let url = parseUrl(info.req.url, true);
+  wss.on('connection', Dataspace.wrapExternal((ws, req) => {
+    let url = parseUrl(req.url, true);
     let pieces = reqUrlPieces(url);
-    // react {
-    //   let id = nextId++;
-    //   assert WebSocket(id, server, pieces, url.query);
+    let { _path: pathPattern } = mapLookup(wsHandlerMap, pieces);
 
-    //   stop on retracted Observe(Request(_, server, method, pathPattern, _, _)) {
-    //     res.writeHead(500, "Internal server error", {});
-    //     res.end();
-    //   }
-    //   stop on asserted Response(
-    //     id, $code, $message, $headers, $detail)
-    //   {
-    //     res.writeHead(code, message, headers.toJS());
-    //     if (detail === null) {
-    //       react {
-    //         stop on retracted Response(id, code, message, headers, detail) {
-    //           res.end();
-    //         }
-    //         on message ResponseData(id, $chunk) {
-    //           res.write(chunk);
-    //         }
-    //       }
-    //     } else {
-    //       res.end(detail);
-    //     }
-    //   }
-    // }
-  });
+    react {
+      const facet = Dataspace.currentFacet();
+      let id = nextId++;
+      assert WebSocket(id, server, pieces, url.query);
+
+      on stop ws.close();
+
+      ws.on('close', Dataspace.wrapExternal(() => {
+        facet.stop();
+      }));
+
+      on asserted Observe(RequestData(id, _)) {
+        ws.on('message', Dataspace.wrapExternal((message) => {
+          ^ RequestData(id, message);
+        }));
+      }
+
+      on message ResponseData(id, $message) {
+        ws.send(message);
+      }
+
+      stop on retracted Observe(WebSocket(_, server, pathPattern, _));
+      stop on retracted Observe(WebSocket(id, server, pieces, _));
+    }
+  }));
 
   on start s.listen(port, host);
-  on stop s.close();
+  on stop {
+    wss.close();
+    s.close();
+  }
 }

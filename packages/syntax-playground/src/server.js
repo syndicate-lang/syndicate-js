@@ -35,7 +35,12 @@ spawn named 'greetingServer' {
 }
 
 spawn named 'websocketEchoServer' {
-  // during Http.WebSocket($id, server, ['echo'], _) {
-    
-  // }
+  during Http.WebSocket($id, server, ['echo'], _) {
+    on message Http.RequestData(id, $message) {
+      console.log('got', id, message);
+      ^ Http.ResponseData(id, message);
+    }
+
+    stop on message Http.RequestData(id, "quit");
+  }
 }
