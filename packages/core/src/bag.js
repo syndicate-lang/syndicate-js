@@ -32,9 +32,9 @@ function MutableBag(s) {
   this._items = s ? fromSet(s) : Immutable.Map();
 }
 
-MutableBag.prototype.change = function (key, delta) {
+MutableBag.prototype.change = function (key, delta, clamp) {
   var net;
-  ({bag: this._items, net: net} = change(this._items, key, delta));
+  ({bag: this._items, net: net} = change(this._items, key, delta, clamp));
   return net;
 };
 
