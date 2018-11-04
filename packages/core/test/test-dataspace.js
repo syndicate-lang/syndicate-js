@@ -34,7 +34,7 @@ describe('dataspace', () => {
   it('should boot and run', () => {
     // TODO: convert this into even a rudimentary somewhat-real test case
     // (change console.log into gathering a trace)
-    let ds = new Dataspace(() => {
+    let ds = new Dataspace(null, () => {
       // console.log('boot');
       Dataspace.currentFacet().addEndpoint(() => {
         let handler = Skeleton.analyzeAssertion(_$);
