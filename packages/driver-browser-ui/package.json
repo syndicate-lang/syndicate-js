@@ -9,6 +9,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "scripts": {
+    "prepare": "make build"
+  },
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-browser-ui",
   "devDependencies": {
     "@babel/core": "^7.1.2",
