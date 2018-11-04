@@ -199,6 +199,12 @@ export default class SyndicateParser extends _original_Parser {
       this.next();
       node.name = this.parseExpression();
     }
+    node.initialAssertions = [];
+    while (this.match(tt.colon)) {
+      this.next();
+      this.expectContextual("asserting");
+      node.initialAssertions.push(this.parseExpression());
+    }
     node.body = this.parseStatement();
     return this.finishNode(node, "SpawnStatement");
   }

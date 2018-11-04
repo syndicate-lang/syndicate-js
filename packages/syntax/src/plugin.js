@@ -63,7 +63,7 @@ function discardAst(state) {
   return _discardAst({ SYNDICATE: state.SyndicateID });
 }
 
-const _listAst = template.expression(`IMMUTABLE.List(VS)`);
+const _listAst = template.expression(`IMMUTABLE.fromJS(VS)`);
 function listAst(state, vs) {
   return _listAst({ IMMUTABLE: state.ImmutableID, VS: vs });
 }
@@ -148,6 +148,25 @@ function compilePattern(state, patternPath) {
           pushConstant(pattern);
           return [t.nullLiteral(), pattern];
         }
+
+      case 'ArrayExpression': {
+        if (hasCapturesOrDiscards(patternPath)) {
+          let arity = pattern.elements.length;
+          let skel = [t.numericLiteral(arity)];
+          let assn = [];
+          for (let i = 0; i < arity; i++) {
+            syndicatePath.push(i);
+            let [s, a] = walk(patternPath.get('elements.' + i));
+            skel.push(s);
+            assn.push(a);
+            syndicatePath.pop();
+          }
+          return [t.arrayExpression(skel), t.arrayExpression(assn)];
+        } else {
+          pushConstant(pattern);
+          return [t.nullLiteral(), pattern];
+        }
+      }
 
       default:
         if (!isLiteral(pattern)) {
@@ -286,10 +305,15 @@ export default declare((api, options) => {
 
       SpawnStatement(path, state) {
         const { node } = path;
-        path.replaceWith(template(`DATASPACE.spawn(NAME, function () { BODY })`)({
+        path.replaceWith(template(`DATASPACE.spawn(NAME, function () { BODY }, ASSERTIONS)`)({
           DATASPACE: state.DataspaceID,
           NAME: node.name || t.nullLiteral(),
-          BODY: node.body
+          BODY: node.body,
+          ASSERTIONS: node.initialAssertions.length === 0 ? null :
+            template.expression(`IMMUTABLE.Set(SEQ)`)({
+              IMMUTABLE: state.ImmutableID,
+              SEQ: t.arrayExpression(node.initialAssertions)
+            }),
         }));
       },
 
@@ -410,6 +434,26 @@ export default declare((api, options) => {
         if (node.body.type === "SpawnStatement") {
           let idId = path.scope.generateUidIdentifier("id");
           let instId = path.scope.generateUidIdentifier("inst");
+          let bodyPath = path.get('body');
+          bodyPath.unshiftContainer('initialAssertions', [
+            template.expression(`I`)({
+              I: instId
+            }),
+            template.expression(`S.Observe(S.Observe(I))`)({
+              S: state.SyndicateID,
+              I: instId
+            }),
+          ]);
+          bodyPath.get('body').replaceWithMultiple([
+            syndicateTemplate(`assert I;`)({
+              I: instId
+            }),
+            syndicateTemplate(`stop on retracted S.Observe(I);`)({
+              S: state.SyndicateID,
+              I: instId
+            }),
+            node.body.body,
+          ]);
           path.replaceWith(syndicateTemplate(
             `on asserted PATTERN1 {
                let IDID = SYNDICATE.genUuid();
@@ -423,16 +467,11 @@ export default declare((api, options) => {
                    stop on asserted INSTID;
                  }
                }
-               spawn named NAME {
-                 assert INSTID;
-                 stop on retracted SYNDICATE.Observe(INSTID);
-                 BODY
-               }
+               BODY
              }`)({
                PATTERN1: node.pattern,
                PATTERN2: instantiatePatternToPattern(state, path.get('pattern')),
-               NAME: node.body.name || t.nullLiteral(),
-               BODY: node.body.body, // the body of the SPAWN, which is itself the body of `node`
+               BODY: node.body,
                SYNDICATE: state.SyndicateID,
                IDID: idId,
                INSTID: instId,

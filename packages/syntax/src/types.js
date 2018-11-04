@@ -25,13 +25,19 @@ import defineType, {
 } from "@babel/types/lib/definitions/utils";
 
 defineType("SpawnStatement", {
-  builder: ["name", "body"],
-  visitor: ["name", "body"],
+  builder: ["name", "initialAssertions", "body"],
+  visitor: ["name", "initialAssertions", "body"],
   aliases: ["Statement"],
   fields: {
     name: {
       validate: assertNodeType("Expression"),
       optional: true,
+    },
+    initialAssertions: {
+      validate: chain(
+        assertValueType("array"),
+        assertEach(assertNodeType("Expression")),
+      ),
     },
     body: {
       validate: assertNodeType("Statement"),

@@ -20,13 +20,19 @@ import * as t from "@babel/types";
 
 export function SpawnStatement(node) {
   this.word("spawn");
-  this.space();
   if (node.name) {
+    this.space();
     this.word("named");
     this.space();
     this.print(node.name, node);
-    this.space();
   }
+  for (let a of node.initialAssertions) {
+    this.space();
+    this.token(":asserting");
+    this.space();
+    this.print(a, node);
+  }
+  this.space();
   this.printBlock(node);
 }
 
