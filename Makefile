@@ -2,6 +2,7 @@ MAKEABLE_PACKAGES=\
 	syntax \
 	driver-timer \
 	driver-browser-ui \
+	driver-http-node \
 	syntax-playground
 
 all:
