@@ -348,6 +348,16 @@ export default declare((api, options) => {
               SEQ: t.arrayExpression(node.initialAssertions)
             }),
         }));
+        if (node.parentIds.length > 0) {
+          const stmts = [];
+          for (let i = 0; i < node.parentIds.length; i++) {
+            const id = node.parentIds[i];
+            const init = node.parentInits[i];
+            stmts.push(template(`const ID = INIT;`)({ ID: id, INIT: init }));
+          }
+          stmts.push(path.node);
+          path.replaceWith(t.blockStatement(stmts, []));
+        }
       },
 
       FieldDeclarationStatement(path, state) {

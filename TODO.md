@@ -5,6 +5,7 @@
  - [DONE] `spawn*` or similar - looks like `spawn on start { ... }` will do the trick
  - [DONE] activation
  - [DONE] remove ground dataspace syntax
+ - [DONE] `spawn :let childVal = parentCalculation { ... }`
 
  - `defer` statement
  - `define/query`

@@ -32,6 +32,16 @@ export function SpawnStatement(node) {
     this.space();
     this.print(a, node);
   }
+  for (let i = 0; i < node.parentIds.length; i++) {
+    this.space();
+    this.token(":let");
+    this.space();
+    this.print(node.parentIds[i], node);
+    this.space();
+    this.token("=");
+    this.space();
+    this.print(node.parentInits[i], node);
+  }
   this.space();
   this.printBlock(node.bootProc);
 }

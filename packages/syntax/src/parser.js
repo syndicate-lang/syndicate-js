@@ -202,10 +202,24 @@ export default class SyndicateParser extends _original_Parser {
       node.name = this.parseExpression();
     }
     node.initialAssertions = [];
+    node.parentIds = [];
+    node.parentInits = [];
     while (this.match(tt.colon)) {
       this.next();
-      this.expectContextual("asserting");
-      node.initialAssertions.push(this.parseExpression());
+      if (this.isContextual("asserting")) {
+        this.next();
+        node.initialAssertions.push(this.parseExpression());
+      } else if (this.state.type === tt._let) {
+        this.next();
+        const id = this.parseBindingAtom();
+        this.checkLVal(id, true, undefined, "spawn :let declaration");
+        this.expect(tt.eq);
+        const init = this.parseMaybeAssign(false);
+        node.parentIds.push(id);
+        node.parentInits.push(init);
+      } else {
+        this.unexpected();
+      }
     }
     node.bootProc = this.parseSyntheticFunctionStatement();
     return this.finishNode(node, "SpawnStatement");

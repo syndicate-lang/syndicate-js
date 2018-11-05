@@ -89,6 +89,7 @@ Array.prototype.push.apply(Types.TYPES, Object.keys(Types.DEPRECATED_KEYS));
 //
 Types.getBindingIdentifiers.keys.EventHandlerEndpoint = ["captureIds"];
 Types.getBindingIdentifiers.keys.DuringStatement = ["captureIds"];
+Types.getBindingIdentifiers.keys.SpawnStatement = ["parentIds"];
 
 //---------------------------------------------------------------------------
 // (3) Install our modified parser in place of the core parser.
