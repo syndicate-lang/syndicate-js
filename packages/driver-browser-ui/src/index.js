@@ -151,7 +151,7 @@ spawn named 'UIFragmentFactory' {
         });
         function handler(event) {
           sender(event);
-          return dealWithPreventDefault(c.eventType, e);
+          return dealWithPreventDefault(c.eventType, event);
         }
         eventRegistrations[key] = handler;
         handlerClosure = handler;
