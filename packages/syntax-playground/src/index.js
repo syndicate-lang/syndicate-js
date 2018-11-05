@@ -59,3 +59,12 @@ spawn named 'controller' {
     ^ SetSortColumn(JSON.parse(e.target.dataset.column));
   }
 }
+
+spawn named 'alerter' {
+  let ui = new UI.Anchor();
+  assert ui.html('#extra', <button>Click me</button>);
+
+  on message UI.UIEvent(ui.fragmentId, '.', 'click', $e) {
+    alert("Hello!");
+  }
+}
