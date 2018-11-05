@@ -92,7 +92,7 @@ defineType("DataflowStatement", {
 defineType("EventHandlerEndpoint", {
   builder: ["terminal", "triggerType", "isDynamic", "pattern", "body"],
   visitor: ["terminal", "triggerType", "isDynamic", "pattern", "body"],
-  aliases: ["Statement"],
+  aliases: ["Statement", "Scopable"],
   fields: {
     terminal: {
       validate: assertOneOf(true, false),
@@ -175,7 +175,7 @@ defineType("ActivationExpression", {
 defineType("DuringStatement", {
   builder: ["pattern", "body"],
   visitor: ["pattern", "body"],
-  aliases: ["Statement"],
+  aliases: ["Statement", "Scopable"],
   fields: {
     pattern: {
       validate: assertNodeType("Expression"),

@@ -21,7 +21,7 @@
 // syntactic extensions to JS.
 
 //---------------------------------------------------------------------------
-// (0) Replace the `isStatement` and `isExpression` functions with
+// (0) Replace `isStatement`, `isExpression`, etc. functions with
 // non-hard-coded versions that check the contents of
 // FLIPPED_ALIAS_KEYS at the time of each call.
 //
@@ -42,6 +42,7 @@ function _isX(X, previous) {
 
 Validators.isStatement = _isX("Statement", Validators.isStatement);
 Validators.isExpression = _isX("Expression", Validators.isExpression);
+Validators.isScopable = _isX("Scopable", Validators.isScopable);
 
 //---------------------------------------------------------------------------
 // (1) Load the core parser in modifiable form.
@@ -64,7 +65,9 @@ require.cache[require.resolve("@babel/parser")] = require.cache[require.resolve(
 //
 // We do this by loading and populating the core TYPES array, and then
 // loading our extensions, followed by RESETTING the TYPES array to
-// include the new extensions as well as the original definitions.
+// include the new extensions as well as the original definitions. We
+// also update various properties and mappings to include the new
+// types.
 //
 const Types = require("@babel/types");
 require("./types");
@@ -80,6 +83,12 @@ Types.TYPES.splice(0);
 Array.prototype.push.apply(Types.TYPES, Object.keys(Types.VISITOR_KEYS));
 Array.prototype.push.apply(Types.TYPES, Object.keys(Types.FLIPPED_ALIAS_KEYS));
 Array.prototype.push.apply(Types.TYPES, Object.keys(Types.DEPRECATED_KEYS));
+//
+// Update the means by which scopes discover binding identifiers from
+// a node.
+//
+Types.getBindingIdentifiers.keys.EventHandlerEndpoint = ["captureIds"];
+Types.getBindingIdentifiers.keys.DuringStatement = ["captureIds"];
 
 //---------------------------------------------------------------------------
 // (3) Install our modified parser in place of the core parser.
@@ -98,12 +107,16 @@ BabelParser.__setParser(require("./parser").default);
 // This is mostly optional, unless for some reason we want only the
 // syntax extension but not the transform (e.g. if the plugin omitted
 // its `visitor`).
-const Generator = require("@babel/generator"); // needed for _load override, below
 const Generators = require("@babel/generator/lib/generators");
 const SyndicateGenerators = require("./generators");
 Object.keys(SyndicateGenerators).forEach((f) => {
   Generators[f] = SyndicateGenerators[f];
 });
+//
+// Load this after updating Generators[...], because it copies the
+// keys of Generators onto the Printer class.
+//
+const Generator = require("@babel/generator"); // needed for _load override, below
 
 //---------------------------------------------------------------------------
 // (5) Ensure that, no matter where we are when some module `require`s

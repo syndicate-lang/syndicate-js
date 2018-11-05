@@ -90,12 +90,12 @@ function compilePattern(state, patternPath) {
   let constPaths = [];
   let constVals = [];
   let capturePaths = [];
-  let captureNames = [];
+  let captureIds = [];
   let syndicatePath = [];
 
   function pushCapture(idNode) {
     capturePaths.push(syndicatePath.slice());
-    captureNames.push(idNode.name.slice(1));
+    captureIds.push(t.identifier(idNode.name.slice(1)));
   }
 
   function pushConstant(node) {
@@ -186,7 +186,7 @@ function compilePattern(state, patternPath) {
     constPathsAst: astifySyndicatePath(state, constPaths),
     constValsAst: listAst(state, t.arrayExpression(constVals)),
     capturePathsAst: astifySyndicatePath(state, capturePaths),
-    captureNames: captureNames,
+    captureIds: captureIds,
     assertionAst: template.expression(`SYNDICATE.Observe(ASSERTION)`)({
       SYNDICATE: state.SyndicateID,
       ASSERTION: assertion
@@ -213,11 +213,35 @@ function instantiatePatternToPattern(state, patternPath) {
   return patternPath.node;
 }
 
+const bindingRegistrationVisitor = {
+  EventHandlerEndpoint(path, state) {
+    switch (path.node.triggerType) {
+      case "dataflow":
+        break;
+      case "asserted":
+      case "retracted":
+      case "message": {
+        let info = compilePattern(state, path.get('pattern'));
+        path.node.captureIds = info.captureIds;
+        path.scope.registerBinding('let', path);
+        break;
+      }
+    }
+  },
+
+  DuringStatement(path, state) {
+    let info = compilePattern(state, path.get('pattern'));
+    path.node.captureIds = info.captureIds;
+    path.scope.registerBinding('let', path);
+  },
+};
+
 function translateEndpoint(state, path, expectedEvt) {
   const { node } = path;
   let info = compilePattern(state, path.get('pattern'));
   let _evt = path.scope.generateUidIdentifier("evt");
   let _vs = path.scope.generateUidIdentifier("vs");
+
   path.replaceWith(template(
     `DATASPACE._currentFacet.addEndpoint(function () {
        let HANDLER = {
@@ -245,8 +269,8 @@ function translateEndpoint(state, path, expectedEvt) {
        EVT: _evt,
        EXPECTED: expectedEvt,
        VS: _vs,
-       INITS: info.captureNames.map((n, i) => template(`let N = VS.get(I);`)({
-         N: t.identifier(n),
+       INITS: info.captureIds.map((n, i) => template(`let N = VS.get(I);`)({
+         N: n,
          VS: _vs,
          I: t.numericLiteral(i),
        })),
@@ -303,6 +327,8 @@ export default declare((api, options) => {
                       SYNDICATE: state.SyndicateID,
                       SAVEDGLOBALFACET: savedGlobalFacetUid,
                     }));
+
+        path.traverse(bindingRegistrationVisitor, state);
       },
 
       SpawnStatement(path, state) {

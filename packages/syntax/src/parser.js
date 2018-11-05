@@ -130,6 +130,7 @@ export default class SyndicateParser extends _original_Parser {
                 } else {
                   node.body = this.parseStatement();
                 }
+                node.captureIds = 'UNINITIALIZED';
                 return this.finishNode(node, "DuringStatement");
               }
 
@@ -220,6 +221,7 @@ export default class SyndicateParser extends _original_Parser {
       node.isDynamic = true;
       node.pattern = this.parseExpression();
       node.body = this.parseStatement();
+      node.captureIds = 'UNINITIALIZED';
       return this.finishNode(node, "EventHandlerEndpoint");
     }
 
@@ -248,6 +250,7 @@ export default class SyndicateParser extends _original_Parser {
         node.terminal = terminal;
         node.pattern = this.parseExpression();
         node.body = this.parseStatement();
+        node.captureIds = 'UNINITIALIZED';
         return this.finishNode(node, "EventHandlerEndpoint");
 
       default:
