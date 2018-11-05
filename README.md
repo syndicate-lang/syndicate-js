@@ -4,6 +4,18 @@ A new, efficient implementation of Syndicate for JavaScript in both
 node.js and the browser. The implementation techniques herein are the
 subject of a forthcoming paper.
 
+## Quickstart
+
+Install a few packages from the
+[@syndicate-lang](https://www.npmjs.com/org/syndicate-lang) scope on
+npmjs.com:
+
+    npm i --save-dev @syndicate-lang/syntax @babel/preset-env
+    npm i --save @syndicate-lang/core
+
+Then, add the `@syndicate-lang/syntax/plugin` to your `.babelrc`. Use
+`npx syndicate-babel` in place of `npx babel` to compile your code.
+
 ## Creating a new Syndicate/js project
 
 Create a skeletal `package.json`:
