@@ -23,6 +23,14 @@ export { PeriodicTick, TimeLaterThan };
 message type PeriodicTick(intervalMS);
 assertion type TimeLaterThan(deadlineMS);
 
+export function sleep(ms, cb) {
+  react {
+    stop on asserted TimeLaterThan(+(new Date()) + ms) {
+      cb();
+    }
+  }
+}
+
 spawn named 'driver-timer/PeriodicTick' {
   during Observe(PeriodicTick($intervalMS)) spawn named ('PeriodicTick('+intervalMS+')') {
     let handle = null;
