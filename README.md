@@ -44,23 +44,25 @@ are needed at run-time:
 Finally, create the main program file. Create a directory `src`, and
 then a file `src/index.js`:
 
-    const { TimeLaterThan } = activate require("@syndicate-lang/driver-timer");
+```javascript
+const { TimeLaterThan } = activate require("@syndicate-lang/driver-timer");
 
-    spawn named 'ticker' {
-      field this.counter = 0;
-      field this.deadline = +(new Date());
+spawn named 'ticker' {
+  field this.counter = 0;
+  field this.deadline = +(new Date());
 
-      on start { console.log('ticker starting'); }
-      on stop  { console.log('ticker stopping'); }
+  on start { console.log('ticker starting'); }
+  on stop  { console.log('ticker stopping'); }
 
-      on asserted TimeLaterThan(this.deadline) {
-        this.counter++;
-        console.log('tick', new Date(), this.counter);
-        this.deadline += 1000;
-      }
+  on asserted TimeLaterThan(this.deadline) {
+    this.counter++;
+    console.log('tick', new Date(), this.counter);
+    this.deadline += 1000;
+  }
 
-      stop on (this.counter == 5);
-    }
+  stop on (this.counter == 5);
+}
+```
 
 Now, compile the project:
 
