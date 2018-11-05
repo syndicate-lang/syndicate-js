@@ -335,17 +335,19 @@ export default declare((api, options) => {
         if (node.test) {
           path.replaceWith(template(`DATASPACE._currentFacet.addEndpoint(function () {
                                        return (TEST) ? [TEMPLATE, null] : [void 0, null];
-                                     });`)({
+                                     }, ISDYNAMIC);`)({
                                        DATASPACE: state.DataspaceID,
                                        TEST: node.test,
                                        TEMPLATE: node.template,
+                                       ISDYNAMIC: t.booleanLiteral(node.isDynamic),
                                      }));
         } else {
           path.replaceWith(template(`DATASPACE._currentFacet.addEndpoint(function () {
                                        return [TEMPLATE, null];
-                                     });`)({
+                                     }, ISDYNAMIC);`)({
                                        DATASPACE: state.DataspaceID,
                                        TEMPLATE: node.template,
+                                       ISDYNAMIC: t.booleanLiteral(node.isDynamic),
                                      }));
         }
       },

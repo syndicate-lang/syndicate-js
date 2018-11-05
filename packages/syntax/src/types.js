@@ -61,10 +61,13 @@ defineType("FieldDeclarationStatement", {
 });
 
 defineType("AssertionEndpointStatement", {
-  builder: ["template", "test"],
-  visitor: ["template", "test"],
+  builder: ["isDynamic", "template", "test"],
+  visitor: ["isDynamic", "template", "test"],
   aliases: ["Statement"],
   fields: {
+    isDynamic: {
+      validate: assertOneOf(true, false),
+    },
     template: {
       validate: assertNodeType("Expression"),
     },

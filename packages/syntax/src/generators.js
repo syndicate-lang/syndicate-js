@@ -52,6 +52,10 @@ export function FieldDeclarationStatement(node) {
 export function AssertionEndpointStatement(node) {
   this.word("assert");
   this.space();
+  if (!node.isDynamic) {
+    this.word(":snapshot");
+    this.space();
+  }
   this.print(node.template, node);
   if (node.test) {
     this.space();

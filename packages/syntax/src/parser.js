@@ -94,6 +94,7 @@ export default class SyndicateParser extends _original_Parser {
               if (this.isContextual("assert")) {
                 this.next();
                 const node = this.startNode();
+                node.isDynamic = this.parseMaybeSnapshot();
                 node.template = this.parseExpression();
                 if (this.eatContextual("when")) {
                   this.expect(tt.parenL);
