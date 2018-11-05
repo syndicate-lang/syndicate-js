@@ -3,6 +3,7 @@ MAKEABLE_PACKAGES=\
 	driver-timer \
 	driver-browser-ui \
 	driver-http-node \
+	driver-websocket \
 	syntax-playground
 
 all:
