@@ -27,7 +27,7 @@ spawn {
   }
   on message $v {
     if (v === N) {
-      Dataspace.currentFacet().stop(() => { });
+      Dataspace.currentFacet().stop();
     } else {
       ^ v + 1;
     }
