@@ -58,7 +58,7 @@ export function htmlToString(j) {
   function walk(j) {
     if (htmlTag.isClassOf(j)) {
       pieces.push('<', j[0]);
-      j[1].forEach((p) => pieces.push(' ', escapeHtml(p[0]), '="', escapeHtml(p[1])));
+      j[1].forEach((p) => pieces.push(' ', escapeHtml(p[0]), '="', escapeHtml(p[1]), '"'));
       pieces.push('>');
       j[2].forEach(walk);
       if (!(j[0] in emptyHtmlElements)) {
