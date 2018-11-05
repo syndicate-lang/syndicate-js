@@ -15,8 +15,10 @@
  - `spawn :let childVal = parentCalculation { ... }`
  - pin down and fix the problems with facet field scope (!!)
 
+ - `npm init @syndicate`
+
  - drivers
     - [DONE] timer
     - [DONE] ui
+    - [DONE] web
     - alert?
-    - web
