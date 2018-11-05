@@ -36,6 +36,7 @@ module.exports._$ = Skeleton._$;
 
 module.exports._Dataspace = Dataspace;
 module.exports.Dataspace = Dataspace.Dataspace;
+module.exports.currentFacet = Dataspace.Dataspace.currentFacet;
 module.exports.Ground = Ground;
 
 module.exports._Assertions = Assertions;

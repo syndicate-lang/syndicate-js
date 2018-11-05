@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { Seal, Observe, Dataspace, Skeleton } from "@syndicate-lang/core";
+import { Seal, Observe, Dataspace, Skeleton, currentFacet } from "@syndicate-lang/core";
 const { isCapture, captureName } = Skeleton;
 import { parse as parseUrl } from "url";
 
@@ -141,7 +141,7 @@ function _server(host, port, httpsOptions) {
       return;
     }
     react {
-      const facet = Dataspace.currentFacet();
+      const facet = currentFacet();
       let id = nextId++;
       assert Request(id, server, method, pieces, url.query, Seal(req));
       stop on retracted Observe(Request(_, server, method, pathPattern, _, _)) {
@@ -191,7 +191,7 @@ function _server(host, port, httpsOptions) {
     let { _path: pathPattern } = mapLookup(wsHandlerMap, pieces);
 
     react {
-      const facet = Dataspace.currentFacet();
+      const facet = currentFacet();
       let id = nextId++;
       assert WebSocket(id, server, pieces, url.query);
 
