@@ -20,7 +20,7 @@
 const Protocol = require("./protocol.js");
 const Dataspace = require("@syndicate-lang/core").Dataspace;
 
-const N = 100000;
+const N = 25000;
 
 spawn named 'box' {
   field this.value = 0;
