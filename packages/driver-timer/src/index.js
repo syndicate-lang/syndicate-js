@@ -38,7 +38,7 @@ spawn named 'driver-timer/PeriodicTick' {
     on start {
       handle = setInterval(Dataspace.wrapExternal(() => {
         ^ PeriodicTick(intervalMS);
-      }, intervalMS));
+      }), intervalMS);
     }
     on stop {
       if (handle) {
