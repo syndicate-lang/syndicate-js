@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { Seal, Observe, Dataspace, Skeleton, currentFacet } from "@syndicate-lang/core";
+import { genUuid, Seal, Observe, Dataspace, Skeleton, currentFacet } from "@syndicate-lang/core";
 const { isCapture, captureName } = Skeleton;
 import { parse as parseUrl } from "url";
 
@@ -52,8 +52,6 @@ spawn named 'HttpServerFactory' {
     _server.call(this, host, port, options);
   }
 }
-
-let nextId = 0;
 
 function _server(host, port, httpsOptions) {
   const server = httpsOptions ? HttpsServer(host, port, httpsOptions) : HttpServer(host, port);
@@ -143,7 +141,7 @@ function _server(host, port, httpsOptions) {
     }
     react {
       const facet = currentFacet();
-      let id = nextId++;
+      let id = genUuid('_httpRequest');
       assert Request(id, server, method, pieces, url.query, Seal(req));
       stop on retracted Observe(Request(_, server, method, pathPattern, _, _)) {
         // Error resulting in teardown of the route
@@ -193,7 +191,7 @@ function _server(host, port, httpsOptions) {
 
     react {
       const facet = currentFacet();
-      let id = nextId++;
+      let id = genUuid('_wsRequest');
       assert WebSocket(id, server, pieces, url.query);
 
       on stop ws.close();
