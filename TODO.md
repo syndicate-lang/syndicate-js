@@ -13,7 +13,8 @@
  - web pack
  - better autobuilding for smooth and fast dev; babel uses gulp?
 
- - `spawn :let childVal = parentCalculation { ... }`
+ - dataspaces, relays
+
  - [DONE? Surely there's more] pin down and fix the problems with facet field scope (!!)
 
  - `npm init @syndicate`
