@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/driver-browser-ui",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Browser-based (DOM) UI for Syndicate/js",
   "main": "lib/index.js",
   "repository": "github:syndicate-lang/syndicate-js",
@@ -16,7 +16,7 @@
   "devDependencies": {
     "@babel/core": "^7.1.2",
     "@babel/preset-env": "^7.1.0",
-    "@syndicate-lang/syntax": "^0.0.12"
+    "@syndicate-lang/syntax": "^0.0.13"
   },
   "dependencies": {
     "@syndicate-lang/core": "^0.0.9",
