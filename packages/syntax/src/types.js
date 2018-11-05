@@ -25,8 +25,8 @@ import defineType, {
 } from "@babel/types/lib/definitions/utils";
 
 defineType("SpawnStatement", {
-  builder: ["name", "initialAssertions", "body"],
-  visitor: ["name", "initialAssertions", "body"],
+  builder: ["name", "initialAssertions", "bootProc"],
+  visitor: ["name", "initialAssertions", "bootProc"],
   aliases: ["Statement"],
   fields: {
     name: {
@@ -39,8 +39,8 @@ defineType("SpawnStatement", {
         assertEach(assertNodeType("Expression")),
       ),
     },
-    body: {
-      validate: assertNodeType("Statement"),
+    bootProc: {
+      validate: assertNodeType("FunctionExpression"),
     },
   },
 });

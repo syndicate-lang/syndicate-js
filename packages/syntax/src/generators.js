@@ -33,7 +33,7 @@ export function SpawnStatement(node) {
     this.print(a, node);
   }
   this.space();
-  this.printBlock(node);
+  this.printBlock(node.bootProc);
 }
 
 export function FieldDeclarationStatement(node) {

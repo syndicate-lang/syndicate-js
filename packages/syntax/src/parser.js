@@ -207,8 +207,23 @@ export default class SyndicateParser extends _original_Parser {
       this.expectContextual("asserting");
       node.initialAssertions.push(this.parseExpression());
     }
-    node.body = this.parseStatement();
+    node.bootProc = this.parseSyntheticFunctionStatement();
     return this.finishNode(node, "SpawnStatement");
+  }
+
+  parseSyntheticFunctionStatement() {
+    const node = this.startNode();
+    node.params = [];
+    const stmt = this.parseStatement();
+    if (stmt.type === "BlockStatement") {
+      node.body = stmt;
+    } else {
+      const blk = this.startNode();
+      blk.directives = [];
+      blk.body = [stmt];
+      node.body = this.finishNode(blk, "BlockStatement");
+    }
+    return this.finishNode(node, "FunctionExpression");
   }
 
   parseEventHandlerEndpoint(terminal, pseudoEventsAllowed) {

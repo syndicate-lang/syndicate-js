@@ -23,6 +23,9 @@ import template from "@babel/template";
 import traverse from "@babel/traverse";
 import builder from "@babel/types/lib/builders/builder";
 
+import generate from "@babel/generator";
+function _GEN(x) { console.log(generate(x).code); }
+
 function syndicateTemplate(str) {
   return template(str, { plugins: [ "syndicate" ] });
 }
@@ -215,6 +218,7 @@ function instantiatePatternToPattern(state, patternPath) {
 
 const bindingRegistrationVisitor = {
   EventHandlerEndpoint(path, state) {
+    if (Array.isArray(path.node.captureIds)) return;
     switch (path.node.triggerType) {
       case "dataflow":
         break;
@@ -230,6 +234,7 @@ const bindingRegistrationVisitor = {
   },
 
   DuringStatement(path, state) {
+    if (Array.isArray(path.node.captureIds)) return;
     let info = compilePattern(state, path.get('pattern'));
     path.node.captureIds = info.captureIds;
     path.scope.registerBinding('let', path);
@@ -333,10 +338,10 @@ export default declare((api, options) => {
 
       SpawnStatement(path, state) {
         const { node } = path;
-        path.replaceWith(template(`DATASPACE.spawn(NAME, function () { BODY }, ASSERTIONS)`)({
+        path.replaceWith(template(`DATASPACE.spawn(NAME, PROC, ASSERTIONS)`)({
           DATASPACE: state.DataspaceID,
           NAME: node.name || t.nullLiteral(),
-          BODY: node.body,
+          PROC: node.bootProc,
           ASSERTIONS: node.initialAssertions.length === 0 ? null :
             template.expression(`IMMUTABLE.Set(SEQ)`)({
               IMMUTABLE: state.ImmutableID,
@@ -474,7 +479,7 @@ export default declare((api, options) => {
               I: instId
             }),
           ]);
-          bodyPath.get('body').replaceWithMultiple([
+          bodyPath.get('bootProc.body').replaceWithMultiple([
             syndicateTemplate(`assert I;`)({
               I: instId
             }),
@@ -482,7 +487,7 @@ export default declare((api, options) => {
               S: state.SyndicateID,
               I: instId
             }),
-            node.body.body,
+            node.body.bootProc.body,
           ]);
           path.replaceWith(syndicateTemplate(
             `on asserted PATTERN1 {
@@ -507,7 +512,6 @@ export default declare((api, options) => {
                INSTID: instId,
              }));
         } else {
-          // during
           path.replaceWith(syndicateTemplate(
             `on asserted PATTERN1 react {
                stop on retracted :snapshot PATTERN2;
@@ -518,6 +522,7 @@ export default declare((api, options) => {
                BODY: node.body,
              }));
         }
+        path.parentPath.traverse(bindingRegistrationVisitor, state);
       },
 
       SyndicateReactStatement(path, state) {
