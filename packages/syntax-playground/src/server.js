@@ -36,6 +36,7 @@ function counter() {
     assert Counter(id);
 
     field this.counter = 0;
+
     during Http.Request($reqId, server, 'get', ['counter', id], _, _) {
       assert :snapshot Http.Response(
         reqId, 200, "OK", {"Content-type": "text/html"},
@@ -114,11 +115,11 @@ spawn named 'greetingServer' {
 
 spawn named 'websocketEchoServer' {
   during Http.WebSocket($reqId, server, ['echo'], _) {
-    on message Http.RequestData(reqId, $message) {
+    on message Http.DataIn(reqId, $message) {
       console.log('got', reqId, message);
-      ^ Http.ResponseData(reqId, message);
+      ^ Http.DataOut(reqId, message);
     }
 
-    stop on message Http.RequestData(reqId, "quit");
+    stop on message Http.DataIn(reqId, "quit");
   }
 }

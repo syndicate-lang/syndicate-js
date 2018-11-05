@@ -29,15 +29,16 @@ assertion type HttpsServer(host, port, options);
 
 assertion type WebSocket(id, server, path, query);
 assertion type Request(id, server, method, path, query, req);
-message type RequestData(id, chunk);
 
 assertion type Response(id, code, message, headers, detail);
-message type ResponseData(id, chunk);
+
+message type DataIn(id, chunk);
+message type DataOut(id, chunk);
 
 Object.assign(module.exports, {
   HttpServer, HttpsServer,
-  WebSocket, Request, RequestData,
-  Response, ResponseData,
+  WebSocket, Request, DataIn,
+  Response, DataOut,
 });
 
 spawn named 'HttpServerFactory' {
@@ -163,7 +164,7 @@ function _server(host, port, httpsOptions) {
               res.end();
               facet.stop();
             }
-            on message ResponseData(id, $chunk) {
+            on message DataOut(id, $chunk) {
               res.write(chunk);
             }
           }
@@ -201,13 +202,13 @@ function _server(host, port, httpsOptions) {
         facet.stop();
       }));
 
-      on asserted Observe(RequestData(id, _)) {
+      on asserted Observe(DataIn(id, _)) {
         ws.on('message', Dataspace.wrapExternal((message) => {
-          ^ RequestData(id, message);
+          ^ DataIn(id, message);
         }));
       }
 
-      on message ResponseData(id, $message) {
+      on message DataOut(id, $message) {
         ws.send(message);
       }
 
