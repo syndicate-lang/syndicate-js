@@ -13,6 +13,7 @@ clean:
 	for p in $(MAKEABLE_PACKAGES); do $(MAKE) -C packages/$$p clean; done
 
 bootstrap:
+	npm i .
 	npx lerna bootstrap
 
 .PHONY: bootstrap
