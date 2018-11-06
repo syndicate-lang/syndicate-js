@@ -1,3 +1,5 @@
 #!/bin/sh
 [ -d node_modules/lerna ] || npm i .
-npx lerna bootstrap
+npx lerna bootstrap --ignore-scripts
+redo clean
+redo -j3 all
