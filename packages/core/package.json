@@ -9,7 +9,6 @@
   },
   "repository": "github:syndicate-lang/syndicate-js",
   "scripts": {
-    "clean": "rm -f dist/*",
     "test": "mocha",
     "cover": "nyc --reporter=html mocha"
   },

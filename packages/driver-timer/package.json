@@ -10,7 +10,7 @@
     "access": "public"
   },
   "scripts": {
-    "prepare": "make build"
+    "prepare": "which redo >/dev/null && redo || ../../do"
   },
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-timer",
   "devDependencies": {

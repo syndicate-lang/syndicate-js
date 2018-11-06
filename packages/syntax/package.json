@@ -9,7 +9,7 @@
   "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "scripts": {
-    "prepare": "make build"
+    "prepare": "which redo >/dev/null && redo || ../../do"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.1.0"

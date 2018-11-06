@@ -1,0 +1,3 @@
+#!/bin/sh
+[ -d node_modules/lerna ] || npm i .
+npx lerna bootstrap
