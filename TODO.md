@@ -26,3 +26,5 @@
     - alert?
 
  - alias wrapExternal to index.js
+
+ - @syndicate-lang/standalone, analogous to @babel/standalone
