@@ -4,6 +4,7 @@ MAKEABLE_PACKAGES=\
 	driver-browser-ui \
 	driver-http-node \
 	driver-websocket \
+	driver-udp-node \
 	syntax-playground
 
 all:
