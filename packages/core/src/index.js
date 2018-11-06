@@ -50,7 +50,7 @@ module.exports.bootModule = Ground.bootModule;
 
 // These aren't so much "Universal" as they are "VM-wide-unique".
 let uuidIndex = 0;
-let uuidPrefix = '__@syndicate__' + RandomID.randomId(8);
+let uuidInstance = RandomID.randomId(8);
 module.exports.genUuid = function (prefix) {
-  return (prefix || uuidPrefix) + '_' + uuidIndex++;
+  return (prefix || '__@syndicate') + '_' + uuidInstance + '_' + uuidIndex++;
 };
