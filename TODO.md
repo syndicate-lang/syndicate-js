@@ -24,3 +24,5 @@
     - [DONE] ui
     - [DONE] web
     - alert?
+
+ - alias wrapExternal to index.js
