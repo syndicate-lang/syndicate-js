@@ -22,6 +22,7 @@ case "$1" in
         ;;
     */dist/*)
         for d in src/*.js; do echo lib/$(basename $d); done | xargs redo-ifchange
+        redo-ifchange webpack.config.js
         for maybedep in $(npx webpack --json -o "$targettempfile" | jq -r '.modules[].identifier')
         do
             [ -f "$maybedep" ] && echo "$maybedep"
