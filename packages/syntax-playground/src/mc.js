@@ -35,7 +35,7 @@ spawn named 'multicast_demo' {
     assert U.UdpMulticastLoopback(HANDLE, true);
 
     on message U.UdpPacket(U.UdpPeer($host, $port), HANDLE, $body) {
-      console.log('Got', body, 'from', host, port);
+      console.log('Got', body.toString(), 'from', host, port);
     }
 
     on message PeriodicTick(2000) {
