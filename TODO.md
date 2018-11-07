@@ -6,12 +6,11 @@
  - [DONE] activation
  - [DONE] remove ground dataspace syntax
  - [DONE] `spawn :let childVal = parentCalculation { ... }`
+ - [DONE] better autobuilding for smooth and fast dev; babel uses gulp?
 
  - `defer` statement
  - `define/query`
  - some kind of `stop facet` statement - put a Symbol on the fields blob?
- - web pack
- - better autobuilding for smooth and fast dev; babel uses gulp?
 
  - dataspaces, relays
 
