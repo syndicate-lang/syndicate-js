@@ -1,0 +1,3 @@
+[GPL-3.0+](gpl-3.0.txt), except the resources in `css` and `imgs`, which are taken
+from [Bruce Hauman's flappy bird demo](https://github.com/bhauman/flappy-bird-demo)
+which is, itself, under the Eclipse Public Licence version 1.0 or later.
