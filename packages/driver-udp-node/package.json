@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/driver-udp-node",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "UDP support for Syndicate/js on node.js",
   "main": "lib/index.js",
   "repository": "github:syndicate-lang/syndicate-js",
@@ -16,10 +16,10 @@
   "devDependencies": {
     "@babel/core": "^7.1.2",
     "@babel/preset-env": "^7.1.0",
-    "@syndicate-lang/syntax": "^0.0.14"
+    "@syndicate-lang/syntax": "^0.0.15"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.0.11",
-    "@syndicate-lang/driver-timer": "^0.0.11"
+    "@syndicate-lang/core": "^0.0.12",
+    "@syndicate-lang/driver-timer": "^0.0.12"
   }
 }
