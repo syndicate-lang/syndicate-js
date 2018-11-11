@@ -113,7 +113,7 @@ Dataspace.wrapExternal = function (f) {
 };
 
 Dataspace.backgroundTask = function (k) {
-  Dataspace._currentFacet.actor.dataspace.ground().backgroundTask(k);
+  return Dataspace._currentFacet.actor.dataspace.ground().backgroundTask(k);
 };
 
 Dataspace.referenceField = function (obj, prop) {
