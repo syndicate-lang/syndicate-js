@@ -36,7 +36,7 @@ spawn {
 
 console.time('msgspeed-' + N.toString());
 spawn {
-  Dataspace.currentFacet().actor.dataspace.container.addStopHandler(() => {
+  Dataspace.currentFacet().actor.dataspace.ground().addStopHandler(() => {
     console.timeEnd('msgspeed-' + N.toString());
   });
 }

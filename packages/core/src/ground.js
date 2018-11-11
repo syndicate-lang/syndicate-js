@@ -4,20 +4,34 @@ const Immutable = require('immutable');
 const Dataspace = require('./dataspace.js').Dataspace;
 
 function Ground(bootProc) {
+  Dataspace.call(this, bootProc);
   this.stepperId = null;
   this.stepping = false;
   this.startingFuel = 1000;
-  this.dataspace = new Dataspace(this, bootProc);
   this.stopHandlers = [];
   this.backgroundTaskCount = 0;
   if (typeof window !== 'undefined') {
     window._ground = this;
   }
 }
+Ground.prototype = new Dataspace(null);
 
 Ground._resolved = Promise.resolve();
 Ground.laterCall = function (thunk) {
   Ground._resolved.then(thunk);
+};
+
+Ground.prototype.backgroundTask = function (k) {
+  const ground = this;
+  let active = true;
+  ground.backgroundTaskCount++;
+  function finish() {
+    if (active) {
+      ground.backgroundTaskCount--;
+      active = false;
+    }
+  }
+  return k ? k(finish) : finish;
 };
 
 Ground.prototype.start = function () {
@@ -30,12 +44,16 @@ Ground.prototype.start = function () {
   return this; // allows chaining start() immediately after construction
 };
 
+Ground.prototype.ground = function () {
+  return this;
+};
+
 Ground.prototype._step = function () {
   this.stepping = true;
   try {
     let stillBusy = false;
     for (var fuel = this.startingFuel; fuel > 0; fuel--) {
-      stillBusy = this.dataspace.runScripts();
+      stillBusy = this.runScripts();
       if (!stillBusy) break;
     }
     if (stillBusy) {

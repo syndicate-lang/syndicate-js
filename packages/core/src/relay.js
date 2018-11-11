@@ -27,17 +27,15 @@ const Observe = Assertions.Observe;
 const Inbound = Assertions.Inbound;
 const Outbound = Assertions.Outbound;
 
+const Bag = require('./bag.js');
+
 const $QuitDataspace = new $Special("quit-dataspace");
 
-// TODO: container --> metaContainer == ground
-// TODO: parent links
-// so there's a path up the tree at all times, and also an easy way to get to ground
-
-function NestedDataspace(outerFacet, container, bootProc) {
-  Dataspace.call(this, container, bootProc);
+function NestedDataspace(outerFacet, bootProc) {
+  Dataspace.call(this, bootProc);
   this.outerFacet = outerFacet;
 }
-NestedDataspace.prototype = new Dataspace(null, null);
+NestedDataspace.prototype = new Dataspace(null);
 
 NestedDataspace.prototype.sendMessage = function (m) {
   Dataspace.prototype.sendMessage.call(this, m);
@@ -46,36 +44,60 @@ NestedDataspace.prototype.sendMessage = function (m) {
   }
 };
 
-NestedDataspace.prototype.endpointHook = function (facet, ep) {
-  Dataspace.prototype.endpointHook.call(this, facet, ep);
-  if (Observe.isClassOf(ep.assertion) && Inbound.isClassOf(ep.assertion[0])) {
-    this.installInboundRelay(facet, ep);
-  } else if (Outbound.isClassOf(ep.assertion)) {
-    this.installOutboundRelay(facet, ep);
+NestedDataspace.prototype.endpointHook = function (facet, innerEp) {
+  const innerDs = this;
+  Dataspace.prototype.endpointHook.call(this, facet, innerEp);
+  if (Observe.isClassOf(innerEp.assertion) && Inbound.isClassOf(innerEp.assertion[0])) {
+    // We know that innerEp.assertion is an Observe(Inbound(...)).
+    // Also, if innerEp.handler exists, it will be consonant with innerEp.assertion.
+    // Beware of completely-constant patterns, which cause skeleton to be null!
+    this.hookEndpointLifecycle(innerEp, this.outerFacet.addEndpoint(() => {
+      const h = innerEp.handler;
+      return [Observe(innerEp.assertion[0][0]),
+              h && (h.skeleton === null
+                    ? {
+                      skeleton: null,
+                      constPaths: h.constPaths,
+                      constVals: h.constVals.map((v) => v[0]),
+                      capturePaths: h.capturePaths.map((p) => p.shift()),
+                      callback: function (evt, captures) {
+                        h.callback.call(this, evt, captures);
+                        innerDs.start();
+                      }
+                    }
+                    : {
+                      skeleton: h.skeleton[1],
+                      constPaths: h.constPaths.map((p) => p.shift()),
+                      constVals: h.constVals,
+                      capturePaths: h.capturePaths.map((p) => p.shift()),
+                      callback: function (evt, captures) {
+                        h.callback.call(this, evt, captures);
+                        innerDs.start();
+                      }
+                    })];
+    }, false));
   }
 };
 
-NestedDataspace.prototype.installInboundRelay = function (facet, innerEp) {
-  // We know that innerEp.assertion is an Observe(Inbound(...)).
-  // Also, if innerEp.handler exists, it will be consonant with innerEp.assertion.
-  this.hookEndpointLifecycle(innerEp, this.outerFacet.addEndpoint(() => {
-    return [Observe(innerEp.assertion[0][0]),
-            innerEp.handler && {
-              skeleton: innerEp.handler.skeleton[1],
-              constPaths: innerEp.handler.constPaths.map((p) => p.shift()),
-              constVals: innerEp.handler.constVals,
-              capturePaths: innerEp.handler.capturePaths.map((p) => p.shift()),
-              callback: innerEp.handler.callback
-            }];
-  }, false));
-};
-
-NestedDataspace.prototype.installOutboundRelay = function (facet, innerEp) {
-  // We know that innerEp.assertion is an Outbound(...).
-  // We may also then conclude that there is no point in installing a handler.
-  this.hookEndpointLifecycle(innerEp, this.outerFacet.addEndpoint(() => {
-    return [innerEp.assertion[0], null];
-  }, false));
+NestedDataspace.prototype.adjustIndex = function (a, count) {
+  const net = Dataspace.prototype.adjustIndex.call(this, a, count);
+  if (Outbound.isClassOf(a)) {
+    switch (net) {
+      case Bag.ABSENT_TO_PRESENT:
+        this.outerFacet.actor.pushScript(() => {
+          this.outerFacet.actor.adhocAssert(a[0]);
+        });
+        this.outerFacet.actor.dataspace.start();
+        break;
+      case Bag.PRESENT_TO_ABSENT:
+        this.outerFacet.actor.pushScript(() => {
+          this.outerFacet.actor.adhocRetract(a[0]);
+        });
+        this.outerFacet.actor.dataspace.start();
+        break;
+    }
+  }
+  return net;
 };
 
 NestedDataspace.prototype.hookEndpointLifecycle = function (innerEp, outerEp) {
@@ -105,6 +127,11 @@ NestedDataspace.prototype.start = function () {
       }
     });
   });
+  return this;
+};
+
+NestedDataspace.prototype.ground = function () {
+  return this.outerFacet.actor.dataspace.ground();
 };
 
 function inNestedDataspace(bootProc) {
@@ -112,8 +139,8 @@ function inNestedDataspace(bootProc) {
     const outerFacet = Dataspace.currentFacet();
     outerFacet.addDataflow(function () {});
     // ^ eww! Dummy endpoint to keep the root facet of the relay alive.
-    const innerDs = new NestedDataspace(outerFacet, outerFacet.actor.dataspace.container, bootProc);
-    outerFacet.actor.scheduleScript(() => innerDs.start());
+    const innerDs = new NestedDataspace(outerFacet, bootProc);
+    innerDs.start();
   };
 }
 

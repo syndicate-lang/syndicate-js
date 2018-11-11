@@ -38,9 +38,8 @@ const PRIORITY = Object.freeze({
   _count: 6
 });
 
-function Dataspace(container, bootProc) {
+function Dataspace(bootProc) {
   this.nextId = 0;
-  this.container = container;
   this.index = new Skeleton.Index();
   this.dataflow = new Dataflow.Graph();
   this.runnable = Immutable.List();
@@ -104,7 +103,7 @@ Dataspace.wrapExternal = function (f) {
   let ac = savedFacet.actor;
   return function () {
     let actuals = arguments;
-    ac.dataspace.container.start();
+    ac.dataspace.start();
     ac.pushScript(function () {
       Dataspace.withCurrentFacet(savedFacet, function () {
         f.apply(this, actuals);
@@ -114,16 +113,7 @@ Dataspace.wrapExternal = function (f) {
 };
 
 Dataspace.backgroundTask = function (k) {
-  let ground = Dataspace._currentFacet.actor.dataspace.container;
-  let active = true;
-  ground.backgroundTaskCount++;
-  function finish() {
-    if (active) {
-      ground.backgroundTaskCount--;
-      active = false;
-    }
-  }
-  return k ? k(finish) : finish;
+  Dataspace._currentFacet.actor.dataspace.ground().backgroundTask(k);
 };
 
 Dataspace.referenceField = function (obj, prop) {
