@@ -238,6 +238,9 @@ Dataspace.prototype.unsubscribe = function (handler) {
   this.index.removeHandler(handler, handler.callback);
 };
 
+Dataspace.prototype.endpointHook = function (facet, endpoint) {
+};
+
 function Actor(dataspace, name, initialAssertions) {
   this.id = dataspace.nextId++;
   this.dataspace = dataspace;
@@ -554,7 +557,9 @@ Facet.prototype.addStopScript = function (s) {
 };
 
 Facet.prototype.addEndpoint = function (updateFun, isDynamic) {
-  return new Endpoint(this, isDynamic === void 0 ? true : isDynamic, updateFun);
+  const ep = new Endpoint(this, isDynamic === void 0 ? true : isDynamic, updateFun);
+  this.actor.dataspace.endpointHook(this, ep);
+  return ep;
 };
 
 Facet.prototype.addDataflow = function (subjectFun, priority) {
