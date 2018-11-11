@@ -195,8 +195,13 @@ export default class SyndicateParser extends _original_Parser {
   }
 
   parseSpawnStatement() {
+    let isDataspace = false;
     this.next();
     const node = this.startNode();
+    if (this.isContextual("dataspace")) {
+      this.next();
+      isDataspace = true;
+    }
     if (this.isContextual("named")) {
       this.next();
       node.name = this.parseExpression();
@@ -206,22 +211,29 @@ export default class SyndicateParser extends _original_Parser {
     node.parentInits = [];
     while (this.match(tt.colon)) {
       this.next();
-      if (this.isContextual("asserting")) {
-        this.next();
-        node.initialAssertions.push(this.parseExpression());
-      } else if (this.state.type === tt._let) {
-        this.next();
-        const id = this.parseBindingAtom();
-        this.checkLVal(id, true, undefined, "spawn :let declaration");
-        this.expect(tt.eq);
-        const init = this.parseMaybeAssign(false);
-        node.parentIds.push(id);
-        node.parentInits.push(init);
+      if (!isDataspace) {
+        if (this.isContextual("asserting")) {
+          this.next();
+          node.initialAssertions.push(this.parseExpression());
+          continue;
+        }
+        if (this.state.type === tt._let) {
+          this.next();
+          const id = this.parseBindingAtom();
+          this.checkLVal(id, true, undefined, "spawn :let declaration");
+          this.expect(tt.eq);
+          const init = this.parseMaybeAssign(false);
+          node.parentIds.push(id);
+          node.parentInits.push(init);
+          continue;
+        }
       } else {
-        this.unexpected();
+        // No optional keywordish things supported for spawned dataspaces at present.
       }
+      this.unexpected();
     }
     node.bootProc = this.parseSyntheticFunctionStatement();
+    node.isDataspace = isDataspace;
     return this.finishNode(node, "SpawnStatement");
   }
 

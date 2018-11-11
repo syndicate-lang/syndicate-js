@@ -23,6 +23,7 @@ const RandomID = require('./randomid.js');
 const Dataspace = require('./dataspace.js');
 const Ground = require('./ground.js');
 const Assertions = require('./assertions.js');
+const Relay = require('./relay.js');
 
 module.exports.Immutable = require('immutable');
 // ^ for use by import machinery in syntactic extensions
@@ -45,6 +46,10 @@ module.exports.Seal = Assertions.Seal;
 module.exports.Inbound = Assertions.Inbound;
 module.exports.Outbound = Assertions.Outbound;
 module.exports.Instance = Assertions.Instance;
+
+module.exports.$QuitDataspace = Relay.$QuitDataspace;
+module.exports.NestedDataspace = Relay.NestedDataspace;
+module.exports.inNestedDataspace = Relay.inNestedDataspace;
 
 module.exports.bootModule = Ground.bootModule;
 

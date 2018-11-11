@@ -25,7 +25,7 @@ import defineType, {
 } from "@babel/types/lib/definitions/utils";
 
 defineType("SpawnStatement", {
-  builder: ["name", "initialAssertions", "parentIds", "parentInits", "bootProc"],
+  builder: ["name", "initialAssertions", "parentIds", "parentInits", "bootProc", "isDataspace"],
   visitor: ["name", "initialAssertions", "parentIds", "parentInits", "bootProc"],
   aliases: ["Statement", "Scopable"],
   fields: {
@@ -47,6 +47,9 @@ defineType("SpawnStatement", {
     },
     bootProc: {
       validate: assertNodeType("FunctionExpression"),
+    },
+    isDataspace: {
+      validate: assertOneOf(true, false),
     },
   },
 });

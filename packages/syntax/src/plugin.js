@@ -341,7 +341,11 @@ export default declare((api, options) => {
         path.replaceWith(template(`DATASPACE.spawn(NAME, PROC, ASSERTIONS)`)({
           DATASPACE: state.DataspaceID,
           NAME: node.name || t.nullLiteral(),
-          PROC: node.bootProc,
+          PROC: !node.isDataspace ? node.bootProc : template.expression(
+            `SYNDICATE.inNestedDataspace(PROC)`)({
+              SYNDICATE: state.SyndicateID,
+              PROC: node.bootProc
+            }),
           ASSERTIONS: node.initialAssertions.length === 0 ? null :
             template.expression(`IMMUTABLE.Set(SEQ)`)({
               IMMUTABLE: state.ImmutableID,

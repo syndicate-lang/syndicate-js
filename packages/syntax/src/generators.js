@@ -20,6 +20,10 @@ import * as t from "@babel/types";
 
 export function SpawnStatement(node) {
   this.word("spawn");
+  if (node.isDataspace) {
+    this.space();
+    this.word("dataspace");
+  }
   if (node.name) {
     this.space();
     this.word("named");
