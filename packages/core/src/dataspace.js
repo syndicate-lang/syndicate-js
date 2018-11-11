@@ -210,7 +210,7 @@ Dataspace.prototype.applyPatch = function (ac, delta) {
   delta.forEach((count, a) => {
     if (a !== void 0) {
       if (count > 0) {
-        this.index.adjustAssertion(a, count);
+        this.adjustIndex(a, count);
       } else {
         removals.push([count, a]);
       }
@@ -218,8 +218,16 @@ Dataspace.prototype.applyPatch = function (ac, delta) {
     }
   });
   removals.forEach(([count, a]) => {
-    this.index.adjustAssertion(a, count);
+    this.adjustIndex(a, count);
   });
+};
+
+Dataspace.prototype.sendMessage = function (m) {
+  this.index.sendMessage(m);
+};
+
+Dataspace.prototype.adjustIndex = function (a, count) {
+  return this.index.adjustAssertion(a, count);
 };
 
 Dataspace.prototype.subscribe = function (handler) {
@@ -383,7 +391,7 @@ function Message(body) {
 
 Message.prototype.perform = function (ds, ac) {
   if (this.body !== void 0) {
-    ds.index.sendMessage(Immutable.fromJS(this.body));
+    ds.sendMessage(Immutable.fromJS(this.body));
   }
 };
 
