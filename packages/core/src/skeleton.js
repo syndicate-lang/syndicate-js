@@ -258,6 +258,7 @@ Index.prototype.adjustAssertion = function(outerValue, delta) {
       this.root.modify(outerValue, del_from_cont, del_from_leaf, del_from_handler);
       break;
   }
+  return net;
 };
 
 Index.prototype.addAssertion = function(v) { this.adjustAssertion(v, +1); };
