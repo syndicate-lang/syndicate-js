@@ -434,21 +434,19 @@ function eventUpdater(eventType, handlerClosure, install) {
 ///////////////////////////////////////////////////////////////////////////
 
 export class Anchor {
-  constructor(explicitFragmentId) {
+  constructor(options) {
+    options = Object.assign({ fragmentId: void 0 }, options);
     this.fragmentId =
-      (typeof explicitFragmentId === 'undefined') ? newFragmentId() : explicitFragmentId;
+      (typeof options.fragmentId === 'undefined') ? newFragmentId() : options.fragmentId;
   }
 
   context(...pieces) {
     let extn = pieces.map(escapeDataAttributeName).join('__');
-    return new Anchor(this.fragmentId + '__' + extn);
+    return new Anchor({ fragmentId: this.fragmentId + '__' + extn });
   }
 
   html(selector, html, orderBy) {
-    return P.UIFragment(this.fragmentId,
-                        selector,
-                        html,
-                        orderBy === void 0 ? null : orderBy);
+    return P.UIFragment(this.fragmentId, selector, html, orderBy === void 0 ? null : orderBy);
   }
 }
 
