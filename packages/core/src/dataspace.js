@@ -632,6 +632,7 @@ Endpoint.prototype.destroy = function (ds, ac, facet, emitPatches) {
   // ^ TODO: this won't work because of object identity problems! Why
   // does the Racket implementation do this, when the old JS
   // implementation doesn't?
+  facet.endpoints = facet.endpoints.remove(this.id);
   this._uninstall(ds, ac, emitPatches);
 };
 
