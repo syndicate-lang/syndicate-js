@@ -23,7 +23,7 @@
     - [DONE] timer
     - [DONE] ui
     - [DONE] web
-    - alert?
+    - [DONE] tcp
 
  - alias wrapExternal to index.js
 
