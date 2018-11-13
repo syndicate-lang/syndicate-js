@@ -21,9 +21,7 @@ const Immutable = require("immutable");
 const Struct = require('./struct.js');
 const $Special = require('./special.js');
 const Bag = require('./bag.js');
-const Assertions = require('./assertions.js');
-
-const __ = Struct.__;
+const { Capture, Discard } = require('./assertions.js');
 
 const EVENT_ADDED = +1;
 const EVENT_REMOVED = -1;
@@ -275,24 +273,6 @@ Index.prototype.sendMessage = function(v) {
 
 ///////////////////////////////////////////////////////////////////////////
 
-// The name argument should be a string or null; it defaults to null.
-// The pattern argument defaults to wildcard, __.
-function Capture(name, pattern) {
-  this.name = name;
-  this.pattern = (pattern === void 0 ? __ : pattern);
-}
-
-// Abbreviation: _$(...) <==> new Capture(...)
-function _$(name, pattern) {
-  return new Capture(name, pattern);
-}
-
-function isCapture(x) { return x instanceof Capture || x === _$; }
-function captureName(x) { return x instanceof Capture ? x.name : null; }
-function capturePattern(x) { return x instanceof Capture ? x.pattern : __; }
-
-///////////////////////////////////////////////////////////////////////////
-
 function analyzeAssertion(a) {
   let constPaths = Immutable.List();
   let constVals = Immutable.List();
@@ -308,10 +288,10 @@ function analyzeAssertion(a) {
       }
       return result;
     } else {
-      if (isCapture(a)) {
+      if (Capture.isClassOf(a)) {
         capturePaths = capturePaths.push(path);
-        return walk(path, capturePattern(a));
-      } else if (a === __) {
+        return walk(path, a.get(0));
+      } else if (Discard.isClassOf(a)) {
         return null;
       } else {
         constPaths = constPaths.push(path);
@@ -332,11 +312,5 @@ module.exports.EVENT_ADDED = EVENT_ADDED;
 module.exports.EVENT_REMOVED = EVENT_REMOVED;
 module.exports.EVENT_MESSAGE = EVENT_MESSAGE;
 module.exports.Index = Index;
-
-module.exports.Capture = Capture;
-module.exports._$ = _$;
-module.exports.isCapture = isCapture;
-module.exports.captureName = captureName;
-module.exports.capturePattern = capturePattern;
 
 module.exports.analyzeAssertion = analyzeAssertion;

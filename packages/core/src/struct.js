@@ -22,20 +22,15 @@
 const Immutable = require("immutable");
 const $Special = require('./special.js');
 
-/* Defined here rather than elsewhere because we need it in makeConstructor. */
-const __ = new $Special("wildcard"); /* wildcard marker */
-
 function StructureType(label, arity) {
   this.label = label;
   this.arity = arity;
-  // this.pattern = this.instantiate(Immutable.Repeat(__, arity).toArray());
 
   var self = this;
   this.ctor = function () {
     return self.instantiate(Array.prototype.slice.call(arguments));
   };
   this.ctor.meta = this;
-  // this.ctor.pattern = this.pattern;
   this.ctor.isClassOf = function (v) { return self.isClassOf(v); };
 }
 
@@ -165,7 +160,6 @@ function isStructure(v) {
 
 ///////////////////////////////////////////////////////////////////////////
 
-module.exports.__ = __;
 module.exports.StructureType = StructureType;
 module.exports.makeConstructor = makeConstructor;
 module.exports.Structure = Structure;

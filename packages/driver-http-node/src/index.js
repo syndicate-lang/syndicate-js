@@ -16,8 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { genUuid, Seal, Observe, Dataspace, Skeleton, currentFacet } from "@syndicate-lang/core";
-const { isCapture, captureName } = Skeleton;
+import { genUuid, Seal, Capture, Observe, Dataspace, currentFacet } from "@syndicate-lang/core";
 import { parse as parseUrl } from "url";
 
 const http = require('http');
@@ -60,7 +59,7 @@ function _server(host, port, httpsOptions) {
   const wsHandlerMap = {};
 
   function encodePath(path) {
-    return JSON.stringify(path.toJS().map((s) => isCapture(s) ? null : s));
+    return JSON.stringify(path.toJS().map((s) => Capture.isClassOf(s) ? null : s));
   }
 
   during Observe(Request(_, server, $method, $pathPattern, _, _)) {

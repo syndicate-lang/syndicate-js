@@ -25,9 +25,6 @@ const Bag = require('./bag.js');
 const Assertions = require('./assertions.js');
 const Dataflow = require('./dataflow.js');
 
-const __ = Struct.__;
-const _$ = Struct._$;
-
 const PRIORITY = Object.freeze({
   QUERY_HIGH: 0,
   QUERY: 1,

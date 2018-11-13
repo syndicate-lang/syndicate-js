@@ -61,7 +61,7 @@ function hasCapturesOrDiscards(nodePath) {
   return result;
 }
 
-const _discardAst = template.expression(`SYNDICATE.__`, { placeholderPattern: /^[A-Z]+$/ });
+const _discardAst = template.expression(`SYNDICATE.Discard()`);
 function discardAst(state) {
   return _discardAst({ SYNDICATE: state.SyndicateID });
 }
@@ -71,10 +71,9 @@ function listAst(state, vs) {
   return _listAst({ IMMUTABLE: state.ImmutableID, VS: vs });
 }
 
-function captureWrap(state, idNode, ast) {
-  return template.expression(`SYNDICATE._$(NAME, PATTERN)`, { placeholderPattern: /^[A-Z]+$/ })({
+function captureWrap(state, ast) {
+  return template.expression(`SYNDICATE.Capture(PATTERN)`)({
     SYNDICATE: state.SyndicateID,
-    NAME: t.stringLiteral(idNode.name.slice(1)),
     PATTERN: ast
   });
 }
@@ -114,7 +113,7 @@ function compilePattern(state, patternPath) {
           // It's a capture with a nested subpattern.
           pushCapture(pattern.callee);
           let [s, a] = walk(patternPath.get('arguments.0'));
-          return [s, captureWrap(state, pattern.callee, a)];
+          return [s, captureWrap(state, a)];
         } else {
           // It's a regular call. If there are nested captures or
           // discards, this indicates the programmer believes it to be
@@ -146,7 +145,7 @@ function compilePattern(state, patternPath) {
           return [t.nullLiteral(), discardAst(state)];
         } else if (isCaptureIdentifier(pattern)) {
           pushCapture(pattern);
-          return [t.nullLiteral(), captureWrap(state, pattern, discardAst(state))];
+          return [t.nullLiteral(), captureWrap(state, discardAst(state))];
         } else {
           pushConstant(pattern);
           return [t.nullLiteral(), pattern];

@@ -35,8 +35,10 @@ Seal.prototype.toJSON = function () {
   return { '@seal': 0 };
 };
 
-module.exports.Observe = Struct.makeConstructor('Observe', ['specification']);
+module.exports.Discard = Struct.makeConstructor('discard', []);
+module.exports.Capture = Struct.makeConstructor('capture', ['specification']);
+module.exports.Observe = Struct.makeConstructor('observe', ['specification']);
 module.exports.Seal = Seal;
-module.exports.Inbound = Struct.makeConstructor('Inbound', ['assertion']);
-module.exports.Outbound = Struct.makeConstructor('Outbound', ['assertion']);
-module.exports.Instance = Struct.makeConstructor('Instance', ['uniqueId']);
+module.exports.Inbound = Struct.makeConstructor('inbound', ['assertion']);
+module.exports.Outbound = Struct.makeConstructor('outbound', ['assertion']);
+module.exports.Instance = Struct.makeConstructor('instance', ['uniqueId']);
