@@ -1,7 +1,7 @@
 {
   "name": "@syndicate-lang/create",
   "description": "Create a new Syndicate/js package",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "bin": {
     "create": "./bin/run"
@@ -15,7 +15,6 @@
     "@oclif/plugin-help": "^2",
     "unzip": "^0.1.11"
   },
-  "devDependencies": {},
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/create",
   "license": "GPL-3.0+",
   "publishConfig": {
