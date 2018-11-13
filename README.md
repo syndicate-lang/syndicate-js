@@ -6,8 +6,9 @@ subject of a forthcoming paper.
 
 ## Quickstart
 
-**Option 1.** Use `npx @syndicate-lang/create DIRECTORY` or `npm init
-@syndicate-lang DIRECTORY`:
+**Option 1. Create a new program/library using Syndicate/js.** Use
+`npx @syndicate-lang/create DIRECTORY` or `npm init @syndicate-lang
+DIRECTORY`:
 
     npm init @syndicate-lang myprogram
     cd myprogram
@@ -15,7 +16,8 @@ subject of a forthcoming paper.
     npm run build
     node lib/index.js
 
-**Option 2.** Install a few packages from the
+**Option 2. Add Syndicate/js to an existing program/library.** Install
+a few packages from the
 [@syndicate-lang](https://www.npmjs.com/org/syndicate-lang) scope on
 npmjs.com:
 
