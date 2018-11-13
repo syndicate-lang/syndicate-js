@@ -8,7 +8,7 @@ class SyndicateLangCreateCommand extends Command {
     const { args, flags} = this.parse(SyndicateLangCreateCommand)
     const directory = path.resolve(args.directory);
     const packageName = flags.package || path.basename(directory);
-    console.log(`Will create package ${packageName} in ${directory}.`);
+    console.log(`Creating package ${packageName} in ${directory}.`);
     fs.mkdir(directory, { recursive: true }, (err) => {
       if (err) throw err;
       fs.createReadStream(path.join(__dirname, 'syndicate-template.zip')).pipe(

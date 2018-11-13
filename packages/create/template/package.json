@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "@syndicate-lang/core": ""
+  },
+  "scripts": {
+    "build": "./node_modules/.bin/syndicate-babel src --out-dir lib"
   }
 }
