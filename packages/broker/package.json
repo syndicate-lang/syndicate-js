@@ -1,0 +1,26 @@
+{
+  "name": "broker",
+  "private": true,
+  "version": "0.0.1",
+  "license": "GPL-3.0+",
+  "devDependencies": {
+    "@babel/core": "^7",
+    "@babel/plugin-syntax-jsx": "^7",
+    "@babel/plugin-transform-react-jsx": "^7",
+    "@babel/preset-env": "^7",
+    "@syndicate-lang/syntax": "^0.0.17"
+  },
+  "dependencies": {
+    "@syndicate-lang/core": "^0.0.15",
+    "@syndicate-lang/driver-browser-ui": "^0.0.12",
+    "@syndicate-lang/driver-http-node": "^0.0.11",
+    "@syndicate-lang/driver-timer": "^0.0.15"
+  },
+  "scripts": {
+    "prepare": "which redo >/dev/null && redo || ../../do"
+  },
+  "main": "lib/index.js",
+  "bin": {
+    "syndicate-broker": "./bin/syndicate-broker.js"
+  }
+}
