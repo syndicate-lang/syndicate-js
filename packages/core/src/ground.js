@@ -82,7 +82,17 @@ Ground.prototype.addStopHandler = function (h) {
 
 function bootModule(mod) {
   let g = new Ground(() => {
-    Dataspace.activate(mod.exports);
+    if (Dataspace.BootSteps in mod) {
+      // It's really an exports dict, not a module.
+      Dataspace.activate(mod);
+    } else if ('exports' in mod) {
+      // It's probably a module.
+      Dataspace.activate(mod.exports);
+    } else {
+      const e = new Error("Cannot boot Syndicate module");
+      e.irritant = mod;
+      throw e;
+    }
   });
   if (typeof document !== 'undefined') {
     document.addEventListener("DOMContentLoaded", (e) => { g.start(); });
