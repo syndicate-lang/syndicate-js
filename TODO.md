@@ -27,3 +27,7 @@
  - alias wrapExternal to index.js
 
  - @syndicate-lang/standalone, analogous to @babel/standalone
+
+ - deferTurn should prevent a facet from terminating! This came up in
+   some formulations of the game-restart logic in the flappy bird
+   demo.
