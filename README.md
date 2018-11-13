@@ -6,7 +6,16 @@ subject of a forthcoming paper.
 
 ## Quickstart
 
-Install a few packages from the
+**Option 1.** Use `npx @syndicate-lang/create DIRECTORY` or `npm init
+@syndicate-lang DIRECTORY`:
+
+    npm init @syndicate-lang myprogram
+    cd myprogram
+    npm i .
+    npm run build
+    node lib/index.js
+
+**Option 2.** Install a few packages from the
 [@syndicate-lang](https://www.npmjs.com/org/syndicate-lang) scope on
 npmjs.com:
 
