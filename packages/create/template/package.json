@@ -1,0 +1,15 @@
+{
+  "private": true,
+  "version": "0.0.0",
+  "license": "GPL-3.0+",
+  "devDependencies": {
+    "@babel/core": "^7",
+    "@babel/plugin-syntax-jsx": "^7",
+    "@babel/plugin-transform-react-jsx": "^7",
+    "@babel/preset-env": "^7",
+    "@syndicate-lang/syntax": ""
+  },
+  "dependencies": {
+    "@syndicate-lang/core": ""
+  }
+}
