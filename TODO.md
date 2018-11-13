@@ -12,7 +12,8 @@
  - `define/query`
  - some kind of `stop facet` statement - put a Symbol on the fields blob?
 
- - dataspaces, relays
+ - [DONE] dataspaces, dataspace relays
+ - other kinds of relay
 
  - [DONE? Surely there's more] pin down and fix the problems with facet field scope (!!)
 
