@@ -63,6 +63,13 @@ function _server(host, port, httpsOptions) {
   }
 
   during Observe(Request(_, server, $method, $pathPattern, _, _)) {
+    if (typeof method !== 'string' ||
+        (typeof pathPattern !== 'object' || pathPattern === null ||
+         typeof pathPattern.toJS !== 'function')) {
+      // Likely some kind of logging observer.
+      // TODO: reconsider schema
+      return;
+    }
     if (method.toLowerCase() !== method) {
       console.warn('HTTP method should be lowercase: ' + method);
     }
