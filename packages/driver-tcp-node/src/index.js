@@ -25,16 +25,16 @@ assertion type TcpConnection(id, spec);
 assertion type TcpAccepted(id);
 assertion type TcpRejected(id, reason);
 
-message type TcpOut(id, data);
-message type TcpIn(id, data);
-message type TcpInLine(id, data);
+message type LineIn(id, line);
+message type DataIn(id, chunk);
+message type DataOut(id, chunk);
 
 assertion type TcpAddress(host, port);
 assertion type TcpListener(port);
 
 export {
   TcpConnection, TcpAccepted, TcpRejected,
-  TcpOut, TcpIn, TcpInLine,
+  DataOut, DataIn, LineIn,
   TcpAddress, TcpListener,
 };
 
@@ -69,15 +69,15 @@ spawn named 'TcpDriver' {
     }
   }
 
-  during Observe(TcpInLine($id, _)) spawn named ['TcpLineReader', id] {
+  during Observe(LineIn($id, _)) spawn named ['TcpLineReader', id] {
     field this.buffer = Buffer.alloc(0);
-    on message TcpIn(id, $data) this.buffer = Buffer.concat([this.buffer, data]);
+    on message DataIn(id, $data) this.buffer = Buffer.concat([this.buffer, data]);
     dataflow {
       const pos = this.buffer.indexOf(10);
       if (pos !== -1) {
         const line = this.buffer.slice(0, pos);
         this.buffer = this.buffer.slice(pos + 1);
-        ^ TcpInLine(id, line);
+        ^ LineIn(id, line);
       }
     }
   }
@@ -105,13 +105,13 @@ function _connectionCommon(rootFacet, id, socket, established) {
 
     on stop try { socket.destroy() } catch (e) { console.error(e); }
 
-    on start react stop on asserted Observe(TcpIn(id, _)) {
+    on start react stop on asserted Observe(DataIn(id, _)) {
       socket.on('data', Dataspace.wrapExternal((data) => {
-        ^ TcpIn(id, data);
+        ^ DataIn(id, data);
       }));
     }
 
-    on message TcpOut(id, $data) {
+    on message DataOut(id, $data) {
       socket.write(data);
     }
   }
