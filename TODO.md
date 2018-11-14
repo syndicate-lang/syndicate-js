@@ -7,23 +7,20 @@
  - [DONE] remove ground dataspace syntax
  - [DONE] `spawn :let childVal = parentCalculation { ... }`
  - [DONE] better autobuilding for smooth and fast dev; babel uses gulp?
+ - [DONE] dataspaces, dataspace relays
+ - [DONE? Surely there's more] pin down and fix the problems with facet field scope (!!)
+ - [DONE] `npm init @syndicate`
+
+ - [DONE] timer driver
+ - [DONE] ui driver
+ - [DONE] web driver
+ - [DONE] tcp driver
 
  - `defer` statement
  - `define/query`
  - some kind of `stop facet` statement - put a Symbol on the fields blob?
 
- - [DONE] dataspaces, dataspace relays
  - other kinds of relay
-
- - [DONE? Surely there's more] pin down and fix the problems with facet field scope (!!)
-
- - `npm init @syndicate`
-
- - drivers
-    - [DONE] timer
-    - [DONE] ui
-    - [DONE] web
-    - [DONE] tcp
 
  - alias wrapExternal to index.js
 
