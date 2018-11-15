@@ -58,14 +58,19 @@ function _server(host, port, httpsOptions) {
   const requestHandlerMap = {};
   const wsHandlerMap = {};
 
+  function isPathPattern(p) {
+    // Loose, but good enough for distinguishing
+    // List-of-constants-and-captures from just a straight capture.
+    // TODO: Still really not the best idea. Reconsider schema.
+    return typeof p === 'object' && p !== null && typeof p.toJS === 'function';
+  }
+
   function encodePath(path) {
     return JSON.stringify(path.toJS().map((s) => Capture.isClassOf(s) ? null : s));
   }
 
   during Observe(Request(_, server, $method, $pathPattern, _, _)) {
-    if (typeof method !== 'string' ||
-        (typeof pathPattern !== 'object' || pathPattern === null ||
-         typeof pathPattern.toJS !== 'function')) {
+    if (typeof method !== 'string' || !isPathPattern(pathPattern)) {
       // Likely some kind of logging observer.
       // TODO: reconsider schema
       return;
@@ -89,6 +94,11 @@ function _server(host, port, httpsOptions) {
   }
 
   during Observe(WebSocket(_, server, $pathPattern, _)) {
+    if (!isPathPattern(pathPattern)) {
+      // Likely some kind of logging observer.
+      // TODO: reconsider schema
+      return;
+    }
     const path = encodePath(pathPattern);
     on start {
       if (!(path in wsHandlerMap)) wsHandlerMap[path] = {_count: 0, _path: pathPattern};
