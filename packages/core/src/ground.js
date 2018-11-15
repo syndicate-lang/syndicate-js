@@ -18,7 +18,13 @@ Ground.prototype = new Dataspace(null);
 
 Ground._resolved = Promise.resolve();
 Ground.laterCall = function (thunk) {
-  Ground._resolved.then(thunk);
+  Ground._resolved.then(() => {
+    try {
+      thunk();
+    } catch (e) {
+      console.error("SYNDICATE/JS INTERNAL ERROR", e);
+    }
+  });
 };
 
 Ground.prototype.backgroundTask = function (k) {
