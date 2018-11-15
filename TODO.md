@@ -29,3 +29,6 @@
  - deferTurn should prevent a facet from terminating! This came up in
    some formulations of the game-restart logic in the flappy bird
    demo.
+
+ - change send syntax from `^ ...` to `send ...` :-(
+    - it's too cute. Indentation doesn't work, and forgetting a semicolon causes silent xor!
