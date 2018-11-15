@@ -14,6 +14,9 @@ spawn named 'serverLogger' {
   on asserted Http.Request(_, server, $method, $path, $query, $req) {
     console.log(method, path.toJS(), query.toJS());
   }
+  on asserted Http.WebSocket(_, server, $path, $query) {
+    console.log(path.toJS(), query.toJS());
+  }
 }
 
 spawn named 'rootServer' {
@@ -31,7 +34,7 @@ spawn named 'rootServer' {
 spawn named 'websocketListener' {
   during Http.WebSocket($reqId, server, ['broker'], _) spawn named ['wsConnection', reqId] {
     on message Http.DataIn(reqId, $message) {
-      console.log('got', reqId, message);
+      console.log('got', reqId, new (require('preserves').Decoder)(message).next())
       ^ Http.DataOut(reqId, message);
     }
 
