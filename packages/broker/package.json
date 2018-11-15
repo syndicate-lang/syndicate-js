@@ -15,8 +15,7 @@
     "@syndicate-lang/driver-browser-ui": "^0.0.13",
     "@syndicate-lang/driver-http-node": "^0.0.12",
     "@syndicate-lang/driver-tcp-node": "^0.0.2",
-    "@syndicate-lang/driver-timer": "^0.0.16",
-    "preserves": "^0.0.0"
+    "@syndicate-lang/driver-timer": "^0.0.16"
   },
   "scripts": {
     "prepare": "which redo >/dev/null && redo || ../../do"
