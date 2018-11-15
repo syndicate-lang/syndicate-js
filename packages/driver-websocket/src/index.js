@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { currentFacet, Observe, Dataspace } from "@syndicate-lang/core";
+import { currentFacet, Bytes, Observe, Dataspace } from "@syndicate-lang/core";
 const { sleep } = activate require("@syndicate-lang/driver-timer");
 
 const _WebSocket = require('isomorphic-ws');
@@ -52,7 +52,7 @@ spawn named 'WebSocketFactory' {
 
       ws.onopen = Dataspace.wrapExternal(() => { this.connected = true; });
       ws.onclose = Dataspace.wrapExternal(() => { if (this.connected) { connect(); }});
-      ws.onmessage = Dataspace.wrapExternal((data) => { ^ DataIn(id, data.data); });
+      ws.onmessage = Dataspace.wrapExternal((data) => { ^ DataIn(id, Bytes.fromIO(data.data)); });
     };
 
     const disconnect = () => {
@@ -70,7 +70,7 @@ spawn named 'WebSocketFactory' {
 
     on message DataOut(id, $data) {
       if (this.connected) {
-        ws.send(data);
+        ws.send(Bytes.toIO(data));
       }
     }
   }

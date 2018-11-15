@@ -19,6 +19,7 @@ Ground.prototype = new Dataspace(null);
 Ground._resolved = Promise.resolve();
 Ground.laterCall = function (thunk) {
   Ground._resolved.then(() => {
+    Error.stackTraceLimit = 100;
     try {
       thunk();
     } catch (e) {

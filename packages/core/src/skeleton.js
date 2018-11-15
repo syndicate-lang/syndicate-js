@@ -18,7 +18,8 @@
 //---------------------------------------------------------------------------
 
 const Immutable = require("immutable");
-const Struct = require('./struct.js');
+const { Record } = require("preserves");
+
 const $Special = require('./special.js');
 const Bag = require('./bag.js');
 const { Capture, Discard } = require('./assertions.js');
@@ -66,8 +67,8 @@ function Handler(cachedCaptures) {
 }
 
 function classOf(v) {
-  if (v instanceof Struct.Structure) {
-    return v.meta;
+  if (v instanceof Record) {
+    return v.getConstructorInfo();
   } else if (v instanceof Immutable.List) {
     return v.size;
   } else {
@@ -104,7 +105,7 @@ Node.prototype.extend = function(skeleton) {
       if (!nextNode) {
         nextNode = new Node(new Continuation(
           node.continuation.cachedAssertions.filter(
-            (a) => classOf(projectPath(a, path)) === cls)));
+            (a) => Immutable.is(classOf(projectPath(a, path)), cls))));
         table = table.set(cls, nextNode);
         node.edges = node.edges.set(selector, table);
       }
@@ -191,8 +192,7 @@ Node.prototype.modify = function(outerValue, m_cont, m_leaf, m_handler) {
         while (i--) { mutable.pop(); }
       });
       let nextValue = step(nextStack.first(), selector.index);
-      let cls = classOf(nextValue);
-      let nextNode = table.get(cls, false);
+      let nextNode = table.get(classOf(nextValue), false);
       if (nextNode) {
         walkNode(nextNode, nextStack.push(nextValue));
       }
@@ -279,6 +279,15 @@ function analyzeAssertion(a) {
   let capturePaths = Immutable.List();
 
   function walk(path, a) {
+    if (Capture.isClassOf(a)) {
+      capturePaths = capturePaths.push(path);
+      return walk(path, a.get(0));
+    }
+
+    if (Discard.isClassOf(a)) {
+      return null;
+    }
+
     let cls = classOf(a);
     if (cls !== null) {
       let arity = (typeof cls === 'number') ? cls : cls.arity;
@@ -287,18 +296,11 @@ function analyzeAssertion(a) {
         result.push(walk(path.push(i), step(a, i)));
       }
       return result;
-    } else {
-      if (Capture.isClassOf(a)) {
-        capturePaths = capturePaths.push(path);
-        return walk(path, a.get(0));
-      } else if (Discard.isClassOf(a)) {
-        return null;
-      } else {
-        constPaths = constPaths.push(path);
-        constVals = constVals.push(a);
-        return null;
-      }
     }
+
+    constPaths = constPaths.push(path);
+    constVals = constVals.push(a);
+    return null;
   }
 
   let skeleton = walk(Immutable.List(), a);

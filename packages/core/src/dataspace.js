@@ -18,7 +18,8 @@
 //---------------------------------------------------------------------------
 
 const Immutable = require("immutable");
-const Struct = require('./struct.js');
+const { fromJS } = require("preserves");
+
 const Skeleton = require('./skeleton.js');
 const $Special = require('./special.js');
 const Bag = require('./bag.js');
@@ -343,14 +344,14 @@ Actor.prototype.assert = function (a) { this.pendingPatch().adjust(a, +1); };
 Actor.prototype.retract = function (a) { this.pendingPatch().adjust(a, -1); };
 
 Actor.prototype.adhocRetract = function (a) {
-  a = Immutable.fromJS(a);
+  a = fromJS(a);
   if (this.adhocAssertions.change(a, -1, true) === Bag.PRESENT_TO_ABSENT) {
     this.retract(a);
   }
 };
 
 Actor.prototype.adhocAssert = function (a) {
-  a = Immutable.fromJS(a);
+  a = fromJS(a);
   if (this.adhocAssertions.change(a, +1) === Bag.ABSENT_TO_PRESENT) {
     this.assert(a);
   }
@@ -371,8 +372,10 @@ Patch.prototype.perform = function (ds, ac) {
 };
 
 Patch.prototype.adjust = function (a, count) {
-  var _net;
-  ({bag: this.changes, net: _net} = Bag.change(this.changes, Immutable.fromJS(a), count));
+  if (a !== void 0) {
+    var _net;
+    ({bag: this.changes, net: _net} = Bag.change(this.changes, fromJS(a), count));
+  }
 };
 
 function Message(body) {
@@ -381,7 +384,7 @@ function Message(body) {
 
 Message.prototype.perform = function (ds, ac) {
   if (this.body !== void 0) {
-    ds.sendMessage(Immutable.fromJS(this.body));
+    ds.sendMessage(fromJS(this.body));
   }
 };
 
@@ -612,7 +615,7 @@ Endpoint.prototype._uninstall = function (ds, ac, emitPatches) {
 
 Endpoint.prototype.refresh = function (ds, ac, facet) {
   let [newAssertion, newHandler] = this.updateFun.call(facet.fields);
-  newAssertion = Immutable.fromJS(newAssertion);
+  if (newAssertion !== void 0) newAssertion = fromJS(newAssertion);
   if (!Immutable.is(newAssertion, this.assertion)) {
     this._uninstall(ds, ac, true);
     this._install(ds, ac, newAssertion, newHandler);

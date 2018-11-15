@@ -20,6 +20,7 @@
 // Bags and Deltas (which are Bags where item-counts can be negative).
 
 const Immutable = require("immutable");
+const { fromJS } = require("preserves");
 
 const PRESENT_TO_ABSENT = -1;
 const ABSENT_TO_ABSENT = 0;
@@ -77,7 +78,7 @@ const Bag = Immutable.Map;
 function fromSet(s) {
   return Bag().withMutations(function (b) {
     for (let v of Immutable.Set(s)) {
-      b = b.set(Immutable.fromJS(v), 1);
+      b = b.set(fromJS(v), 1);
     }
   });
 }

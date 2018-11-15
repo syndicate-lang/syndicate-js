@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { currentFacet, Observe, Dataspace } from "@syndicate-lang/core";
+import { currentFacet, Observe, Dataspace, Bytes } from "@syndicate-lang/core";
 import { createSocket } from "dgram";
 
 const { sleep } = activate require("@syndicate-lang/driver-timer");
@@ -70,7 +70,7 @@ function _socket(addr, port) {
 
     socket.on('listening', Dataspace.wrapExternal(() => { this.connected = true; }));
     socket.on('message', Dataspace.wrapExternal((message, rinfo) => {
-      ^ UdpPacket(UdpPeer(rinfo.address, rinfo.port), addr, message);
+      ^ UdpPacket(UdpPeer(rinfo.address, rinfo.port), addr, Bytes.fromIO(message));
     }));
   };
 
@@ -88,6 +88,7 @@ function _socket(addr, port) {
   assert addr when (this.connected);
 
   on message UdpPacket(addr, UdpPeer($host, $port), $payload) {
+    payload = Bytes.toIO(payload);
     socket.send(payload, 0, payload.length, port, host, Dataspace.wrapExternal((err) => {
       if (err) {
         console.error(err);

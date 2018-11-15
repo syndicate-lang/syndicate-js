@@ -17,7 +17,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-const Struct = require('./struct.js');
 const Skeleton = require('./skeleton.js');
 const RandomID = require('./randomid.js');
 const Dataspace = require('./dataspace.js');
@@ -25,11 +24,12 @@ const Ground = require('./ground.js');
 const Assertions = require('./assertions.js');
 const Relay = require('./relay.js');
 
+Object.assign(module.exports, require("preserves"));
+
 module.exports.Immutable = require('immutable');
 // ^ for use by import machinery in syntactic extensions
 
 module.exports.Bag = require("./bag.js");
-module.exports.Struct = Struct;
 module.exports.Skeleton = Skeleton;
 module.exports.RandomID = RandomID;
 

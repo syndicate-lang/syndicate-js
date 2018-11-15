@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { genUuid, Seal, Capture, Observe, Dataspace, currentFacet } from "@syndicate-lang/core";
+import { genUuid, Seal, Capture, Observe, Dataspace, currentFacet, Bytes } from "@syndicate-lang/core";
 import { parse as parseUrl } from "url";
 
 const http = require('http');
@@ -40,14 +40,14 @@ Object.assign(module.exports, {
   Response, DataOut,
 });
 
-spawn named 'HttpServerFactory' {
+spawn named 'driver/HttpServerFactory' {
   during Observe(Request(_, HttpServer($h, $p), _, _, _, _)) assert HttpServer(h, p);
   during Observe(Request(_, HttpsServer($h, $p, $o), _, _, _, _)) assert HttpsServer(h, p, o);
 
-  during HttpServer($host, $port) spawn named ['HttpServer', host, port] {
+  during HttpServer($host, $port) spawn named ['driver/HttpServer', host, port] {
     _server.call(this, host, port, null);
   }
-  during HttpsServer($host, $port, $options) spawn named ['HttpsServer', host, port] {
+  during HttpsServer($host, $port, $options) spawn named ['driver/HttpsServer', host, port] {
     _server.call(this, host, port, options);
   }
 }
@@ -179,7 +179,7 @@ function _server(host, port, httpsOptions) {
               facet.stop();
             }
             on message DataOut(id, $chunk) {
-              res.write(chunk);
+              res.write(Bytes.toIO(chunk));
             }
           }
         } else {
@@ -218,12 +218,12 @@ function _server(host, port, httpsOptions) {
 
       on asserted Observe(DataIn(id, _)) {
         ws.on('message', Dataspace.wrapExternal((message) => {
-          ^ DataIn(id, message);
+          ^ DataIn(id, Bytes.fromIO(message));
         }));
       }
 
       on message DataOut(id, $message) {
-        ws.send(message);
+        ws.send(Bytes.toIO(message));
       }
 
       stop on retracted Observe(WebSocket(_, server, pathPattern, _));

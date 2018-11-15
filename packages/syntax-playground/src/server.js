@@ -74,6 +74,15 @@ function counter() {
   return id;
 }
 
+spawn named 'serverLogger' {
+  on asserted Http.Request(_, server, $method, $path, $query, $req) {
+    console.log(method, path.toJS(), query.toJS());
+  }
+  on asserted Http.WebSocket(_, server, $path, $query) {
+    console.log(path.toJS(), query.toJS());
+  }
+}
+
 spawn named 'rootServer' {
   let counters = {};
   on asserted Counter($id) counters[id] = true;

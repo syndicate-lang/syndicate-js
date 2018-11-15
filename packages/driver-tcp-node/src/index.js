@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { currentFacet, Observe, Dataspace, genUuid } from "@syndicate-lang/core";
+import { currentFacet, Observe, Dataspace, genUuid, Bytes } from "@syndicate-lang/core";
 const net = require('net');
 
 const { sleep } = activate require("@syndicate-lang/driver-timer");
@@ -38,14 +38,14 @@ export {
   TcpAddress, TcpListener,
 };
 
-spawn named 'TcpDriver' {
-  during Observe(TcpConnection(_, TcpListener($port))) spawn named ['TcpListener', port] {
+spawn named 'driver/TcpDriver' {
+  during Observe(TcpConnection(_, TcpListener($port))) spawn named ['driver/TcpListener', port] {
     let finish = Dataspace.backgroundTask();
     on stop finish();
 
     let server = net.createServer(Dataspace.wrapExternal((socket) => {
       let id = genUuid('tcp' + port);
-      spawn named ['TcpInbound', id] {
+      spawn named ['driver/TcpInbound', id] {
         assert TcpConnection(id, TcpListener(port));
         on asserted TcpAccepted(id) _connectionCommon.call(this, currentFacet(), id, socket, true);
         stop on retracted TcpAccepted(id);
@@ -57,7 +57,8 @@ spawn named 'TcpDriver' {
     on stop try { server.close() } catch (e) { console.error(e); }
   }
 
-  during TcpConnection($id, TcpAddress($host, $port)) spawn named ['TcpOutbound', id, host, port] {
+  during TcpConnection($id, TcpAddress($host, $port))
+  spawn named ['driver/TcpOutbound', id, host, port] {
     let finish = Dataspace.backgroundTask();
     on stop finish();
 
@@ -69,9 +70,9 @@ spawn named 'TcpDriver' {
     }
   }
 
-  during Observe(LineIn($id, _)) spawn named ['TcpLineReader', id] {
-    field this.buffer = Buffer.alloc(0);
-    on message DataIn(id, $data) this.buffer = Buffer.concat([this.buffer, data]);
+  during Observe(LineIn($id, _)) spawn named ['driver/TcpLineReader', id] {
+    field this.buffer = Bytes();
+    on message DataIn(id, $data) this.buffer = Bytes.concat([this.buffer, data]);
     dataflow {
       const pos = this.buffer.indexOf(10);
       if (pos !== -1) {
@@ -107,12 +108,12 @@ function _connectionCommon(rootFacet, id, socket, established) {
 
     on start react stop on asserted Observe(DataIn(id, _)) {
       socket.on('data', Dataspace.wrapExternal((data) => {
-        ^ DataIn(id, data);
+        ^ DataIn(id, Bytes.fromIO(data));
       }));
     }
 
     on message DataOut(id, $data) {
-      socket.write(data);
+      socket.write(Bytes.toIO(data));
     }
   }
 }

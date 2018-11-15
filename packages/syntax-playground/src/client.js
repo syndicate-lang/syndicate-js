@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { currentFacet, genUuid } from "@syndicate-lang/core";
+import { currentFacet, genUuid, Bytes } from "@syndicate-lang/core";
 
 const WS = activate require("@syndicate-lang/driver-websocket");
 const { PeriodicTick } = activate require("@syndicate-lang/driver-timer");
@@ -34,7 +34,7 @@ spawn named 'demo' {
     }
 
     on message PeriodicTick(1000) {
-      ^ WS.DataOut(wsId, genUuid('timestamp'));
+      ^ WS.DataOut(wsId, Bytes.from(genUuid('timestamp')));
     }
   }
 }

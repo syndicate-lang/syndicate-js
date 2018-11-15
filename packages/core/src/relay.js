@@ -47,18 +47,18 @@ NestedDataspace.prototype.sendMessage = function (m) {
 NestedDataspace.prototype.endpointHook = function (facet, innerEp) {
   const innerDs = this;
   Dataspace.prototype.endpointHook.call(this, facet, innerEp);
-  if (Observe.isClassOf(innerEp.assertion) && Inbound.isClassOf(innerEp.assertion[0])) {
+  if (Observe.isClassOf(innerEp.assertion) && Inbound.isClassOf(innerEp.assertion.get(0))) {
     // We know that innerEp.assertion is an Observe(Inbound(...)).
     // Also, if innerEp.handler exists, it will be consonant with innerEp.assertion.
     // Beware of completely-constant patterns, which cause skeleton to be null!
     this.hookEndpointLifecycle(innerEp, this.outerFacet.addEndpoint(() => {
       const h = innerEp.handler;
-      return [Observe(innerEp.assertion[0][0]),
+      return [Observe(innerEp.assertion.get(0).get(0)),
               h && (h.skeleton === null
                     ? {
                       skeleton: null,
                       constPaths: h.constPaths,
-                      constVals: h.constVals.map((v) => v[0]),
+                      constVals: h.constVals.map((v) => v.get(0)),
                       capturePaths: h.capturePaths.map((p) => p.shift()),
                       callback: function (evt, captures) {
                         h.callback.call(this, evt, captures);
@@ -85,13 +85,13 @@ NestedDataspace.prototype.adjustIndex = function (a, count) {
     switch (net) {
       case Bag.ABSENT_TO_PRESENT:
         this.outerFacet.actor.pushScript(() => {
-          this.outerFacet.actor.adhocAssert(a[0]);
+          this.outerFacet.actor.adhocAssert(a.get(0));
         });
         this.outerFacet.actor.dataspace.start();
         break;
       case Bag.PRESENT_TO_ABSENT:
         this.outerFacet.actor.pushScript(() => {
-          this.outerFacet.actor.adhocRetract(a[0]);
+          this.outerFacet.actor.adhocRetract(a.get(0));
         });
         this.outerFacet.actor.dataspace.start();
         break;

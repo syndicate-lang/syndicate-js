@@ -24,12 +24,12 @@ chai.use(require('chai-immutable'));
 const Immutable = require('immutable');
 
 const Syndicate = require('../src/index.js');
-const Skeleton = Syndicate.Skeleton;
-const Struct = Syndicate.Struct;
-const __ = Syndicate.__;
-const _$ = Syndicate._$;
+const { Seal, Skeleton, Capture, Discard, Record } = Syndicate;
 
-const Event = Struct.makeConstructor('Event', ['label', 'type', 'values']);
+const __ = Discard();
+const _$ = Capture(Discard());
+
+const Event = Record.makeConstructor('Event', ['label', 'type', 'values']);
 
 function eventCallback(traceHolder, label) {
   return (e, vs) => { traceHolder.push(Event(label, e, vs)) };
@@ -51,21 +51,21 @@ function _analyzeAssertion(a) {
 
 describe('skeleton', () => {
 
-  const A = Struct.makeConstructor('A', ['x', 'y']);
-  const B = Struct.makeConstructor('B', ['v']);
-  const C = Struct.makeConstructor('C', ['v']);
+  const A = Record.makeConstructor('A', ['x', 'y']);
+  const B = Record.makeConstructor('B', ['v']);
+  const C = Record.makeConstructor('C', ['v']);
 
   describe('pattern analysis', () => {
     it('should handle leaf captures', () => {
       expect(Immutable.fromJS(_analyzeAssertion(A(B(_$), _$))))
-        .to.equal(Immutable.fromJS({skeleton: [A.meta, [B.meta, null], null],
+        .to.equal(Immutable.fromJS({skeleton: [A.constructorInfo, [B.constructorInfo, null], null],
                                     constPaths: Immutable.fromJS([]),
                                     constVals: Immutable.fromJS([]),
                                     capturePaths: Immutable.fromJS([[0, 0], [1]])}));
     });
     it('should handle atomic constants', () => {
       expect(Immutable.fromJS(_analyzeAssertion(A(B("x"), _$))))
-        .to.equal(Immutable.fromJS({skeleton: [A.meta, [B.meta, null], null],
+        .to.equal(Immutable.fromJS({skeleton: [A.constructorInfo, [B.constructorInfo, null], null],
                                     constPaths: Immutable.fromJS([[0, 0]]),
                                     constVals: Immutable.fromJS(["x"]),
                                     capturePaths: Immutable.fromJS([[1]])}));
@@ -77,12 +77,15 @@ describe('skeleton', () => {
       // will end up being complex at runtime. We can't properly test
       // that situation without the static analysis half of the code.
       // TODO later.
-      let complexPlaceholder = new Object();
-      expect(Immutable.fromJS(_analyzeAssertion(A(complexPlaceholder, C(_$)))))
-        .to.equal(Immutable.fromJS({skeleton: [A.meta, null, [C.meta, null]],
-                                    constPaths: Immutable.fromJS([[0]]),
-                                    constVals: Immutable.fromJS([complexPlaceholder]),
-                                    capturePaths: Immutable.fromJS([[1, 0]])}));
+      const complexPlaceholder = new Object();
+      const analysis = Immutable.fromJS(_analyzeAssertion(A(complexPlaceholder, C(_$))));
+      const expected = Immutable.fromJS({
+        skeleton: [A.constructorInfo, null, [C.constructorInfo, null]],
+        constPaths: Immutable.fromJS([[0]]),
+        constVals: Immutable.List([complexPlaceholder]),
+        capturePaths: Immutable.fromJS([[1, 0]]),
+      });
+      expect(analysis).to.equal(expected);
     });
     it('should handle complex constants (2)', () => {
       // Marker: (***)
@@ -91,8 +94,10 @@ describe('skeleton', () => {
       // will end up being complex at runtime. We can't properly test
       // that situation without the static analysis half of the code.
       // TODO later.
-      expect(Immutable.fromJS(_analyzeAssertion(A(B(B("y")), _$("rhs", C(__))))))
-        .to.equal(Immutable.fromJS({skeleton: [A.meta, [B.meta, [B.meta, null]], [C.meta, null]],
+      expect(Immutable.fromJS(_analyzeAssertion(A(B(B("y")), Capture(C(__))))))
+        .to.equal(Immutable.fromJS({skeleton: [A.constructorInfo,
+                                               [B.constructorInfo, [B.constructorInfo, null]],
+                                               [C.constructorInfo, null]],
                                     constPaths: Immutable.fromJS([[0, 0, 0]]),
                                     constVals: Immutable.fromJS(["y"]),
                                     capturePaths: Immutable.fromJS([[1]])}));
@@ -117,13 +122,15 @@ describe('skeleton', () => {
     let trace = skeletonTrace((i, traceHolder) => {
       i.addHandler(_analyzeAssertion(A(B(_$), _$)), eventCallback(traceHolder, "AB"));
       i.addHandler(_analyzeAssertion(A(B("x"), _$)), eventCallback(traceHolder, "ABx"));
-      let complexConstantPattern1 = {skeleton: [A.meta, null, [C.meta, null]],
+      let complexConstantPattern1 = {skeleton: [A.constructorInfo, null, [C.constructorInfo, null]],
                                     constPaths: Immutable.fromJS([[0]]),
                                     constVals: Immutable.fromJS([B("y")]),
                                     capturePaths: Immutable.fromJS([[1, 0]])};
       // ^ See comment in 'should handle complex constants (1)' test above (marked (***)).
       i.addHandler(complexConstantPattern1, eventCallback(traceHolder, "AByC"));
-      let complexConstantPattern2 = {skeleton: [A.meta, [B.meta, null], [C.meta, null]],
+      let complexConstantPattern2 = {skeleton: [A.constructorInfo,
+                                                [B.constructorInfo, null],
+                                                [C.constructorInfo, null]],
                                      constPaths: Immutable.fromJS([[0, 0]]),
                                      constVals: Immutable.fromJS([B("y")]),
                                      capturePaths: Immutable.fromJS([[1]])};
@@ -135,7 +142,7 @@ describe('skeleton', () => {
       i.addAssertion(Immutable.fromJS(A(B("z"),C(3))));
     });
 
-    // trace.forEach((e) => { console.log(e.toString()) });
+    // trace.forEach((e) => { console.log(e) });
 
     expect(trace)
       .to.equal(Immutable.List([
@@ -236,7 +243,7 @@ describe('skeleton', () => {
       expect(trace.size).to.equal(8);
     });
     it('should have a correct 3-EVENT subtrace', () => {
-      expect(trace.filter((e) => { return e[0] === "3-EVENT"; }))
+      expect(trace.filter((e) => { return e.get(0) === "3-EVENT"; }))
         .to.equal(Immutable.List([
           Event("3-EVENT", Skeleton.EVENT_ADDED, [123, 234]),
           Event("3-EVENT", Skeleton.EVENT_ADDED, [999, 999]),
@@ -245,7 +252,7 @@ describe('skeleton', () => {
           Event("3-EVENT", Skeleton.EVENT_REMOVED, [123, 234])]));
     });
     it('should have a correct 2-EVENT subtrace', () => {
-      expect(trace.filter((e) => { return e[0] === "2-EVENT"; }))
+      expect(trace.filter((e) => { return e.get(0) === "2-EVENT"; }))
         .to.equal(Immutable.List([
           Event("2-EVENT", Skeleton.EVENT_ADDED, []),
           Event("2-EVENT", Skeleton.EVENT_MESSAGE, []),

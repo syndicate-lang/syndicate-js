@@ -21,6 +21,7 @@
     "nyc": "^13.1.0"
   },
   "dependencies": {
-    "immutable": "^3.8.2"
+    "immutable": "^3.8.2",
+    "preserves": "^0.0.2"
   }
 }

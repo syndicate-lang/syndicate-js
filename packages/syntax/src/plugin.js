@@ -66,9 +66,9 @@ function discardAst(state) {
   return _discardAst({ SYNDICATE: state.SyndicateID });
 }
 
-const _listAst = template.expression(`IMMUTABLE.fromJS(VS)`);
+const _listAst = template.expression(`SYNDICATE.fromJS(VS)`);
 function listAst(state, vs) {
-  return _listAst({ IMMUTABLE: state.ImmutableID, VS: vs });
+  return _listAst({ SYNDICATE: state.SyndicateID, VS: vs });
 }
 
 function captureWrap(state, ast) {
@@ -123,7 +123,7 @@ function compilePattern(state, patternPath) {
           // constPaths/constVals.
           if (hasCapturesOrDiscards(patternPath)) {
             let arity = pattern.arguments.length;
-            let skel = [t.memberExpression(pattern.callee, t.identifier('meta'), false, false)];
+            let skel = [t.memberExpression(pattern.callee, t.identifier('constructorInfo'), false, false)];
             let assn = [];
             for (let i = 0; i < arity; i++) {
               syndicatePath.push(i);
@@ -295,25 +295,22 @@ export default declare((api, options) => {
     visitor: {
       Program(path, state) {
         let savedGlobalFacetUid = path.scope.generateUidIdentifier("savedGlobalFacet");
-        state.ImmutableID = path.scope.generateUidIdentifier("Immutable");
         state.SyndicateID = path.scope.generateUidIdentifier("Syndicate");
         state.DataspaceID = path.scope.generateUidIdentifier("Dataspace");
         state.SkeletonID = path.scope.generateUidIdentifier("Skeleton");
-        state.StructID = path.scope.generateUidIdentifier("Struct");
+        state.RecordID = path.scope.generateUidIdentifier("Record");
         path.unshiftContainer(
           'body',
           template(`const SYNDICATE = require("@syndicate-lang/core");
-                    const IMMUTABLE = SYNDICATE.Immutable;
                     const DATASPACE = SYNDICATE.Dataspace;
                     const SKELETON = SYNDICATE.Skeleton;
-                    const STRUCT = SYNDICATE.Struct;
+                    const RECORD = SYNDICATE.Record;
                     let SAVEDGLOBALFACET = DATASPACE._currentFacet;
                     DATASPACE._currentFacet = new SYNDICATE._Dataspace.ActionCollector();`)({
-                      IMMUTABLE: state.ImmutableID,
                       SYNDICATE: state.SyndicateID,
                       DATASPACE: state.DataspaceID,
                       SKELETON: state.SkeletonID,
-                      STRUCT: state.StructID,
+                      RECORD: state.RecordID,
                       SAVEDGLOBALFACET: savedGlobalFacetUid,
                     }));
         path.pushContainer(
@@ -346,8 +343,8 @@ export default declare((api, options) => {
               PROC: node.bootProc
             }),
           ASSERTIONS: node.initialAssertions.length === 0 ? null :
-            template.expression(`IMMUTABLE.Set(SEQ)`)({
-              IMMUTABLE: state.ImmutableID,
+            template.expression(`SYNDICATE.Set(SEQ)`)({
+              SYNDICATE: state.SyndicateID,
               SEQ: t.arrayExpression(node.initialAssertions)
             }),
         }));
@@ -453,9 +450,9 @@ export default declare((api, options) => {
 
       SyndicateTypeDefinition(path, state) {
         const { node } = path;
-        path.replaceWith(template(`const ID = STRUCT.makeConstructor(WIRE, FORMALS);`)({
+        path.replaceWith(template(`const ID = RECORD.makeConstructor(WIRE, FORMALS);`)({
           ID: node.id,
-          STRUCT: state.StructID,
+          RECORD: state.RecordID,
           WIRE: node.wireName || t.stringLiteral(node.id.name),
           FORMALS: t.arrayExpression(node.formals.map((f) => t.stringLiteral(f.name))),
         }));

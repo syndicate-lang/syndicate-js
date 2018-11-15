@@ -24,28 +24,27 @@ chai.use(require('chai-immutable'));
 const Immutable = require('immutable');
 
 const Syndicate = require('../src/index.js');
-const Skeleton = Syndicate.Skeleton;
-const Dataspace = Syndicate.Dataspace;
-const Struct = Syndicate.Struct;
-const __ = Syndicate.__;
-const _$ = Syndicate._$;
+const { Skeleton, Dataspace, Observe, Capture, Discard } = Syndicate;
 
 describe('dataspace', () => {
   it('should boot and run', () => {
     // TODO: convert this into even a rudimentary somewhat-real test case
     // (change console.log into gathering a trace)
-    let ds = new Dataspace(null, () => {
+    let ds = new Dataspace(() => {
       // console.log('boot');
       Dataspace.currentFacet().addEndpoint(() => {
-        let handler = Skeleton.analyzeAssertion(_$);
+        let handler = Skeleton.analyzeAssertion(Capture(Discard()));
         handler.callback = (evt, vs) => {
-          if (Syndicate.Observe.isClassOf(vs.get(0))) {
-            // console.log('OBSERVATION EVENT', evt, vs, vs.get(0).get(0) === _$);
+          if (Observe.isClassOf(vs.get(0))) {
+            // console.log('OBSERVATION EVENT',
+            //             evt,
+            //             vs,
+            //             Immutable.is(vs.get(0).get(0), Capture(Discard())));
           } else {
             // console.log('EVENT', evt, vs);
           }
         };
-        return [Syndicate.Observe(_$), handler];
+        return [Observe(Capture(Discard())), handler];
       });
       Dataspace.deferTurn(() => {
         // console.log('after defer');

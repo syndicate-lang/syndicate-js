@@ -17,13 +17,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-var Struct = require('./struct.js');
+var { Record } = require('preserves');
 
 function Seal(contents) {
-  if (this === void 0) {
-    return new Seal(contents);
-  }
-
+  if (!(this instanceof Seal)) return new Seal(contents);
   this.contents = contents;
 }
 
@@ -35,10 +32,12 @@ Seal.prototype.toJSON = function () {
   return { '@seal': 0 };
 };
 
-module.exports.Discard = Struct.makeConstructor('discard', []);
-module.exports.Capture = Struct.makeConstructor('capture', ['specification']);
-module.exports.Observe = Struct.makeConstructor('observe', ['specification']);
+module.exports.Discard = Record.makeConstructor('discard', []);
+module.exports.Capture = Record.makeConstructor('capture', ['specification']);
+module.exports.Observe = Record.makeConstructor('observe', ['specification']);
+
+module.exports.Inbound = Record.makeConstructor('inbound', ['assertion']);
+module.exports.Outbound = Record.makeConstructor('outbound', ['assertion']);
+module.exports.Instance = Record.makeConstructor('instance', ['uniqueId']);
+
 module.exports.Seal = Seal;
-module.exports.Inbound = Struct.makeConstructor('inbound', ['assertion']);
-module.exports.Outbound = Struct.makeConstructor('outbound', ['assertion']);
-module.exports.Instance = Struct.makeConstructor('instance', ['uniqueId']);
