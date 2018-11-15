@@ -6,7 +6,7 @@ const UI = require("@syndicate-lang/driver-browser-ui");
 
 const Http = activate require("@syndicate-lang/driver-http-node");
 const Tcp = activate require("@syndicate-lang/driver-tcp-node");
-// import { currentFacet } from "@syndicate-lang/core";
+import { Decoder, Bytes } from "@syndicate-lang/core";
 
 const server = Http.HttpServer(null, 8000);
 
@@ -34,11 +34,11 @@ spawn named 'rootServer' {
 spawn named 'websocketListener' {
   during Http.WebSocket($reqId, server, ['broker'], _) spawn named ['wsConnection', reqId] {
     on message Http.DataIn(reqId, $message) {
-      console.log('got', reqId, new (require('preserves').Decoder)(message).next())
+      console.log('got', reqId, new Decoder(message).next());
       ^ Http.DataOut(reqId, message);
     }
 
-    stop on message Http.DataIn(reqId, "quit");
+    stop on message Http.DataIn(reqId, Bytes.from("quit"));
   }
 }
 
