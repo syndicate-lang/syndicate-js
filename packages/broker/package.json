@@ -1,7 +1,7 @@
 {
   "name": "@syndicate-lang/broker",
   "private": true,
-  "version": "0.0.3",
+  "version": "0.0.4",
   "license": "GPL-3.0+",
   "devDependencies": {
     "@babel/core": "^7",
@@ -11,11 +11,11 @@
     "@syndicate-lang/syntax": "^0.0.18"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.0.16",
-    "@syndicate-lang/driver-browser-ui": "^0.0.13",
-    "@syndicate-lang/driver-http-node": "^0.0.12",
-    "@syndicate-lang/driver-tcp-node": "^0.0.2",
-    "@syndicate-lang/driver-timer": "^0.0.16"
+    "@syndicate-lang/core": "^0.0.17",
+    "@syndicate-lang/driver-browser-ui": "^0.0.14",
+    "@syndicate-lang/driver-http-node": "^0.0.13",
+    "@syndicate-lang/driver-tcp-node": "^0.0.3",
+    "@syndicate-lang/driver-timer": "^0.0.17"
   },
   "scripts": {
     "prepare": "which redo >/dev/null && redo || ../../do"
