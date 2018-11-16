@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { $QuitDataspace, Inbound, Outbound, Dataspace } from "@syndicate-lang/core";
+import { $QuitDataspace, Inbound, Outbound, Dataspace, Double } from "@syndicate-lang/core";
 
 let UI = activate require("@syndicate-lang/driver-browser-ui");
 // @jsx UI.html
@@ -85,7 +85,7 @@ function spawnGame() {
       field this.ypos = 312;
       field this.yvel = 0;
 
-      assert Position(this.xpos, this.ypos);
+      assert Position(Double(this.xpos), Double(this.ypos));
 
       assert Outbound(ui.html('#board-area', <div class="flappy"
                                                   style={`transform: rotate(${2 * this.yvel}deg);
@@ -106,7 +106,7 @@ function spawnGame() {
         }
 
         const ms_per_tick = 1000.0 / 60;
-        on message Inbound(PeriodicTick(ms_per_tick)) {
+        on message Inbound(PeriodicTick(Double(ms_per_tick))) {
           this.xpos += 0.15 * ms_per_tick;
           this.ypos = (this.ypos + this.yvel);
           this.yvel += ms_per_tick * 0.05;
@@ -117,7 +117,7 @@ function spawnGame() {
     spawn named 'border-scroll' {
       let ui = new UI.Anchor();
       field this.pos = 0;
-      on asserted Position($xpos, _) this.pos = xpos % 23;
+      on asserted Position($xpos, _) this.pos = xpos.value % 23;
       assert Outbound(ui.html(
         '#board-area',
           <div class="scrolling-border" style={`background-position-x: ${-this.pos}px`}></div>, 0));
@@ -148,10 +148,10 @@ function spawnGame() {
         }
 
         field this.xpos = xlocation;
-        on asserted Position($xpos, _) this.xpos = xlocation - xpos;
+        on asserted Position($xpos, _) this.xpos = xlocation - xpos.value;
 
         on asserted Position($xpos, $ypos) {
-          if (touchingPillar(xpos, ypos)) {
+          if (touchingPillar(xpos.value, ypos.value)) {
             react {
               assert GameOver();
             }

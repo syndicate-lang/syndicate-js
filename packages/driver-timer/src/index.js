@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { Observe, Dataspace } from "@syndicate-lang/core";
+import { Observe, Dataspace, Float } from "@syndicate-lang/core";
 
 export { PeriodicTick, TimeLaterThan };
 
@@ -38,7 +38,7 @@ spawn named 'driver-timer/PeriodicTick' {
     on start {
       handle = setInterval(Dataspace.wrapExternal(() => {
         ^ PeriodicTick(intervalMS);
-      }), intervalMS);
+      }), Float.unwrap(intervalMS));
     }
     on stop {
       if (handle) {
@@ -58,7 +58,7 @@ spawn named 'driver-timer/TimeLaterThan' {
     let handle = null;
     let finish = Dataspace.backgroundTask();
     on start {
-      let delta = deadlineMS - (+(new Date()));
+      let delta = Float.unwrap(deadlineMS) - (+(new Date()));
       handle = setTimeout(Dataspace.wrapExternal(() => {
         handle = null;
         finish();
