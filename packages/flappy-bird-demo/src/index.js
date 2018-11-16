@@ -45,9 +45,7 @@ spawn named 'game-factory' {
   during GameOver() {
     on stop spawnGame();
     on message UI.WindowEvent('+keypress', $e) {
-      if (e.key !== ' ') {
-        ^ Reset();
-      }
+      if (e.key !== ' ') send Reset();
     }
   }
 }
@@ -56,9 +54,7 @@ function spawnGame() {
   spawn dataspace named 'GameInstance' {
     spawn named 'game-instance-control' {
       during GameOver() assert Outbound(GameOver());
-      on message Inbound(Reset()) {
-        ^ $QuitDataspace;
-      }
+      on message Inbound(Reset()) send $QuitDataspace;
     }
 
     spawn named 'score' {
@@ -143,9 +139,7 @@ function spawnGame() {
 
         stop on (this.xpos < -(PILLAR_WIDTH + FLAPPY_XPOS));
 
-        on start react stop on (this.xpos <= 0) {
-            ^ IncreaseScore();
-        }
+        on start react stop on (this.xpos <= 0) send IncreaseScore();
 
         field this.xpos = xlocation;
         on asserted Position($xpos, _) this.xpos = xlocation - xpos.value;

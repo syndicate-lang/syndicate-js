@@ -39,7 +39,7 @@ spawn named 'multicast_demo' {
     }
 
     on message PeriodicTick(2000) {
-      ^ U.UdpPacket(HANDLE, U.UdpPeer(GROUP_ADDRESS, PORT), genUuid('timestamp'));
+      send U.UdpPacket(HANDLE, U.UdpPeer(GROUP_ADDRESS, PORT), genUuid('timestamp'));
     }
   }
 }

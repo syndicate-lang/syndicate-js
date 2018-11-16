@@ -29,11 +29,11 @@ spawn named 'chatserver' {
 
     assert Present(me);
     during Present($who) {
-      on start { ^ Tcp.DataOut(id, `${who} arrived.\n`); }
-      on stop  { ^ Tcp.DataOut(id, `${who} departed.\n`); }
+      on start send Tcp.DataOut(id, `${who} arrived.\n`);
+      on stop  send Tcp.DataOut(id, `${who} departed.\n`);
     }
 
-    on message Tcp.LineIn(id, $line) { ^ Speak(me, line); }
-    on message Speak($who, $what) { ^ Tcp.DataOut(id, `${who}: ${what}\n`); }
+    on message Tcp.LineIn(id, $line) send Speak(me, line);
+    on message Speak($who, $what) send Tcp.DataOut(id, `${who}: ${what}\n`);
   }
 }

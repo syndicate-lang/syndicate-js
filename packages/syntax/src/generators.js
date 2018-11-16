@@ -139,7 +139,7 @@ export function SyndicateTypeDefinition(node) {
 }
 
 export function MessageSendStatement(node) {
-  this.token("^");
+  this.token("send");
   this.space();
   this.print(node.body, node);
   this.semicolon();

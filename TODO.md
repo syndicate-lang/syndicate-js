@@ -10,6 +10,8 @@
  - [DONE] dataspaces, dataspace relays
  - [DONE? Surely there's more] pin down and fix the problems with facet field scope (!!)
  - [DONE] `npm init @syndicate`
+ - [DONE] change send syntax from `^ ...` to `send ...` :-(
+    - Using `^` is too cute. Indentation doesn't work, and forgetting a semicolon causes silent xor!
 
  - [DONE] timer driver
  - [DONE] ui driver
@@ -30,5 +32,3 @@
    some formulations of the game-restart logic in the flappy bird
    demo.
 
- - change send syntax from `^ ...` to `send ...` :-(
-    - it's too cute. Indentation doesn't work, and forgetting a semicolon causes silent xor!

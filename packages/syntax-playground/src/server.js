@@ -126,7 +126,7 @@ spawn named 'websocketEchoServer' {
   during Http.WebSocket($reqId, server, ['echo'], _) {
     on message Http.DataIn(reqId, $message) {
       console.log('got', reqId, message);
-      ^ Http.DataOut(reqId, message);
+      send Http.DataOut(reqId, message);
     }
 
     stop on message Http.DataIn(reqId, "quit");

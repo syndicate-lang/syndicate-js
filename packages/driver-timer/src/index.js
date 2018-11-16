@@ -36,9 +36,8 @@ spawn named 'driver-timer/PeriodicTick' {
     let handle = null;
     let finish = Dataspace.backgroundTask();
     on start {
-      handle = setInterval(Dataspace.wrapExternal(() => {
-        ^ PeriodicTick(intervalMS);
-      }), Float.unwrap(intervalMS));
+      handle = setInterval(Dataspace.wrapExternal(() => { send PeriodicTick(intervalMS); }),
+                           Float.unwrap(intervalMS));
     }
     on stop {
       if (handle) {

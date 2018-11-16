@@ -40,7 +40,7 @@ spawn dataspace named 'C' {
     spawn named 'H' on asserted Inbound(Inbound(Greeting($t))) console.log('Inner dataspace:', t);
     spawn named 'I' on asserted Inbound(Inbound(Greeting('Inner!'))) {
       console.log('I: Terminating F');
-      ^ $QuitDataspace
+      send $QuitDataspace;
     };
   }
 

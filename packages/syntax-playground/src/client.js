@@ -34,7 +34,7 @@ spawn named 'demo' {
     }
 
     on message PeriodicTick(1000) {
-      ^ WS.DataOut(wsId, Bytes.from(genUuid('timestamp')));
+      send WS.DataOut(wsId, Bytes.from(genUuid('timestamp')));
     }
   }
 }

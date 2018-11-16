@@ -40,7 +40,7 @@ export function newFragmentId() {
 spawn named 'GlobalEventFactory' {
   during Observe(P.GlobalEvent($selector, $eventType, _))
   spawn named ['GlobalEvent', selector, eventType] {
-    let sender = Dataspace.wrapExternal((e) => { ^ P.GlobalEvent(selector, eventType, e); });
+    let sender = Dataspace.wrapExternal((e) => { send P.GlobalEvent(selector, eventType, e); });
     function handler(event) {
       sender(event);
       return dealWithPreventDefault(eventType, event);
@@ -66,7 +66,7 @@ spawn named 'GlobalEventFactory' {
 spawn named 'WindowEventFactory' {
   during Observe(P.WindowEvent($eventType, _))
   spawn named ['WindowEvent', eventType] {
-    let sender = Dataspace.wrapExternal((e) => { ^ P.WindowEvent(eventType, e); });
+    let sender = Dataspace.wrapExternal((e) => { send P.WindowEvent(eventType, e); });
     let handler = function (event) {
       sender(event);
       return dealWithPreventDefault(eventType, event);
@@ -147,7 +147,7 @@ spawn named 'UIFragmentFactory' {
 
       if (!(key in eventRegistrations)) {
         let sender = Dataspace.wrapExternal((e) => {
-          ^ P.UIEvent(fragmentId, c.selector, c.eventType, e);
+          send P.UIEvent(fragmentId, c.selector, c.eventType, e);
         });
         function handler(event) {
           sender(event);

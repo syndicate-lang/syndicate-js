@@ -218,7 +218,7 @@ function _server(host, port, httpsOptions) {
 
       on asserted Observe(DataIn(id, _)) {
         ws.on('message', Dataspace.wrapExternal((message) => {
-          ^ DataIn(id, Bytes.fromIO(message));
+          send DataIn(id, Bytes.fromIO(message));
         }));
       }
 

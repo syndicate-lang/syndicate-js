@@ -70,7 +70,7 @@ function _socket(addr, port) {
 
     socket.on('listening', Dataspace.wrapExternal(() => { this.connected = true; }));
     socket.on('message', Dataspace.wrapExternal((message, rinfo) => {
-      ^ UdpPacket(UdpPeer(rinfo.address, rinfo.port), addr, Bytes.fromIO(message));
+      send UdpPacket(UdpPeer(rinfo.address, rinfo.port), addr, Bytes.fromIO(message));
     }));
   };
 

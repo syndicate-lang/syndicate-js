@@ -54,21 +54,6 @@ export default class SyndicateParser extends _original_Parser {
     let previousError = null;
 
     switch (this.state.type) {
-      case tt.bitwiseXOR:
-        if (this.hasPlugin("syndicate")) {
-          let result = this.withBacktracking(
-            () => {
-              this.next();
-              const node = this.startNode();
-              node.body = this.parseExpression();
-              this.semicolon();
-              return this.finishNode(node, "MessageSendStatement");
-            },
-            (err) => { previousError = err; return null; });
-          if (result) return result;
-        }
-        break;
-
       case tt.name:
         if (this.hasPlugin("syndicate")) {
           let result = this.withBacktracking(
@@ -139,6 +124,14 @@ export default class SyndicateParser extends _original_Parser {
                 const node = this.startNode();
                 node.body = this.parseStatement();
                 return this.finishNode(node, "SyndicateReactStatement");
+              }
+
+              if (this.isContextual("send")) {
+                this.next();
+                const node = this.startNode();
+                node.body = this.parseExpression();
+                this.semicolon();
+                return this.finishNode(node, "MessageSendStatement");
               }
 
               if (this.isContextual("assertion") || this.isContextual("message")) {

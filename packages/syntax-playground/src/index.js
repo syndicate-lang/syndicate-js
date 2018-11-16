@@ -56,7 +56,7 @@ spawn named 'view' {
 
 spawn named 'controller' {
   on message UI.GlobalEvent('table#the-table th', 'click', $e) {
-    ^ SetSortColumn(JSON.parse(e.target.dataset.column));
+    send SetSortColumn(JSON.parse(e.target.dataset.column));
   }
 }
 

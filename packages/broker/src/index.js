@@ -35,7 +35,7 @@ spawn named 'websocketListener' {
   during Http.WebSocket($reqId, server, ['broker'], _) spawn named ['wsConnection', reqId] {
     on message Http.DataIn(reqId, $message) {
       console.log('got', reqId, new Decoder(message).next());
-      ^ Http.DataOut(reqId, message);
+      send Http.DataOut(reqId, message);
     }
 
     stop on message Http.DataIn(reqId, Bytes.from("quit"));
@@ -47,7 +47,7 @@ spawn named 'tcpListener' {
     assert Tcp.TcpAccepted(id);
     on message Tcp.DataIn(id, $data) {
       console.log('got', id, data);
-      ^ Tcp.DataOut(id, data);
+      send Tcp.DataOut(id, data);
     }
   }
 }

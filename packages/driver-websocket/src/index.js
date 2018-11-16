@@ -52,7 +52,7 @@ spawn named 'WebSocketFactory' {
 
       ws.onopen = Dataspace.wrapExternal(() => { this.connected = true; });
       ws.onclose = Dataspace.wrapExternal(() => { if (this.connected) { connect(); }});
-      ws.onmessage = Dataspace.wrapExternal((data) => { ^ DataIn(id, Bytes.fromIO(data.data)); });
+      ws.onmessage = Dataspace.wrapExternal((data) => { send DataIn(id, Bytes.fromIO(data.data)) });
     };
 
     const disconnect = () => {

@@ -33,7 +33,7 @@ spawn named 'chatclient' {
       .on('error', Dataspace.wrapExternal((err) => { throw err; }))
       .on('close', Dataspace.wrapExternal(() => { rootFacet.stop(); }))
       .on('data', Dataspace.wrapExternal(
-        (data) => { if (data) { ^ Tcp.DataOut(id, data + '\n'); }}));
+        (data) => { if (data) send Tcp.DataOut(id, data + '\n'); }));
     on stop process.stdin.destroy();
 
     on message Tcp.LineIn(id, $line) { console.log(line.toString('utf-8')); }

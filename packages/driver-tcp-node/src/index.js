@@ -78,7 +78,7 @@ spawn named 'driver/TcpDriver' {
       if (pos !== -1) {
         const line = this.buffer.slice(0, pos);
         this.buffer = this.buffer.slice(pos + 1);
-        ^ LineIn(id, line);
+        send LineIn(id, line);
       }
     }
   }
@@ -107,9 +107,7 @@ function _connectionCommon(rootFacet, id, socket, established) {
     on stop try { socket.destroy() } catch (e) { console.error(e); }
 
     on start react stop on asserted Observe(DataIn(id, _)) {
-      socket.on('data', Dataspace.wrapExternal((data) => {
-        ^ DataIn(id, Bytes.fromIO(data));
-      }));
+      socket.on('data', Dataspace.wrapExternal((data) => { send DataIn(id, Bytes.fromIO(data)); }));
     }
 
     on message DataOut(id, $data) {
