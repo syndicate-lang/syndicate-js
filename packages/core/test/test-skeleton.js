@@ -82,7 +82,7 @@ describe('skeleton', () => {
       const expected = Immutable.fromJS({
         skeleton: [A.constructorInfo, null, [C.constructorInfo, null]],
         constPaths: Immutable.fromJS([[0]]),
-        constVals: Immutable.List([complexPlaceholder]),
+        constVals: Immutable.fromJS([complexPlaceholder]),
         capturePaths: Immutable.fromJS([[1, 0]]),
       });
       expect(analysis).to.equal(expected);
