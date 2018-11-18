@@ -46,9 +46,8 @@ spawn named 'tcpListener' {
   during Tcp.TcpConnection($id, Tcp.TcpListener(8001)) spawn named ['tcpConnection', id] {
     assert Tcp.TcpAccepted(id);
     on message Tcp.DataIn(id, $data) {
-      console.log('got', id, data);
+      console.log('got', id, new Decoder(data).next());
       send Tcp.DataOut(id, data);
     }
   }
 }
-
