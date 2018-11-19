@@ -8,32 +8,24 @@ const Http = activate require("@syndicate-lang/driver-http-node");
 const Tcp = activate require("@syndicate-lang/driver-tcp-node");
 import {
   Set, Bytes,
-  Decoder, Encoder,
-  Discard, Capture, Observe,
+  Encoder, Observe,
   Dataspace, Skeleton, currentFacet,
 } from "@syndicate-lang/core";
 
 const server = Http.HttpServer(null, 8000);
 
 assertion type Connection(connId);
-message type Fragment(connId, data);
 message type Request(connId, body);
 message type Response(connId, body);
 
 // Internal isolation
 assertion type Envelope(body);
 
-// Client ---> Broker
-message type Assert(endpointName, assertion);
-message type Clear(endpointName);
-message type Message(body);
-
-// Client <--- Broker
-message type Add(endpointName, captures);
-message type Del(endpointName, captures);
-message type Msg(endpointName, captures);
-
-assertion type Endpoint(connId, endpointName, assertion);
+const {
+  Assert, Clear, Message,
+  Add, Del, Msg,
+  makeDecoder,
+} = activate require("./protocol");
 
 spawn named 'serverLogger' {
   on asserted Http.Request(_, server, $method, $path, $query, $req) {
@@ -59,7 +51,11 @@ spawn named 'rootServer' {
 spawn named 'websocketListener' {
   during Http.WebSocket($reqId, server, ['broker'], _) spawn named ['wsConnection', reqId] {
     assert Connection(reqId);
-    on message Http.DataIn(reqId, $data) send Fragment(reqId, data);
+    on message Http.DataIn(reqId, $data) {
+      if (data instanceof Bytes) {
+        send Request(reqId, makeDecoder(data).next());
+      }
+    }
     on message Response(reqId, $resp) send Http.DataOut(reqId, new Encoder().push(resp).contents());
   }
 }
@@ -68,7 +64,14 @@ spawn named 'tcpListener' {
   during Tcp.TcpConnection($id, Tcp.TcpListener(8001)) spawn named ['tcpConnection', id] {
     assert Tcp.TcpAccepted(id);
     assert Connection(id);
-    on message Tcp.DataIn(id, $data) send Fragment(id, data);
+    const decoder = makeDecoder(null);
+    on message Tcp.DataIn(id, $data) {
+      decoder.write(data);
+      let v;
+      while ((v = decoder.try_next())) {
+        send Request(id, v);
+      }
+    }
     on message Response(id, $resp) send Tcp.DataOut(id, new Encoder().push(resp).contents());
   }
 }
@@ -79,21 +82,6 @@ spawn named 'connectionHandler' {
     on stop console.log(connId, 'disconnected');
 
     let endpoints = Set();
-
-    const decoder = new Decoder(null, {
-      shortForms: {
-        0: Discard.constructorInfo.label,
-        1: Capture.constructorInfo.label,
-        2: Observe.constructorInfo.label,
-      }
-    });
-    on message Fragment(connId, $data) {
-      decoder.write(data);
-      let v;
-      while ((v = decoder.try_next())) {
-        send Request(connId, v);
-      }
-    }
 
     on message Request(connId, Assert($ep, $a)) {
       if (!endpoints.includes(ep)) {

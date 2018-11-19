@@ -15,7 +15,10 @@
     "@syndicate-lang/driver-browser-ui": "^0.0.15",
     "@syndicate-lang/driver-http-node": "^0.0.14",
     "@syndicate-lang/driver-tcp-node": "^0.0.4",
-    "@syndicate-lang/driver-timer": "^0.0.18"
+    "@syndicate-lang/driver-timer": "^0.0.18",
+    "@syndicate-lang/driver-websocket": "^0.0.9",
+    "webpack": "^4.23.1",
+    "webpack-cli": "^3.1.2"
   },
   "scripts": {
     "prepare": "which redo >/dev/null && redo || ../../do"

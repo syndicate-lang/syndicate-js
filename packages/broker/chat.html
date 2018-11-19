@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Syndicate: Chat</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="style.css" rel="stylesheet">
+    <script src="dist/main.js"></script>
+  </head>
+  <body>
+    <section>
+      <form name="nym_form">
+	<fieldset>
+	  <label class="control-label" for="wsurl">Server:</label>
+	  <input type="text" id="wsurl" name="wsurl" value="ws://localhost:8000/broker">
+
+	  <label class="control-label" for="nym">Nym:</label>
+	  <input type="text" id="nym" name="nym" value="">
+	</fieldset>
+      </form>
+    </section>
+
+    <section>
+      <section id="messages">
+        <h1>Messages</h1>
+	<div id="chat_output"></div>
+      </section>
+      <section id="active_users">
+	<h1>Active Users</h1>
+	<ul id="nymlist"></ul>
+      </section>
+    </section>
+
+    <section>
+      <form id="chat_form" name="chat_form">
+	<fieldset>
+	  <input type="text" id="chat_input" name="chat_input" value="" autocomplete="off">
+	  <button id="send_chat">Send</button>
+	</fieldset>
+      </form>
+    </section>
+  </body>
+</html>
