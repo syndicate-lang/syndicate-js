@@ -359,7 +359,7 @@ Actor.prototype.adhocAssert = function (a) {
 
 Actor.prototype.toString = function () {
   let s = 'Actor(' + this.id;
-  if (this.name !== void 0) s = s + ',' + this.name.toString();
+  if (this.name !== void 0 && this.name !== null) s = s + ',' + this.name.toString();
   return s + ')';
 };
 
@@ -568,7 +568,9 @@ Facet.prototype.enqueueScriptAction = function (action) {
 
 Facet.prototype.toString = function () {
   let s = 'Facet(' + this.actor.id;
-  if (this.actor.name !== void 0) s = s + ',' + this.actor.name.toString();
+  if (this.actor.name !== void 0 && this.actor.name !== null) {
+    s = s + ',' + this.actor.name.toString();
+  }
   s = s + ',' + this.id;
   let f = this.parent;
   while (f != null) {
