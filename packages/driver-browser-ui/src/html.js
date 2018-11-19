@@ -79,3 +79,9 @@ export function htmlToString(j) {
   walk(j);
   return pieces.join('');
 }
+
+export function htmlToNode(j) {
+  var node = document.createElement('div');
+  node.innerHTML = htmlToString(j);
+  return node.firstChild;
+}
