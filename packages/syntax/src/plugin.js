@@ -540,10 +540,10 @@ export default declare((api, options) => {
         path.replaceWith(template(
           `DATASPACE._currentFacet.actor.addFacet(
              DATASPACE._currentFacet,
-             function () { BODY },
+             BODYPROC,
              true);`)({
                DATASPACE: state.DataspaceID,
-               BODY: node.body,
+               BODYPROC: node.bodyProc,
              }));
       },
     },

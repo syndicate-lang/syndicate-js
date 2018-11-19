@@ -162,5 +162,5 @@ export function DuringStatement(node) {
 export function SyndicateReactStatement(node) {
   this.word("react");
   this.space();
-  this.print(node.body, node);
+  this.printBlock(node.bodyProc);
 }

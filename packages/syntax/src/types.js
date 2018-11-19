@@ -196,12 +196,12 @@ defineType("DuringStatement", {
 });
 
 defineType("SyndicateReactStatement", {
-  builder: ["body"],
-  visitor: ["body"],
+  builder: ["bodyProc"],
+  visitor: ["bodyProc"],
   aliases: ["Statement"],
   fields: {
-    body: {
-      validate: assertNodeType("Statement"),
+    bodyProc: {
+      validate: assertNodeType("FunctionExpression"),
     },
   },
 });

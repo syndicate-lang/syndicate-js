@@ -122,7 +122,7 @@ export default class SyndicateParser extends _original_Parser {
               if (this.isContextual("react")) {
                 this.next();
                 const node = this.startNode();
-                node.body = this.parseStatement();
+                node.bodyProc = this.parseSyntheticFunctionStatement();
                 return this.finishNode(node, "SyndicateReactStatement");
               }
 
