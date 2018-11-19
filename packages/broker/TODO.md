@@ -1,0 +1,2 @@
+ - TLS for both WS and TCP
+ - authn, authz
