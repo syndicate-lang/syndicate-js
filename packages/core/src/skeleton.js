@@ -308,6 +308,40 @@ function analyzeAssertion(a) {
   return { skeleton, constPaths, constVals, capturePaths };
 }
 
+function VisibilityRestriction() {}
+
+function instantiateAssertion(a, vs) {
+  let remaining = vs;
+  function walk(a) {
+    if (Capture.isClassOf(a)) {
+      const v = remaining.first();
+      remaining = remaining.shift();
+      walk(a.get(0));
+      return v;
+    }
+
+    if (Discard.isClassOf(a)) {
+      return new VisibilityRestriction();
+      // ^ Doesn't match ANYTHING ELSE, even other
+      // VisibilityRestriction instances. This does the equivalent of
+      // the Racket implementation's `visibility-restriction` stuff,
+      // to a degree.
+    }
+
+    let cls = classOf(a);
+    if (cls !== null) {
+      if (typeof cls === 'number') {
+        return a.map(walk);
+      } else {
+        return new Record(a.label, a.fields.map(walk));
+      }
+    }
+
+    return a;
+  }
+  return walk(a);
+}
+
 ///////////////////////////////////////////////////////////////////////////
 
 module.exports.EVENT_ADDED = EVENT_ADDED;
@@ -316,3 +350,4 @@ module.exports.EVENT_MESSAGE = EVENT_MESSAGE;
 module.exports.Index = Index;
 
 module.exports.analyzeAssertion = analyzeAssertion;
+module.exports.instantiateAssertion = instantiateAssertion;
