@@ -366,6 +366,23 @@ function splitClassValue(v) {
 
 ///////////////////////////////////////////////////////////////////////////
 
+spawn named 'UIChangeablePropertyFactory' {
+  during Observe(P.UIChangeableProperty($selector, $property, _))
+  spawn named ['UIChangeableProperty', selector, property] {
+    on start selectorMatch(document, selector).forEach((node) => {
+      react {
+        field this.value = node[property];
+        assert P.UIChangeableProperty(selector, property, this.value);
+        const handlerClosure = Dataspace.wrapExternal((e) => { this.value = node[property]; });
+        on start eventUpdater('change', handlerClosure, true)(node);
+        on stop eventUpdater('change', handlerClosure, false)(node);
+      }
+    });
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+
 function escapeDataAttributeName(s) {
   // Per https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset,
   // the rules seem to be:

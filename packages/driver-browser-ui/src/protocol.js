@@ -63,6 +63,11 @@ module.exports.UIAttribute = UIAttribute;
 assertion type UIProperty(selector, property, value);
 module.exports.UIProperty = UIProperty;
 
+// Assertion. For clients to monitor the values of properties that,
+// when changed, emit 'change' events.
+assertion type UIChangeableProperty(selector, property, value);
+module.exports.UIChangeableProperty = UIChangeableProperty;
+
 // Messages.
 // NOTE: These do not treat "class" specially!
 message type SetAttribute(selector, attribute, value);
