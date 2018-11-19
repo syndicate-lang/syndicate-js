@@ -45,14 +45,24 @@ spawn named 'WebSocketFactory' {
       ws = new _WebSocket(url, options);
 
       ws.onerror = Dataspace.wrapExternal((e) => {
-        console.error('WebSocket', id, url, e.message);
+        console.error('WebSocket', id, url, e);
         disconnect();
         sleep(1000, connect);
       });
 
       ws.onopen = Dataspace.wrapExternal(() => { this.connected = true; });
       ws.onclose = Dataspace.wrapExternal(() => { if (this.connected) { connect(); }});
-      ws.onmessage = Dataspace.wrapExternal((data) => { send DataIn(id, Bytes.fromIO(data.data)) });
+      ws.onmessage = Dataspace.wrapExternal((data) => {
+        if (typeof Blob !== 'undefined' && data.data instanceof Blob) {
+          var reader = new FileReader();
+          reader.addEventListener("loadend", Dataspace.wrapExternal(() => {
+            send DataIn(id, Bytes.from(reader.result));
+          }));
+          reader.readAsArrayBuffer(data.data);
+        } else {
+          send DataIn(id, Bytes.fromIO(data.data));
+        }
+      });
     };
 
     const disconnect = () => {
