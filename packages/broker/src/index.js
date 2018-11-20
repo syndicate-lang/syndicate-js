@@ -93,7 +93,6 @@ spawn named 'connectionHandler' {
 
           currentFacet().addEndpoint(() => {
             if (Observe.isClassOf(this.assertion)) {
-              console.log("Subscription", connId, ep, this.assertion.toString());
               const spec = Envelope(this.assertion.get(0));
               const analysis = Skeleton.analyzeAssertion(spec);
               analysis.callback = Dataspace.wrap((evt, vs) => {
