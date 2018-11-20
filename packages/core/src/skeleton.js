@@ -105,7 +105,7 @@ Node.prototype.extend = function(skeleton) {
       if (!nextNode) {
         nextNode = new Node(new Continuation(
           node.continuation.cachedAssertions.filter(
-            (a) => Immutable.is(classOf(projectPath(a, path)), cls))));
+            (a) => Immutable.is(classOf(projectPath(unscope(a), path)), cls))));
         table = table.set(cls, nextNode);
         node.edges = node.edges.set(selector, table);
       }
@@ -137,7 +137,7 @@ Index.prototype.addHandler = function(analysisResults, callback) {
   let leaf = constValMap.get(constVals, false);
   if (!leaf) {
     leaf = new Leaf(continuation.cachedAssertions.filter(
-      (a) => projectPaths(a, constPaths).equals(constVals)));
+      (a) => projectPaths(unscope(a), constPaths).equals(constVals)));
     constValMap = constValMap.set(constVals, leaf);
     continuation.leafMap = continuation.leafMap.set(constPaths, constValMap);
   }
@@ -145,9 +145,13 @@ Index.prototype.addHandler = function(analysisResults, callback) {
   if (!handler) {
     let cachedCaptures = Bag.Bag().withMutations((mutable) => {
       leaf.cachedAssertions.forEach((a) => {
-        let captures = projectPaths(a, capturePaths);
-        mutable.set(captures, mutable.get(captures, 0) + 1);
-        return true;
+        return unpackScoped(a, (restrictionPaths, term) => {
+          if (restrictionPaths === false || restrictionPaths.equals(capturePaths)) {
+            let captures = projectPaths(a, capturePaths);
+            mutable.set(captures, mutable.get(captures, 0) + 1);
+          }
+          return true;
+        });
       })
     });
     handler = new Handler(cachedCaptures);
@@ -184,6 +188,8 @@ Index.prototype.removeHandler = function(analysisResults, callback) {
 };
 
 Node.prototype.modify = function(outerValue, m_cont, m_leaf, m_handler) {
+  const [restrictionPaths, outerValueTerm] = unpackScoped(outerValue, (p,t) => [p,t]);
+
   function walkNode(node, termStack) {
     walkContinuation(node.continuation);
     node.edges.forEach((table, selector) => {
@@ -203,12 +209,14 @@ Node.prototype.modify = function(outerValue, m_cont, m_leaf, m_handler) {
   function walkContinuation(continuation) {
     m_cont(continuation, outerValue);
     continuation.leafMap.forEach((constValMap, constPaths) => {
-      let constVals = projectPaths(outerValue, constPaths);
+      let constVals = projectPaths(outerValueTerm, constPaths);
       let leaf = constValMap.get(constVals, false);
       if (leaf) {
         m_leaf(leaf, outerValue);
         leaf.handlerMap.forEach((handler, capturePaths) => {
-          m_handler(handler, projectPaths(outerValue, capturePaths));
+          if (restrictionPaths === false || restrictionPaths.equals(capturePaths)) {
+            m_handler(handler, projectPaths(outerValueTerm, capturePaths));
+          }
           return true;
         });
       }
@@ -216,7 +224,7 @@ Node.prototype.modify = function(outerValue, m_cont, m_leaf, m_handler) {
     });
   }
 
-  walkNode(this, Immutable.Stack().push(Immutable.List([outerValue])));
+  walkNode(this, Immutable.Stack().push(Immutable.List([outerValueTerm])));
 };
 
 function add_to_cont(c, v) { c.cachedAssertions = c.cachedAssertions.add(v); }
@@ -308,38 +316,57 @@ function analyzeAssertion(a) {
   return { skeleton, constPaths, constVals, capturePaths };
 }
 
-function VisibilityRestriction() {}
+function OpaquePlaceholder() {}
 
 function instantiateAssertion(a, vs) {
+  let capturePaths = Immutable.List();
   let remaining = vs;
-  function walk(a) {
+
+  function walk(path, a) {
     if (Capture.isClassOf(a)) {
+      capturePaths = capturePaths.push(path);
       const v = remaining.first();
       remaining = remaining.shift();
-      walk(a.get(0));
+      walk(path, a.get(0));
       return v;
     }
 
     if (Discard.isClassOf(a)) {
-      return new VisibilityRestriction();
-      // ^ Doesn't match ANYTHING ELSE, even other
-      // VisibilityRestriction instances. This does the equivalent of
-      // the Racket implementation's `visibility-restriction` stuff,
-      // to a degree.
+      return new OpaquePlaceholder();
+      // ^ Doesn't match ANYTHING ELSE, even other `OpaquePlaceholder`
+      // instances. This prevents unwanted matching against
+      // "don't-care" positions when `VisibilityRestriction`s are in
+      // play.
     }
 
     let cls = classOf(a);
     if (cls !== null) {
       if (typeof cls === 'number') {
-        return a.map(walk);
+        return a.map((v, i) => walk(path.push(i), v));
       } else {
-        return new Record(a.label, a.fields.map(walk));
+        return new Record(a.label, a.fields.map((v, i) => walk(path.push(i), v)));
       }
     }
 
     return a;
   }
-  return walk(a);
+
+  const instantiated = walk(Immutable.List(), a);
+  // ^ Compute `instantiated` completely before retrieving the imperatively-updated `capturePaths`.
+  return new VisibilityRestriction(capturePaths, instantiated);
+}
+
+function VisibilityRestriction(paths, term) {
+  this.paths = paths;
+  this.term = term;
+}
+
+function unscope(a) {
+  return (a instanceof VisibilityRestriction) ? a.term : a;
+}
+
+function unpackScoped(a, k) {
+  return (a instanceof VisibilityRestriction) ? k(a.paths, a.term) : k(false, a);
 }
 
 ///////////////////////////////////////////////////////////////////////////

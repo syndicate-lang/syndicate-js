@@ -62,12 +62,12 @@ spawn named "BrokerClientFactory" {
         on stop w(Clear(ep));
         on message _BrokerPacket(url, Add(ep, $vs)) {
           react {
-            assert FromBroker(url, Skeleton.instantiateAssertion(spec, vs));
+            assert Skeleton.instantiateAssertion(FromBroker(url, spec), vs);
             stop on message _BrokerPacket(url, Del(ep, vs));
           }
         }
         on message _BrokerPacket(url, Msg(ep, $vs)) {
-          send FromBroker(url, Skeleton.instantiateAssertion(spec, vs));
+          send Skeleton.instantiateAssertion(FromBroker(url, spec), vs);
         }
       }
     }
