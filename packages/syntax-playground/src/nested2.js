@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { Dataspace, inNestedDataspace, Outbound, Inbound } from '@syndicate-lang/core';
+import { Dataspace, Outbound, Inbound } from '@syndicate-lang/core';
 import { $QuitDataspace } from '@syndicate-lang/core';
 
 assertion type Greeting(text);
