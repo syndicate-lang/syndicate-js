@@ -98,7 +98,9 @@ function _connectionCommon(rootFacet, id, socket, established) {
         react assert TcpRejected(id, err);
       } else {
         // Post-establishment error
-        console.error(err);
+        if (err.errno !== 'ECONNRESET') {
+          console.error(err);
+        }
         rootFacet.stop();
       }
     }));
