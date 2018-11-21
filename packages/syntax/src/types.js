@@ -153,7 +153,7 @@ defineType("SyndicateTypeDefinition", {
       ),
     },
     wireName: {
-      validate: assertNodeType("StringLiteral"),
+      validate: assertNodeType("Expression"),
       optional: true,
     },
   }

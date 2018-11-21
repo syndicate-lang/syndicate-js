@@ -450,10 +450,11 @@ export default declare((api, options) => {
 
       SyndicateTypeDefinition(path, state) {
         const { node } = path;
-        path.replaceWith(template(`const ID = RECORD.makeConstructor(WIRE, FORMALS);`)({
+        path.replaceWith(template(`const ID = RECORD.makeBasicConstructor(WIRE, FORMALS);`)({
           ID: node.id,
           RECORD: state.RecordID,
-          WIRE: node.wireName || t.stringLiteral(node.id.name),
+          WIRE: node.wireName ||
+            template.expression(`Symbol.for(N)`)({N: t.stringLiteral(node.id.name)}),
           FORMALS: t.arrayExpression(node.formals.map((f) => t.stringLiteral(f.name))),
         }));
       },

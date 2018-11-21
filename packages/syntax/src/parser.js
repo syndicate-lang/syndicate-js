@@ -145,8 +145,7 @@ export default class SyndicateParser extends _original_Parser {
                 node.formals = node.params;
                 delete node.params; // eww
                 if (this.eat(tt.eq)) {
-                  if (!this.match(tt.string)) { this.unexpected(null, tt.string); }
-                  node.wireName = this.parseLiteral(this.state.value, "StringLiteral");
+                  node.wireName = this.parseExpression();
                 }
                 this.semicolon();
                 return this.finishNode(node, "SyndicateTypeDefinition");
