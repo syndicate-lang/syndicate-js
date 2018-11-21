@@ -14,10 +14,14 @@ import {
 
 const server = Http.HttpServer(null, 8000);
 
+const fs = require('fs');
+
 assertion type ConnectionName(scope, id);
 assertion type Connection(connId);
 message type Request(connId, body);
 message type Response(connId, body);
+
+message type Disconnect(connId);
 
 // Internal isolation
 assertion type Envelope(scope, body);
@@ -42,11 +46,24 @@ spawn named 'rootServer' {
     assert :snapshot Http.Response(
       reqId, 200, "OK", {"Content-type": "text/html"},
       '<!DOCTYPE html>' + UI.htmlToString(
-        <div>
-          <p>Hello</p>
-        </div>
+        <html>
+          <head>
+            <meta charset="utf-8"></meta>
+          </head>
+          <body>
+            <script src="dist/monitor.js"></script>
+          </body>
+        </html>
       ));
   }
+
+  during Http.Request($reqId, server, 'get', ['dist', $file], _, _) {
+    const contents = fs.readFileSync(__dirname + '/../dist/' + file);
+    assert :snapshot Http.Response(reqId, 200, "OK", {}, contents);
+  }
+
+  during Connection($name) assert Envelope('monitor', Connection(name));
+  on message Envelope('monitor', Disconnect($name)) send Disconnect(name);
 }
 
 spawn named 'websocketListener' {
@@ -59,6 +76,7 @@ spawn named 'websocketListener' {
       }
     }
     on message Response(name, $resp) send Http.DataOut(reqId, new Encoder().push(resp).contents());
+    stop on message Disconnect(name);
   }
 }
 
@@ -76,6 +94,7 @@ spawn named 'tcpListener' {
       }
     }
     on message Response(name, $resp) send Tcp.DataOut(id, new Encoder().push(resp).contents());
+    stop on message Disconnect(name);
   }
 }
 
