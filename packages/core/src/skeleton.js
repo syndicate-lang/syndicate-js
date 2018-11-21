@@ -69,7 +69,7 @@ function Handler(cachedCaptures) {
 function classOf(v) {
   if (v instanceof Record) {
     return v.getConstructorInfo();
-  } else if (v instanceof Immutable.List) {
+  } else if (Immutable.List.isList(v)) {
     return v.size;
   } else {
     return null;
