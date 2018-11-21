@@ -179,11 +179,11 @@ function _server(host, port, httpsOptions) {
               facet.stop();
             }
             on message DataOut(id, $chunk) {
-              res.write(Bytes.toIO(chunk));
+              res.write(Buffer.from(Bytes.toIO(chunk)));
             }
           }
         } else {
-          res.end(detail);
+          res.end(Buffer.from(Bytes.toIO(detail)));
           facet.stop();
         }
       }
