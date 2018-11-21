@@ -279,6 +279,57 @@ Index.prototype.sendMessage = function(v) {
   });
 };
 
+Node.prototype._debugString = function () {
+  const pieces = [];
+  const inspect = require('util').inspect;
+  function line(indent, content) {
+    pieces.push(indent);
+    pieces.push(content);
+  }
+  function walkNode(indent, n) {
+    line(indent, '  Continuation:');
+    walkContinuation(indent+'    ', n.continuation);
+    if (!n.edges.isEmpty()) line(indent, '  Edges:');
+    n.edges.forEach((table, selector) => {
+      line(indent+'    ', `pop ${selector.popCount} index ${selector.index}`);
+      table.forEach((nextNode, cls) => {
+        line(indent+'      ', inspect(cls));
+        walkNode(indent+'      ', nextNode);
+      });
+    });
+  }
+  function walkCache(indent, cache) {
+    if (!cache.isEmpty()) line(indent, 'Cache:')
+    cache.forEach((v,k) => {
+      line(indent+'  ', (k ? k.toString() + ': ' : '') + v && v.toString());
+    });
+  }
+  function walkContinuation(indent, c) {
+    walkCache(indent, c.cachedAssertions);
+    c.leafMap.forEach((constValMap, constPaths) => {
+      line(indent, constPaths.toString() + ' =?= ...');
+      constValMap.forEach((leaf, constVals) => {
+        line(indent+'  ', constVals.toString());
+        walkLeaf(indent+'    ', leaf);
+      });
+    });
+  }
+  function walkLeaf(indent, l) {
+    walkCache(indent, l.cachedAssertions);
+    l.handlerMap.forEach((handler, capturePaths) => {
+      line(indent, capturePaths.toString() + ' ==> ...');
+      walkHandler(indent+'  ', handler);
+    });
+  }
+  function walkHandler(indent, h) {
+    walkCache(indent, h.cachedCaptures);
+    line(indent, '' + h.callbacks.size + ' callback(s)');
+  }
+  line('', 'INDEX ROOT');
+  walkNode('\n', this);
+  return pieces.join('');
+};
+
 ///////////////////////////////////////////////////////////////////////////
 
 function analyzeAssertion(a) {
