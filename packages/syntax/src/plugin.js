@@ -90,6 +90,7 @@ function astifySyndicatePath(state, a) {
 
 function compilePattern(state, patternPath) {
   let constPaths = [];
+  let constTemps = [];
   let constVals = [];
   let capturePaths = [];
   let captureIds = [];
@@ -102,7 +103,10 @@ function compilePattern(state, patternPath) {
 
   function pushConstant(node) {
     constPaths.push(syndicatePath.slice());
-    constVals.push(node);
+    const id = patternPath.scope.generateUidIdentifier('c' + constTemps.length);
+    constTemps.push([id, node]);
+    constVals.push(id);
+    return id;
   }
 
   function walk(patternPath) {
@@ -134,8 +138,7 @@ function compilePattern(state, patternPath) {
             }
             return [t.arrayExpression(skel), t.callExpression(cloneDeep(pattern.callee), assn)];
           } else {
-            pushConstant(pattern);
-            return [t.nullLiteral(), pattern];
+            return [t.nullLiteral(), pushConstant(pattern)];
           }
         }
 
@@ -147,8 +150,7 @@ function compilePattern(state, patternPath) {
           pushCapture(pattern);
           return [t.nullLiteral(), captureWrap(state, discardAst(state))];
         } else {
-          pushConstant(pattern);
-          return [t.nullLiteral(), pattern];
+          return [t.nullLiteral(), pushConstant(pattern)];
         }
 
       case 'ArrayExpression': {
@@ -165,8 +167,7 @@ function compilePattern(state, patternPath) {
           }
           return [t.arrayExpression(skel), t.arrayExpression(assn)];
         } else {
-          pushConstant(pattern);
-          return [t.nullLiteral(), pattern];
+          return [t.nullLiteral(), pushConstant(pattern)];
         }
       }
 
@@ -176,8 +177,7 @@ function compilePattern(state, patternPath) {
         }
         // FALL THROUGH
       case 'MemberExpression':
-        pushConstant(pattern);
-        return [t.nullLiteral(), pattern];
+        return [t.nullLiteral(), pushConstant(pattern)];
     }
   }
 
@@ -186,6 +186,7 @@ function compilePattern(state, patternPath) {
   return {
     skeletonAst: skeleton,
     constPathsAst: astifySyndicatePath(state, constPaths),
+    constTemps: constTemps,
     constValsAst: listAst(state, t.arrayExpression(constVals)),
     capturePathsAst: astifySyndicatePath(state, capturePaths),
     captureIds: captureIds,
@@ -248,6 +249,7 @@ function translateEndpoint(state, path, expectedEvt) {
 
   path.replaceWith(template(
     `DATASPACE._currentFacet.addEndpoint(function () {
+       CONSTTEMPS;
        let HANDLER = {
          skeleton: SKELETON,
          constPaths: CONSTPATHS,
@@ -268,6 +270,7 @@ function translateEndpoint(state, path, expectedEvt) {
        HANDLER: path.scope.generateUidIdentifier("handler"),
        SKELETON: info.skeletonAst,
        CONSTPATHS: info.constPathsAst,
+       CONSTTEMPS: info.constTemps.map(([n,i]) => template(`const N = I;`)({N:n, I:i})),
        CONSTVALS: info.constValsAst,
        CAPTUREPATHS: info.capturePathsAst,
        EVT: _evt,
