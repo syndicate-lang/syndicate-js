@@ -33,6 +33,8 @@ Seal.prototype.toJSON = function () {
 };
 
 module.exports.Discard = Record.makeConstructor('discard', []);
+module.exports.Discard._instance = module.exports.Discard();
+
 module.exports.Capture = Record.makeConstructor('capture', ['specification']);
 module.exports.Observe = Record.makeConstructor('observe', ['specification']);
 

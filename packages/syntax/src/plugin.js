@@ -61,7 +61,7 @@ function hasCapturesOrDiscards(nodePath) {
   return result;
 }
 
-const _discardAst = template.expression(`SYNDICATE.Discard()`);
+const _discardAst = template.expression(`SYNDICATE.Discard._instance`);
 function discardAst(state) {
   return _discardAst({ SYNDICATE: state.SyndicateID });
 }
