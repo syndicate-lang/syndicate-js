@@ -1,4 +1,4 @@
-# To be invoked with PACKAGENAME/lib/FOO.js or PACKAGENAME/dist/main.js
+# To be invoked with PACKAGENAME/lib/FOO.js or PACKAGENAME/dist/FOO.js
 targettempfile="$(pwd)/$3"
 mkdir -p "$(dirname "$1")"
 cd "$(dirname "$1")"/..
@@ -21,9 +21,9 @@ case "$1" in
         npx syndicate-babel "src/$file"
         ;;
     */dist/*)
-        for d in src/*.js; do echo lib/$(basename $d); done | xargs redo-ifchange
-        redo-ifchange webpack.config.js
-        for maybedep in $(npx webpack --json -o "$targettempfile" | jq -r '.modules[].identifier')
+        configfile=$(basename "$1" .js).webpack.config.js
+        redo-ifchange $configfile
+        for maybedep in $(npx webpack --config "$configfile" --json -o "$targettempfile" | jq -r '.modules[].identifier')
         do
             [ -f "$maybedep" ] && echo "$maybedep"
         done | xargs redo-ifchange
