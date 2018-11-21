@@ -181,9 +181,9 @@ Index.prototype.removeHandler = function(analysisResults, callback) {
     constValMap = constValMap.remove(constVals);
   }
   if (constValMap.isEmpty()) {
-    continuation.leafMap.remove(constPaths);
+    continuation.leafMap = continuation.leafMap.remove(constPaths);
   } else {
-    continuation.leafMap.set(constPaths, constValMap);
+    continuation.leafMap = continuation.leafMap.set(constPaths, constValMap);
   }
 };
 
