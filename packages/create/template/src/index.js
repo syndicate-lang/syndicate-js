@@ -6,7 +6,7 @@ message type Greeting(who);
 
 spawn named 'sender' {
   on asserted Observe(Greeting(_)) {
-    ^ Greeting("world");
+    send Greeting("world");
   }
 }
 
