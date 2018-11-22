@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------
-// @syndicate-lang/driver-tcp-node, TCP support for Syndicate/js
+// @syndicate-lang/driver-unixsocket-node, Unix socket support for Syndicate/js
 // Copyright (C) 2016-2018 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -18,67 +18,86 @@
 
 import { currentFacet, Observe, Dataspace, genUuid, Bytes } from "@syndicate-lang/core";
 const net = require('net');
+const fs = require('fs');
 
-assertion type TcpConnection(id, spec);
-assertion type TcpAccepted(id);
-assertion type TcpRejected(id, reason);
+assertion type UnixSocketConnection(id, spec);
+assertion type UnixSocketAccepted(id);
+assertion type UnixSocketRejected(id, reason);
 
-message type LineIn(id, line);
+// message type LineIn(id, line); // TODO: abstract out this common protocol
 message type DataIn(id, chunk);
 message type DataOut(id, chunk);
 
-assertion type TcpAddress(host, port);
-assertion type TcpListener(port);
+assertion type UnixSocketClient(path);
+assertion type UnixSocketServer(path);
 
 export {
-  TcpConnection, TcpAccepted, TcpRejected,
-  DataOut, DataIn, LineIn,
-  TcpAddress, TcpListener,
+  UnixSocketConnection, UnixSocketAccepted, UnixSocketRejected,
+  DataOut, DataIn,
+  UnixSocketClient, UnixSocketServer,
 };
 
-spawn named 'driver/TcpDriver' {
-  during Observe(TcpConnection(_, TcpListener($port))) spawn named ['driver/TcpListener', port] {
+spawn named 'driver/UnixSocketDriver' {
+  during Observe(UnixSocketConnection(_, UnixSocketServer($path)))
+  spawn named ['driver/UnixSocketServer', path] {
     let finish = Dataspace.backgroundTask();
     on stop finish();
 
     let server = net.createServer(Dataspace.wrapExternal((socket) => {
-      let id = genUuid('tcp' + port);
-      spawn named ['driver/TcpInbound', id] {
-        assert TcpConnection(id, TcpListener(port));
-        on asserted TcpAccepted(id) _connectionCommon.call(this, currentFacet(), id, socket, true);
-        stop on retracted TcpAccepted(id);
-        stop on asserted TcpRejected(id, _);
+      let id = genUuid('unix:' + path);
+      spawn named ['driver/UnixSocketInbound', id] {
+        assert UnixSocketConnection(id, UnixSocketServer(path));
+        on asserted UnixSocketAccepted(id) _connectionCommon.call(this, currentFacet(), id, socket, true);
+        stop on retracted UnixSocketAccepted(id);
+        stop on asserted UnixSocketRejected(id, _);
       }
     }));
 
-    server.on('error', Dataspace.wrapExternal((err) => { throw err; }));
-    server.listen(port, '0.0.0.0');
+    let retried = false;
+    server.on('error', Dataspace.wrapExternal((err) => {
+      if (err.code === 'EADDRINUSE') {
+        // Potentially-stale socket file sitting around. Try
+        // connecting to it to see if it is alive, and remove it if
+        // not.
+        if (retried) {
+          // We're on our second go already, give up.
+          throw err;
+        } else {
+          retried = true;
+          const probe = new net.Socket();
+          probe.on('error', Dataspace.wrapExternal((e) => {
+            if (e.code === 'ECONNREFUSED') {
+              fs.unlinkSync(path);
+              server.listen(path);
+            } else {
+              // Something else went wrong! Give up the original listen.
+              console.error('Problem while probing potentially-stale socket', e);
+              throw err;
+            }
+          }));
+          probe.connect(path, Dataspace.wrapExternal((sock) => {
+            try { sock.destroy() } catch (e) { console.error(e); }
+            throw err;
+          }));
+        }
+      } else {
+        throw err;
+      }
+    }));
+    server.listen(path);
     on stop try { server.close() } catch (e) { console.error(e); }
   }
 
-  during TcpConnection($id, TcpAddress($host, $port))
-  spawn named ['driver/TcpOutbound', id, host, port] {
+  during UnixSocketConnection($id, UnixSocketClient($path))
+  spawn named ['driver/UnixSocketOutbound', id, path] {
     let finish = Dataspace.backgroundTask();
     on stop finish();
 
     let socket = new net.Socket();
 
     on start {
-      socket.connect(port, host);
+      socket.connect(path);
       _connectionCommon.call(this, currentFacet(), id, socket, false);
-    }
-  }
-
-  during Observe(LineIn($id, _)) spawn named ['driver/TcpLineReader', id] {
-    field this.buffer = Bytes();
-    on message DataIn(id, $data) this.buffer = Bytes.concat([this.buffer, data]);
-    dataflow {
-      const pos = this.buffer.indexOf(10);
-      if (pos !== -1) {
-        const line = this.buffer.slice(0, pos);
-        this.buffer = this.buffer.slice(pos + 1);
-        send LineIn(id, line);
-      }
     }
   }
 }
@@ -88,13 +107,13 @@ function _connectionCommon(rootFacet, id, socket, established) {
     field this.ready = established;
 
     socket.on('ready', Dataspace.wrapExternal(() => {
-      if (!established) react assert TcpAccepted(id);
+      if (!established) react assert UnixSocketAccepted(id);
       this.ready = true;
     }));
     socket.on('error', Dataspace.wrapExternal((err) => {
       if (!this.ready) {
         // Pre-connection error: "rejected"
-        react assert TcpRejected(id, err);
+        react assert UnixSocketRejected(id, err);
       } else {
         // Post-establishment error
         if (err.errno !== 'ECONNRESET') {

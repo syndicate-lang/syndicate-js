@@ -6,6 +6,7 @@ const UI = require("@syndicate-lang/driver-browser-ui");
 
 const Http = activate require("@syndicate-lang/driver-http-node");
 const Tcp = activate require("@syndicate-lang/driver-tcp-node");
+const UnixSocket = activate require("@syndicate-lang/driver-unixsocket-node");
 import {
   Set, Bytes,
   Encoder, Observe,
@@ -94,6 +95,25 @@ spawn named 'tcpListener' {
       }
     }
     on message Response(name, $resp) send Tcp.DataOut(id, new Encoder().push(resp).contents());
+    stop on message Disconnect(name);
+  }
+}
+
+spawn named 'unixListener' {
+  during UnixSocket.UnixSocketConnection($id, UnixSocket.UnixSocketServer("./sock"))
+  spawn named ['unixConnection', id] {
+    const name = ConnectionName('broker', id);
+    assert UnixSocket.UnixSocketAccepted(id);
+    assert Connection(name);
+    const decoder = makeDecoder(null);
+    on message UnixSocket.DataIn(id, $data) {
+      decoder.write(data);
+      let v;
+      while ((v = decoder.try_next())) {
+        send Request(name, v);
+      }
+    }
+    on message Response(name, $resp) send UnixSocket.DataOut(id, new Encoder().push(resp).contents());
     stop on message Disconnect(name);
   }
 }
