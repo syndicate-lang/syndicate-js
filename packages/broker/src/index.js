@@ -82,7 +82,7 @@ spawn named 'websocketListener' {
 
 spawn named 'tcpListener' {
   during Tcp.TcpConnection($id, Tcp.TcpListener(8001)) spawn named ['tcpConnection', id] {
-    const name = ConnectionName(scope, id);
+    const name = ConnectionName('broker', id);
     assert Tcp.TcpAccepted(id);
     assert Connection(name);
     const decoder = makeDecoder(null);
