@@ -1,7 +1,7 @@
 {
-  "name": "@syndicate-lang/driver-tcp-node",
-  "version": "0.0.5",
-  "description": "TCP support for Syndicate/js on node.js",
+  "name": "@syndicate-lang/driver-streams-node",
+  "version": "0.0.0",
+  "description": "Node.js Readable/Writable/Duplex/Transform stream support for Syndicate/js",
   "main": "lib/index.js",
   "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
@@ -12,14 +12,13 @@
   "scripts": {
     "prepare": "which redo >/dev/null && redo || ../../do"
   },
-  "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-tcp-node",
+  "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-streams-node",
   "devDependencies": {
     "@babel/core": "^7.1.2",
     "@babel/preset-env": "^7.1.0",
     "@syndicate-lang/syntax": "^0.0.20"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.0.18",
-    "@syndicate-lang/driver-timer": "^0.0.19"
+    "@syndicate-lang/core": "^0.0.18"
   }
 }

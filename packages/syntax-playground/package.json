@@ -17,7 +17,7 @@
     "@syndicate-lang/core": "^0.0.18",
     "@syndicate-lang/driver-browser-ui": "^0.0.16",
     "@syndicate-lang/driver-http-node": "^0.0.15",
-    "@syndicate-lang/driver-tcp-node": "^0.0.5",
+    "@syndicate-lang/driver-streams-node": "^0.0.0",
     "@syndicate-lang/driver-timer": "^0.0.19",
     "@syndicate-lang/driver-udp-node": "^0.0.9",
     "@syndicate-lang/driver-websocket": "^0.0.10",

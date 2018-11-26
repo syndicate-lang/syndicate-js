@@ -1,5 +1,6 @@
+"use strict";
 //---------------------------------------------------------------------------
-// @syndicate-lang/syntax-test, a demo of Syndicate extensions to JS.
+// @syndicate-lang/driver-streams-node, Stream support for Syndicate/js
 // Copyright (C) 2016-2018 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -16,26 +17,5 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-const { genUuid } = require("@syndicate-lang/core");
-const S = activate require("@syndicate-lang/driver-streams-node");
-
-message type Speak(who, what);
-assertion type Present(who);
-
-spawn named 'chatserver' {
-  on asserted S.IncomingConnection($id, S.TcpListener(5999)) {
-    const me = genUuid('user');
-    spawn named ['connectedUser', me] {
-      stop on retracted S.Duplex(id);
-
-      assert Present(me);
-      during Present($who) {
-        on start send S.Push(id, `${who} arrived.\n`, null);
-        on stop  send S.Push(id, `${who} departed.\n`, null);
-      }
-
-      on message S.Line(id, $line) send Speak(me, line);
-      on message Speak($who, $what) send S.Push(id, `${who}: ${what}\n`, null);
-    }
-  }
-}
+Object.assign(module.exports, activate require('./streams.js'));
+Object.assign(module.exports, activate require('./net.js'));

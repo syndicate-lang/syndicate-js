@@ -16,26 +16,34 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { Dataspace, genUuid, currentFacet } from "@syndicate-lang/core";
-const Tcp = activate require("@syndicate-lang/driver-tcp-node");
-const split = require('split');
+import { Observe, Dataspace, genUuid, currentFacet } from "@syndicate-lang/core";
+const S = activate require("@syndicate-lang/driver-streams-node");
+const net = require('net');
+
+const stdin = genUuid('stdin');
+const stdout = genUuid('stdout');
+spawn named 'stdioServer' {
+  during Observe(S.Readable(stdin)) spawn S.readableStreamBehaviour(stdin, process.stdin);
+  during Observe(S.Writable(stdout)) spawn S.writableStreamBehaviour(stdout, process.stdout);
+}
 
 spawn named 'chatclient' {
   const id = genUuid('tcpconn');
-  const rootFacet = currentFacet();
-
-  assert Tcp.TcpConnection(id, Tcp.TcpAddress('localhost', 5999));
-  stop on asserted Tcp.TcpRejected(id, $err) {
+  assert S.OutgoingConnection(id, S.TcpAddress('localhost', 5999));
+  stop on message S.ConnectionRejected(id, $err) {
     console.error('Connection rejected', err);
   }
-  during Tcp.TcpAccepted(id) {
-    on start process.stdin.pipe(split())
-      .on('error', Dataspace.wrapExternal((err) => { throw err; }))
-      .on('close', Dataspace.wrapExternal(() => { rootFacet.stop(); }))
-      .on('data', Dataspace.wrapExternal(
-        (data) => { if (data) send Tcp.DataOut(id, data + '\n'); }));
-    on stop process.stdin.destroy();
+  stop on message S.ConnectionAccepted(id) {
+    react {
+      stop on retracted S.Duplex(id);
+      stop on retracted S.Readable(stdin);
+      stop on retracted S.Writable(stdout);
 
-    on message Tcp.LineIn(id, $line) { console.log(line.toString('utf-8')); }
+      assert S.BackPressure(stdin, id);
+      assert S.BackPressure(id, stdout);
+
+      on message S.Line(stdin, $line) send S.Push(id, line.toString('utf-8') + '\n', null);
+      on message S.Line(id, $line) send S.Push(stdout, line.toString('utf-8') + '\n', null);
+    }
   }
 }

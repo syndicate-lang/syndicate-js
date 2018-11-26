@@ -5,8 +5,8 @@ const UI = require("@syndicate-lang/driver-browser-ui");
 // @jsxFrag UI.htmlFragment
 
 const Http = activate require("@syndicate-lang/driver-http-node");
-const Tcp = activate require("@syndicate-lang/driver-tcp-node");
-const UnixSocket = activate require("@syndicate-lang/driver-unixsocket-node");
+const S = activate require("@syndicate-lang/driver-streams-node");
+
 import {
   Set, Bytes,
   Encoder, Observe,
@@ -82,38 +82,31 @@ spawn named 'websocketListener' {
 }
 
 spawn named 'tcpListener' {
-  during Tcp.TcpConnection($id, Tcp.TcpListener(8001)) spawn named ['tcpConnection', id] {
-    const name = ConnectionName('broker', id);
-    assert Tcp.TcpAccepted(id);
-    assert Connection(name);
-    const decoder = makeDecoder(null);
-    on message Tcp.DataIn(id, $data) {
-      decoder.write(data);
-      let v;
-      while ((v = decoder.try_next())) {
-        send Request(name, v);
-      }
-    }
-    on message Response(name, $resp) send Tcp.DataOut(id, new Encoder().push(resp).contents());
-    stop on message Disconnect(name);
+  on asserted S.IncomingConnection($id, S.TcpListener(8001)) {
+    spawnStreamConnection('tcpBroker', id);
   }
 }
 
 spawn named 'unixListener' {
-  during UnixSocket.UnixSocketConnection($id, UnixSocket.UnixSocketServer("./sock"))
-  spawn named ['unixConnection', id] {
+  on asserted S.IncomingConnection($id, S.UnixSocketServer("./sock")) {
+    spawnStreamConnection('unixBroker', id);
+  }
+}
+
+function spawnStreamConnection(debugLabel, id) {
+  spawn named [debugLabel, id] {
+    stop on retracted S.Duplex(id);
     const name = ConnectionName('broker', id);
-    assert UnixSocket.UnixSocketAccepted(id);
     assert Connection(name);
     const decoder = makeDecoder(null);
-    on message UnixSocket.DataIn(id, $data) {
+    on message S.Data(id, $data) {
       decoder.write(data);
       let v;
       while ((v = decoder.try_next())) {
         send Request(name, v);
       }
     }
-    on message Response(name, $resp) send UnixSocket.DataOut(id, new Encoder().push(resp).contents());
+    on message Response(name, $resp) send S.Push(id, new Encoder().push(resp).contents(), null);
     stop on message Disconnect(name);
   }
 }
