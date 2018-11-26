@@ -32,3 +32,6 @@
    some formulations of the game-restart logic in the flappy bird
    demo.
 
+ - driver-streams-node/src/subprocess.js: perhaps figure out some way
+   of blocking SIGQUIT, which I'm currently using to get debug output,
+   in children, so they don't terminate too?
