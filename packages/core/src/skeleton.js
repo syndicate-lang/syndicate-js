@@ -279,7 +279,7 @@ Index.prototype.sendMessage = function(v) {
   });
 };
 
-Node.prototype._debugString = function () {
+Node.prototype._debugString = function (outerIndent) {
   const pieces = [];
   const inspect = require('util').inspect;
   function line(indent, content) {
@@ -325,8 +325,8 @@ Node.prototype._debugString = function () {
     walkCache(indent, h.cachedCaptures);
     line(indent, '' + h.callbacks.size + ' callback(s)');
   }
-  line('', 'INDEX ROOT');
-  walkNode('\n', this);
+  line(outerIndent || '', 'INDEX ROOT');
+  walkNode(outerIndent || '\n', this);
   return pieces.join('');
 };
 

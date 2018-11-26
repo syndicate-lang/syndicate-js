@@ -104,6 +104,12 @@ function bootModule(mod) {
   if (typeof document !== 'undefined') {
     document.addEventListener("DOMContentLoaded", (e) => { g.start(); });
   } else {
+    process.on('SIGQUIT', () => {
+      console.log('---------------------------------------------------------------------------');
+      console.log(g.index.root._debugString());
+      console.log('ACTORS');
+      g.actors.forEach((a) => console.log('  ' + a.toString()));
+    });
     g.start();
   }
 }
