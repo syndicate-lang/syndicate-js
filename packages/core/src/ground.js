@@ -107,6 +107,18 @@ function bootModule(mod) {
     process.on('SIGQUIT', () => {
       console.log('---------------------------------------------------------------------------');
       console.log(g.index.root._debugString());
+      console.log('FACET TREE');
+      g.actors.forEach((a) => {
+        console.log('  ' + a.toString());
+        function walkFacet(indent, f) {
+          console.log(indent + f.toString());
+          f.endpoints.forEach((ep) => {
+            console.log(indent + '  - ' + ep.id + ': ' + (ep.assertion && ep.assertion.toString()));
+          });
+          f.children.forEach((child) => { walkFacet(indent + '  ', child); });
+        }
+        a.rootFacet.children.forEach((child) => { walkFacet('    ', child); });
+      });
       console.log('ACTORS');
       g.actors.forEach((a) => console.log('  ' + a.toString()));
     });
