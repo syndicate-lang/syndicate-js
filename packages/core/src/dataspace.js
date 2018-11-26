@@ -232,6 +232,97 @@ Dataspace.prototype.unsubscribe = function (handler) {
 Dataspace.prototype.endpointHook = function (facet, endpoint) {
 };
 
+Dataspace.prototype._debugString = function (outerIndent) {
+  const pieces = [];
+  pieces.push(this.index.root._debugString(outerIndent));
+  outerIndent = outerIndent || '\n';
+  pieces.push(outerIndent + 'FACET TREE');
+  this.actors.forEach((a) => {
+    pieces.push(outerIndent + '  ' + a.toString());
+    function walkFacet(indent, f) {
+      pieces.push(indent + f.toString());
+      f.endpoints.forEach((ep) => {
+        pieces.push(indent + '  - ' + ep.id + ': ' + (ep.assertion && ep.assertion.toString()));
+      });
+      f.children.forEach((child) => { walkFacet(indent + '  ', child); });
+    }
+    a.rootFacet.children.forEach((child) => { walkFacet(outerIndent + '    ', child); });
+  });
+  pieces.push(outerIndent + 'ACTORS');
+  this.actors.forEach((a) => pieces.push(outerIndent + '  ' + a.toString()));
+  return pieces.join('');
+};
+
+Dataspace.prototype._dotGraph = function () {
+  let id = 0;
+  const assertionIds = {};
+  function _aId(aStr) {
+    if (!(aStr in assertionIds)) assertionIds[aStr] = id++;
+    return assertionIds[aStr];
+  }
+  const assertions = {};
+  function _str(a) {
+    return '' + a;
+  }
+  function walkNode(n) {
+    n.edges.forEach((table) => table.forEach(walkNode));
+    n.continuation.leafMap.forEach((cvMap) => cvMap.forEach((leaf) => {
+      leaf.handlerMap.forEach((handler) => {
+        handler.callbacks.forEach((cb) => {
+          const observing_assertion_str = _str(cb.__endpoint.handler.assertion);
+          leaf.cachedAssertions.forEach((observed_assertion) => {
+            const observed_assertion_str = _str(observed_assertion);
+            _aId(observed_assertion_str);
+            if (!(observed_assertion_str in assertions)) assertions[observed_assertion_str] = {};
+            const t = assertions[observed_assertion_str];
+            if (!(observing_assertion_str in t)) t[observing_assertion_str] = true;
+            _aId(observing_assertion_str);
+          });
+        });
+      });
+    }));
+  }
+  walkNode(this.index.root);
+  const pieces = [];
+  pieces.push('graph G {');
+  pieces.push('\n  overlap=false;');
+  for (const a in assertionIds) {
+    pieces.push(`\n  assn_${assertionIds[a]} [label=${JSON.stringify(a).replace(/ /g,'\\n')}];`);
+  }
+  for (const observed in assertions) {
+    for (const observing in assertions[observed]) {
+      pieces.push(`\n  assn_${assertionIds[observed]} -- assn_${assertionIds[observing]};`);
+    }
+  }
+  this.actors.forEach((ac) => {
+    const acId = id++;
+    pieces.push(`\n  ac_${acId} [label=${JSON.stringify(ac.toString())}];`);
+    function walkFacet(parent) {
+      return (f) => {
+        const facetId = id++;
+        pieces.push(`\n  facet_${facetId} [label="Facet ${f.id}"];`);
+        pieces.push(`\n  ${parent} -- facet_${facetId};`);
+        f.endpoints.forEach((ep) => {
+          const aStr = _str(ep.assertion);
+          pieces.push(`\n  ep_${ep.id} [label="${ep.id}"];`);
+          pieces.push(`\n  facet_${facetId} -- ep_${ep.id};`);
+          if (aStr in assertionIds) {
+            pieces.push(`\n  ep_${ep.id} -- assn_${assertionIds[_str(ep.assertion)]};`);
+          } else {
+            const aId = _aId(aStr);
+            pieces.push(`\n  assn_${aId} [label=${JSON.stringify(aStr).replace(/ /g,'\\n')}];`);
+            pieces.push(`\n  ep_${ep.id} -- assn_${aId};`);
+          }
+        });
+        f.children.forEach(walkFacet(`facet_${facetId}`));
+      };
+    }
+    ac.rootFacet.children.forEach(walkFacet(`ac_${acId}`));
+  });
+  pieces.push('\n}');
+  return pieces.join('');
+};
+
 function Actor(dataspace, name, initialAssertions) {
   this.id = dataspace.nextId++;
   this.dataspace = dataspace;
@@ -610,7 +701,10 @@ Endpoint.prototype._install = function (ds, ac, assertion, handler) {
   this.assertion = assertion;
   this.handler = handler;
   ac.assert(this.assertion);
-  if (this.handler) { ds.subscribe(this.handler); }
+  if (this.handler) {
+    this.handler.callback.__endpoint = this; // for reflection/debugging
+    ds.subscribe(this.handler);
+  }
 };
 
 Endpoint.prototype._uninstall = function (ds, ac, emitPatches) {

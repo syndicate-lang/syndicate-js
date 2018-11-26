@@ -244,17 +244,20 @@ const bindingRegistrationVisitor = {
 function translateEndpoint(state, path, expectedEvt) {
   const { node } = path;
   let info = compilePattern(state, path.get('pattern'));
+  let _assn = path.scope.generateUidIdentifier("assn");
   let _evt = path.scope.generateUidIdentifier("evt");
   let _vs = path.scope.generateUidIdentifier("vs");
 
   path.replaceWith(template(
     `DATASPACE._currentFacet.addEndpoint(function () {
        CONSTTEMPS;
+       const ASSN = ASSERTION;
        let HANDLER = {
          skeleton: SKELETON,
          constPaths: CONSTPATHS,
          constVals: CONSTVALS,
          capturePaths: CAPTUREPATHS,
+         assertion: ASSN,
          callback: DATASPACE.wrap((EVT, VS) => {
            if (EVT === EXPECTED) {
              INITS;
@@ -264,13 +267,15 @@ function translateEndpoint(state, path, expectedEvt) {
            }
          })
        };
-       return [ASSERTION, HANDLER];
+       return [ASSN, HANDLER];
      }, ISDYNAMIC);`)({
        DATASPACE: state.DataspaceID,
        HANDLER: path.scope.generateUidIdentifier("handler"),
        SKELETON: info.skeletonAst,
        CONSTPATHS: info.constPathsAst,
        CONSTTEMPS: info.constTemps.map(([n,i]) => template(`const N = I;`)({N:n, I:i})),
+       ASSN: _assn,
+       ASSERTION: info.assertionAst,
        CONSTVALS: info.constValsAst,
        CAPTUREPATHS: info.capturePathsAst,
        EVT: _evt,
@@ -282,7 +287,6 @@ function translateEndpoint(state, path, expectedEvt) {
          I: t.numericLiteral(i),
        })),
        BODY: maybeTerminalWrap(state, node.terminal, node.body),
-       ASSERTION: info.assertionAst,
        ISDYNAMIC: t.booleanLiteral(node.isDynamic),
      }));
 }

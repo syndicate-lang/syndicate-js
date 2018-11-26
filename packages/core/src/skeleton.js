@@ -22,7 +22,7 @@ const { Record } = require("preserves");
 
 const $Special = require('./special.js');
 const Bag = require('./bag.js');
-const { Capture, Discard } = require('./assertions.js');
+const { Discard, Capture, Observe } = require('./assertions.js');
 
 const EVENT_ADDED = +1;
 const EVENT_REMOVED = -1;
@@ -364,7 +364,7 @@ function analyzeAssertion(a) {
 
   let skeleton = walk(Immutable.List(), a);
 
-  return { skeleton, constPaths, constVals, capturePaths };
+  return { skeleton, constPaths, constVals, capturePaths, assertion: Observe(a) };
 }
 
 function OpaquePlaceholder() {}
