@@ -23,11 +23,11 @@ const S = activate require("@syndicate-lang/driver-streams-node");
 spawn named 'lister' {
   const go = () => {
     react {
+
       const id = genUuid('p');
       assert S.Subprocess(id, 'nc', ['localhost', '80'], {stdio: ['pipe', 'pipe', 'ignore']});
-      stop on message S.SubprocessError(id, $err) {
-        console.error("Couldn't start subprocess", err);
-      }
+      stop on message S.SubprocessError(id, $err) console.error("Couldn't start subprocess", err);
+
       on asserted S.SubprocessRunning(id, _, [$i, $o, _]) {
         send S.Push(i, "GET / HTTP/1.0\r\n\r\n", null);
         send S.Close(i, null);
@@ -36,10 +36,12 @@ spawn named 'lister' {
           on asserted S.End(o) console.log('DONE!');
         }
       }
+
       stop on asserted S.SubprocessExit(id, $code, $signal) {
         console.log('No longer running', new Date(), code, signal);
         sleep(1000, go);
       }
+
     }
   };
   on start go();
