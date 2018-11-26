@@ -44,7 +44,7 @@ case "$1" in
                     fi
                 fi
             done
-        done | redo-ifchange
+        done | xargs redo-ifchange
         configfile=$(basename "$1" .js).webpack.config.js
         redo-ifchange $configfile
         for maybedep in $(npx webpack --config "$configfile" --json -o "$targettempfile" | jq -r '.modules[].identifier')
