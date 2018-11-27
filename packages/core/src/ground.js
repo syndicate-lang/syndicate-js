@@ -106,7 +106,7 @@ function bootModule(mod) {
   } else {
     process.on('SIGQUIT', () => {
       console.log('---------------------------------------------------------------------------');
-      console.log(g._dotGraph());
+      console.log(g._debugString());
     });
     g.start();
   }
