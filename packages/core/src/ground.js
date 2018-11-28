@@ -107,6 +107,14 @@ function bootModule(mod) {
     process.on('SIGQUIT', () => {
       console.log('---------------------------------------------------------------------------');
       console.log(g._debugString());
+
+      g._dotGraph();
+      // const child_process = require('child_process');
+      // const sp = child_process.spawn('dotpreview.sh 100% neato', {
+      //   shell: true,
+      //   stdio: ['pipe', 'ignore', 'ignore']
+      // });
+      // sp.stdin.end(g._dotGraph());
     });
     g.start();
   }

@@ -44,7 +44,7 @@ function Dataspace(bootProc) {
   this.pendingActions = Immutable.List([
     new ActionGroup(null, Immutable.List([new Spawn(null, bootProc, Immutable.Set())]))]);
   this.activatedModules = Immutable.Set();
-  this.actors = Immutable.Set();
+  this.actors = Immutable.Map();
 }
 
 // Parameters
@@ -184,8 +184,8 @@ Dataspace.prototype.refreshAssertions = function () {
   });
 };
 
-Dataspace.prototype.addActor = function (name, bootProc, initialAssertions) {
-  let ac = new Actor(this, name, initialAssertions);
+Dataspace.prototype.addActor = function (name, bootProc, initialAssertions, parentActor) {
+  let ac = new Actor(this, name, initialAssertions, parentActor && parentActor.id);
   this.applyPatch(ac, ac.adhocAssertions.snapshot());
   ac.addFacet(null, () => {
     // Root facet is a dummy "system" facet that exists to hold
@@ -213,8 +213,11 @@ Dataspace.prototype.applyPatch = function (ac, delta) {
   });
 };
 
-Dataspace.prototype.sendMessage = function (m) {
+Dataspace.prototype.sendMessage = function (m, sendingActor) {
   this.index.sendMessage(m);
+  // this.index.sendMessage(m, (leaf, _m) => {
+  //   sendingActor.touchedTopics = sendingActor.touchedTopics.add(leaf);
+  // });
 };
 
 Dataspace.prototype.adjustIndex = function (a, count) {
@@ -256,62 +259,72 @@ Dataspace.prototype._debugString = function (outerIndent) {
 Dataspace.prototype._dotGraph = function () {
   let id = 0;
   const assertionIds = {};
+
+  const nodes = [];
+  const edges = [];
+  const pieces = [];
+
+  function emitNode(type, id, _label, attrs) {
+    const label = _str(_label);
+    pieces.push(`\n  ${id} [label=${JSON.stringify(label)}];`);
+    nodes.push(Object.assign({}, attrs || {}, {type, id, label}));
+  }
+
+  function emitEdge(source, target, maybeDir) {
+    pieces.push(`\n  ${source} -- ${target} [dir=${maybeDir || 'none'}];`);
+    edges.push({source, target, dir: maybeDir || 'none'});
+  }
+
   function _aId(aStr) {
+    // if (aStr.startsWith('observe(Request(') || aStr.startsWith('Request(')) return null;
+    // if (aStr.startsWith('observe(Connection(') || aStr.startsWith('Connection(')) return null;
     if (!(aStr in assertionIds)) assertionIds[aStr] = id++;
     return assertionIds[aStr];
   }
-  const assertions = {};
+
+  let topics = Immutable.Map();
+  function topicForLeaf(leaf) {
+    if (topics.has(leaf)) {
+      return topics.get(leaf);
+    } else {
+      const topic = {id: id++, hasEmitter: false, senders: {}, inbound: {}, outbound: {}};
+      topics = topics.set(leaf, topic);
+      return topic;
+    }
+  }
+
   function _str(a) {
     return '' + a;
   }
-  function walkNode(n) {
-    n.edges.forEach((table) => table.forEach(walkNode));
-    n.continuation.leafMap.forEach((cvMap) => cvMap.forEach((leaf) => {
-      leaf.handlerMap.forEach((handler) => {
-        handler.callbacks.forEach((cb) => {
-          const observing_assertion_str = _str(cb.__endpoint.handler.assertion);
-          leaf.cachedAssertions.forEach((observed_assertion) => {
-            const observed_assertion_str = _str(observed_assertion);
-            _aId(observed_assertion_str);
-            if (!(observed_assertion_str in assertions)) assertions[observed_assertion_str] = {};
-            const t = assertions[observed_assertion_str];
-            if (!(observing_assertion_str in t)) t[observing_assertion_str] = true;
-            _aId(observing_assertion_str);
-          });
-        });
-      });
-    }));
-  }
-  walkNode(this.index.root);
-  const pieces = [];
+
   pieces.push('graph G {');
   pieces.push('\n  overlap=false;');
-  for (const a in assertionIds) {
-    pieces.push(`\n  assn_${assertionIds[a]} [label=${JSON.stringify(a).replace(/ /g,'\\n')}];`);
-  }
-  for (const observed in assertions) {
-    for (const observing in assertions[observed]) {
-      pieces.push(`\n  assn_${assertionIds[observed]} -- assn_${assertionIds[observing]};`);
-    }
-  }
+
   this.actors.forEach((ac) => {
-    const acId = id++;
-    pieces.push(`\n  ac_${acId} [label=${JSON.stringify(ac.toString())}];`);
+    const acId = ac.id;
+    emitNode('actor', `ac_${acId}`, ac.toString());
+    if (this.actors.has(ac.parentId)) {
+      emitEdge(`ac_${ac.parentId}`, `ac_${acId}`, 'forward');
+    }
+    // ac.touchedTopics.forEach((leaf) => {
+    //   const topic = topicForLeaf(leaf);
+    //   topic.senders[acId] = true;
+    //   topic.hasEmitter = true;
+    // });
+    // ac.touchedTopics = Immutable.Set();
     function walkFacet(parent) {
       return (f) => {
         const facetId = id++;
-        pieces.push(`\n  facet_${facetId} [label="Facet ${f.id}"];`);
-        pieces.push(`\n  ${parent} -- facet_${facetId};`);
+        emitNode('facet', `facet_${facetId}`, `Facet ${f.id}`, {parent});
+        emitEdge(parent, `facet_${facetId}`);
         f.endpoints.forEach((ep) => {
-          const aStr = _str(ep.assertion);
-          pieces.push(`\n  ep_${ep.id} [label="${ep.id}"];`);
-          pieces.push(`\n  facet_${facetId} -- ep_${ep.id};`);
-          if (aStr in assertionIds) {
-            pieces.push(`\n  ep_${ep.id} -- assn_${assertionIds[_str(ep.assertion)]};`);
-          } else {
-            const aId = _aId(aStr);
-            pieces.push(`\n  assn_${aId} [label=${JSON.stringify(aStr).replace(/ /g,'\\n')}];`);
-            pieces.push(`\n  ep_${ep.id} -- assn_${aId};`);
+          if (ep.assertion !== void 0) {
+            const aId = _aId(_str(ep.assertion));
+            if (aId) {
+              emitNode('endpoint', `ep_${ep.id}`, ep.id);
+              emitEdge(`facet_${facetId}`, `ep_${ep.id}`);
+              emitEdge(`ep_${ep.id}`, `assn_${aId}`);
+            }
           }
         });
         f.children.forEach(walkFacet(`facet_${facetId}`));
@@ -319,11 +332,57 @@ Dataspace.prototype._dotGraph = function () {
     }
     ac.rootFacet.children.forEach(walkFacet(`ac_${acId}`));
   });
+
+  function walkNode(n) {
+    n.edges.forEach((table) => table.forEach(walkNode));
+    n.continuation.leafMap.forEach((cvMap) => cvMap.forEach((leaf) => {
+      const topic = topicForLeaf(leaf);
+      leaf.cachedAssertions.forEach((observed_assertion) => {
+        const observed_assertion_id = _aId(_str(observed_assertion));
+        if (observed_assertion_id) {
+          topic.inbound[observed_assertion_id] = true;
+          topic.hasEmitter = true;
+        }
+      });
+      leaf.handlerMap.forEach((handler) => {
+        handler.callbacks.forEach((cb) => {
+          const observing_assertion_id = _aId(_str(cb.__endpoint.handler.assertion));
+          if (observing_assertion_id) {
+            topic.outbound[observing_assertion_id] = true;
+          }
+        });
+      });
+    }));
+  }
+  walkNode(this.index.root);
+
+  for (const a in assertionIds) {
+    emitNode('assertion', `assn_${assertionIds[a]}`, a);
+  }
+
+  topics.forEach((topic) => {
+    if (topic.hasEmitter) {
+      emitNode('topic', 'topic_' + topic.id, ''); // `Topic ${topic.id}`);
+      for (const acId in topic.senders) {
+        emitEdge(`ac_${acId}`, `topic_${topic.id}`, 'forward');
+      }
+      for (const aId in topic.inbound) {
+        emitEdge(`assn_${aId}`, `topic_${topic.id}`, 'forward');
+      }
+      for (const aId in topic.outbound) {
+        emitEdge(`topic_${topic.id}`, `assn_${aId}`, 'forward');
+      }
+    }
+  });
+
   pieces.push('\n}');
+
+  require('fs').writeFileSync('d.json', 'var dataspaceContents = ' + JSON.stringify({nodes, edges}, null, 2));
+
   return pieces.join('');
 };
 
-function Actor(dataspace, name, initialAssertions) {
+function Actor(dataspace, name, initialAssertions, parentActorId) {
   this.id = dataspace.nextId++;
   this.dataspace = dataspace;
   this.name = name;
@@ -334,7 +393,9 @@ function Actor(dataspace, name, initialAssertions) {
   this.pendingActions = Immutable.List();
   this.adhocAssertions = new Bag.MutableBag(initialAssertions); // no negative counts allowed
   this.cleanupChanges = new Bag.MutableBag();  // negative counts allowed!
-  dataspace.actors = dataspace.actors.add(this);
+  this.parentId = parentActorId;
+  // this.touchedTopics = Immutable.Set();
+  dataspace.actors = dataspace.actors.set(this.id, this);
 }
 
 Actor.prototype.runPendingScripts = function () {
@@ -478,7 +539,7 @@ function Message(body) {
 
 Message.prototype.perform = function (ds, ac) {
   if (this.body !== void 0) {
-    ds.sendMessage(Preserves.fromJS(this.body));
+    ds.sendMessage(Preserves.fromJS(this.body), ac);
   }
 };
 
@@ -493,7 +554,7 @@ function Spawn(name, bootProc, initialAssertions) {
 }
 
 Spawn.prototype.perform = function (ds, ac) {
-  ds.addActor(this.name, this.bootProc, this.initialAssertions);
+  ds.addActor(this.name, this.bootProc, this.initialAssertions, ac);
 };
 
 Dataspace.spawn = function (name, bootProc, initialAssertions) {
@@ -506,7 +567,7 @@ function Quit() { // TODO: rename? Perhaps to Cleanup?
 
 Quit.prototype.perform = function (ds, ac) {
   ds.applyPatch(ac, ac.cleanupChanges.snapshot());
-  ds.actors = ds.actors.remove(ac);
+  ds.actors = ds.actors.remove(ac.id);
 };
 
 function DeferredTurn(continuation) {

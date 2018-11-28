@@ -29,10 +29,8 @@ spawn named 'chatserver' {
       stop on retracted S.Duplex(id);
 
       assert Present(me);
-      during Present($who) {
-        on start send S.Push(id, `${who} arrived.\n`, null);
-        on stop  send S.Push(id, `${who} departed.\n`, null);
-      }
+      on asserted  Present($who) send S.Push(id, `${who} arrived.\n`, null);
+      on retracted Present($who) send S.Push(id, `${who} departed.\n`, null);
 
       on message S.Line(id, $line) send Speak(me, line);
       on message Speak($who, $what) send S.Push(id, `${who}: ${what}\n`, null);

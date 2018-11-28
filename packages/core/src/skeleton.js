@@ -270,8 +270,9 @@ Index.prototype.adjustAssertion = function(outerValue, delta) {
 Index.prototype.addAssertion = function(v) { this.adjustAssertion(v, +1); };
 Index.prototype.removeAssertion = function (v) { this.adjustAssertion(v, -1); };
 
-Index.prototype.sendMessage = function(v) {
-  this.root.modify(v, ()=>{}, ()=>{}, (h, vs) => {
+const _nop = () => {};
+Index.prototype.sendMessage = function(v, leafCallback) {
+  this.root.modify(v, _nop, leafCallback || _nop, (h, vs) => {
     h.callbacks.forEach((cb) => {
       cb(EVENT_MESSAGE, vs);
       return true;
