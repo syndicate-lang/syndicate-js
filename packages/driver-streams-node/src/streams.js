@@ -245,7 +245,7 @@ spawn named 'driver/stream-line' {
 }
 
 export function spawnConnection(id, spec, s) {
-  spawn named ['IncomingConnection', id] {
+  spawn named ['IncomingConnection', id, spec] {
     assert IncomingConnection(id, spec);
     stop on retracted Observe(IncomingConnection(_, spec)) s.destroy();
     stop on message ConnectionRejected(id, $err) s.destroy(err);
