@@ -439,7 +439,7 @@ export default declare((api, options) => {
       PseudoEventHandler(path, state) {
         const { node } = path;
         if (node.triggerType === "start") {
-          path.replaceWith(template(`DATASPACE._currentFacet.actor.scheduleScript(() => {
+          path.replaceWith(template(`DATASPACE._currentFacet.addStartScript(() => {
                                        BODY;
                                      });`)({
                                        DATASPACE: state.DataspaceID,

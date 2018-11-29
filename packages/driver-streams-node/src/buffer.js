@@ -25,8 +25,19 @@ export {
   PacketRequest,
 };
 
+export function onStartSpawnBufferStream() {
+  const id = genUuid('buffer-stream');
+  on start _spawnBufferStream(id);
+  return id;
+}
+
 export function spawnBufferStream() {
   const id = genUuid('buffer-stream');
+  _spawnBufferStream(id);
+  return id;
+}
+
+function _spawnBufferStream(id) {
   spawn named id {
     stop on retracted Observe(S.Duplex(id));
     assert S.Duplex(id);

@@ -30,7 +30,7 @@ assertion type Counter(id);
 
 function counter() {
   const id = genUuid();
-  spawn named ['counter', id] {
+  on start spawn named ['counter', id] {
     const rootFacet = currentFacet();
 
     assert Counter(id);

@@ -17,7 +17,7 @@ spawn named 'socks-server' {
 
       stop on retracted S.Duplex(conn);
 
-      const buf = S.spawnBufferStream();
+      const buf = S.onStartSpawnBufferStream();
       field this.bufferWanted = true;
       on start react {
         stop on (!this.bufferWanted);
@@ -210,8 +210,7 @@ spawn named 'remap-service' {
         err.errno = err.code = 'ENOTFOUND';
         err.hostname = err.host = host;
         err.port = port;
-        // TODO: should error because no 'on start':
-        send S.ConnectionRejected(id, err);
+        on start send S.ConnectionRejected(id, err);
       }
     } else {
       assert S.OutgoingConnection(id, S.TcpAddress(host, port));

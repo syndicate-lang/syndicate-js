@@ -139,7 +139,9 @@ function inNestedDataspace(bootProc) {
     const outerFacet = Dataspace.currentFacet();
     outerFacet.addDataflow(function () {});
     // ^ eww! Dummy endpoint to keep the root facet of the relay alive.
-    const innerDs = new NestedDataspace(outerFacet, bootProc);
+    const innerDs = new NestedDataspace(outerFacet, function () {
+      Dataspace.currentFacet().addStartScript(() => bootProc.call(this));
+    });
     innerDs.start();
   };
 }

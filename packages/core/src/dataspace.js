@@ -544,6 +544,9 @@ Message.prototype.perform = function (ds, ac) {
 };
 
 Dataspace.send = function (body) {
+  if (!Dataspace._inScript) {
+    throw new Error("Cannot `send` during facet setup; are you missing an `on start { ... }`?");
+  }
   Dataspace._currentFacet.enqueueScriptAction(new Message(body));
 };
 
@@ -558,6 +561,9 @@ Spawn.prototype.perform = function (ds, ac) {
 };
 
 Dataspace.spawn = function (name, bootProc, initialAssertions) {
+  if (!Dataspace._inScript) {
+    throw new Error("Cannot `spawn` during facet setup; are you missing an `on start { ... }`?");
+  }
   Dataspace._currentFacet.enqueueScriptAction(new Spawn(name, bootProc, initialAssertions));
 };
 
@@ -579,6 +585,9 @@ DeferredTurn.prototype.perform = function (ds, ac) {
 };
 
 Dataspace.deferTurn = function (continuation) {
+  if (!Dataspace._inScript) {
+    throw new Error("Cannot defer turn during facet setup; are you missing an `on start { ... }`?");
+  }
   Dataspace._currentFacet.enqueueScriptAction(new DeferredTurn(Dataspace.wrap(continuation)));
 };
 
@@ -697,7 +706,17 @@ Facet.prototype.stop = function (continuation) {
   });
 };
 
+Facet.prototype.addStartScript = function (s) {
+  if (Dataspace._inScript) {
+    throw new Error("Cannot `on start` outside facet setup");
+  }
+  this.actor.scheduleScript(s);
+};
+
 Facet.prototype.addStopScript = function (s) {
+  if (Dataspace._inScript) {
+    throw new Error("Cannot `on stop` outside facet setup");
+  }
   this.stopScripts = this.stopScripts.push(s);
 };
 
