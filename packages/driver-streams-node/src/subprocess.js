@@ -18,9 +18,11 @@
 
 import { currentFacet, Observe, Dataspace, genUuid, Bytes } from "@syndicate-lang/core";
 const S = activate require("./streams");
+const Duplex = require("./duplex");
 const child_process = require('child_process');
 
 assertion type Subprocess(id, command, args, options);
+assertion type SubprocessAddress(command, args, options);
 message type SubprocessError(id, err);
 
 assertion type SubprocessRunning(id, pid, stdio);
@@ -29,12 +31,36 @@ assertion type SubprocessExit(id, code, signal);
 message type SubprocessKill(id, signal); // also on frame teardown
 
 export {
-  Subprocess, SubprocessError,
+  Subprocess, SubprocessAddress, SubprocessError,
   SubprocessRunning, SubprocessExit,
   SubprocessKill,
 };
 
 spawn named 'driver/Subprocess' {
+  during S.OutgoingConnection($id, SubprocessAddress($command, $args, $options))
+  spawn named ['SubprocessConnection', id] {
+    const establishingFacet = currentFacet();
+
+    const sp = child_process.spawn(command,
+                                   args.toJS(),
+                                   (options || Map()).set('stdio',
+                                                          ['pipe', 'pipe', 'inherit']).toJS());
+    const rejecter = Dataspace.wrapExternal(() => {
+      send S.ConnectionRejected(id, null);
+      establishingFacet.stop();
+    });
+    sp.on('exit', rejecter);
+    sp.on('error', rejecter);
+
+    process.nextTick(Dataspace.wrapExternal(() => {
+      sp.off('exit', rejecter);
+      sp.off('error', rejecter);
+      send S.ConnectionAccepted(id);
+      const s = new Duplex(sp.stdout, sp.stdin);
+      establishingFacet.stop(() => { react S.duplexStreamBehaviour(id, s); });
+    }));
+  }
+
   during Subprocess($id, $command, $args, $options) spawn named ['Subprocess', id] {
     const sp = child_process.spawn(command, args.toJS(), options ? options.toJS() : void 0);
 
