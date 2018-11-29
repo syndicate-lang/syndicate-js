@@ -80,7 +80,7 @@ export {
 const READING_STOPPED = 1;
 const WRITING_STOPPED = 2;
 
-function _commonStreamBehaviour(id, s, stopBits) {
+function _commonStreamBehaviour(s, stopBits) {
   on stop try { s.destroy(); } catch (_err) {}
 
   field this.stopBits = stopBits;
@@ -199,7 +199,7 @@ export function readableStreamBehaviour(id, s) {
     assert Readable(id);
     stop on retracted Observe(Readable(id));
 
-    _commonStreamBehaviour.call(this, id, s, WRITING_STOPPED);
+    _commonStreamBehaviour.call(this, s, WRITING_STOPPED);
     _readableStreamBehaviour.call(this, id, s);
   }).call(currentFacet().fields);
 }
@@ -211,7 +211,7 @@ export function writableStreamBehaviour(id, s) {
     assert Writable(id);
     stop on retracted Observe(Writable(id));
 
-    _commonStreamBehaviour.call(this, id, s, READING_STOPPED);
+    _commonStreamBehaviour.call(this, s, READING_STOPPED);
     _writableStreamBehaviour.call(this, id, s);
   }).call(currentFacet().fields);
 }
@@ -223,7 +223,7 @@ export function duplexStreamBehaviour(id, s) {
     assert Duplex(id);
     stop on retracted Observe(Duplex(id));
 
-    _commonStreamBehaviour.call(this, id, s, 0);
+    _commonStreamBehaviour.call(this, s, 0);
     _readableStreamBehaviour.call(this, id, s);
     _writableStreamBehaviour.call(this, id, s);
   }).call(currentFacet().fields);
