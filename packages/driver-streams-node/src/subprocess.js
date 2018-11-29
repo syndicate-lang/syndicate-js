@@ -57,7 +57,12 @@ spawn named 'driver/Subprocess' {
       sp.off('error', rejecter);
       send S.ConnectionAccepted(id);
       const s = new Duplex(sp.stdout, sp.stdin);
-      establishingFacet.stop(() => { react S.duplexStreamBehaviour(id, s); });
+      establishingFacet.stop(() => {
+        react {
+          S.duplexStreamBehaviour(id, s);
+          on stop try { sp.kill('SIGHUP'); } catch (e) {}
+        }
+      });
     }));
   }
 
