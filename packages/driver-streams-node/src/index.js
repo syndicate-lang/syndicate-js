@@ -20,3 +20,4 @@
 Object.assign(module.exports, activate require('./streams.js'));
 Object.assign(module.exports, activate require('./net.js'));
 Object.assign(module.exports, activate require('./subprocess.js'));
+Object.assign(module.exports, activate require('./buffer.js'));
