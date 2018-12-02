@@ -1,0 +1,25 @@
+{
+  "name": "@syndicate-lang/driver-mdns",
+  "version": "0.0.0",
+  "description": "mDNS support for Syndicate/js via Avahi",
+  "main": "lib/index.js",
+  "repository": "github:syndicate-lang/syndicate-js",
+  "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
+  "license": "GPL-3.0+",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepare": "which redo >/dev/null && redo || ../../do"
+  },
+  "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-mdns",
+  "devDependencies": {
+    "@babel/core": "^7.1.2",
+    "@babel/preset-env": "^7.1.0",
+    "@syndicate-lang/syntax": "^0.0.21"
+  },
+  "dependencies": {
+    "@syndicate-lang/core": "^0.0.19",
+    "@syndicate-lang/driver-streams-node": "^0.0.1"
+  }
+}
