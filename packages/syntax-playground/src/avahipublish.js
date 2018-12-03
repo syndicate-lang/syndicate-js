@@ -18,10 +18,10 @@ spawn named 'test' {
     on stop  console.log('-', name, hostName, port, txtDataRecords, address, interfaceName);
   }
 
-  during M.Discovered(M.Service($n, $t), $h, $p, _, $a, "IPv4", $i) {
+  during M.Discovered(M.Service($n, $t), $h, $p, $d, $a, "IPv4", $i) {
     if (t !== '_syndicate._tcp') {
-      on start console.log('**', t, n, h, p, a, i);
-      on stop  console.log('==', t, n, h, p, a, i);
+      on start console.log('**', t, n, h, p, d, a, i);
+      on stop  console.log('==', t, n, h, p, d, a, i);
     }
   }
 }

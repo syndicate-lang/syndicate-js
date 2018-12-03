@@ -126,14 +126,29 @@ spawn named 'driver/avahi-browse' {
       react {
         on retracted S.Readable(stdout) topFacet.stop();
         on message S.Line(stdout, $line) {
-          // We supply a `9` argument to `split` in order to ignore
-          // fields past the port number, because parsing of TXT
-          // record data is unreliable given the way avahi-browse
-          // formats it.
+          // Parsing of TXT record data (appearing after the port
+          // number in an '=' record) is unreliable given the way
+          // avahi-browse formats it.
           //
           // See https://github.com/lathiat/avahi/pull/206.
           //
-          send BrowserInput(id, line.toString('utf-8').split(/;/, 9));
+          // However, it's still useful to have, so we do our best!
+          //
+          const pieces = line.toString('utf-8').split(/;/);
+          if (pieces[0] === '=') {
+            // A resolved address record, which has TXT data.
+            const normalFields = pieces.slice(0, 9);
+            const txtFields = pieces.slice(9).join(';'); // it's these that are dodgy
+            if (txtFields === '') {
+              normalFields.push([]);
+            } else {
+              normalFields.push(txtFields.slice(1,-1).split(/" "/)); // OMG this is vile
+            }
+            send BrowserInput(id, normalFields);
+          } else {
+            // Something else.
+            send BrowserInput(id, pieces);
+          }
         }
 
         on message BrowserInput(id, ["+", $interfaceName, $family, $name, $serviceType, $domain]) {
@@ -143,11 +158,12 @@ spawn named 'driver/avahi-browse' {
               id, ["-", interfaceName, family, name, serviceType, domain]);
             on message BrowserInput(
               id, ['=', interfaceName, family, name, serviceType, domain,
-                   $hostName, $address, $portStr])
+                   $hostName, $address, $portStr, $txtDataRecords])
             {
               const port0 = Number(portStr);
               const port = Number.isNaN(port0) ? null : port0;
-              react assert Discovered(svc, hostName, port, [], address, family, interfaceName);
+              react assert Discovered(
+                svc, hostName, port, txtDataRecords, address, family, interfaceName);
             }
           }
         }
