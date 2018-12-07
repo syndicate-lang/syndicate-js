@@ -176,6 +176,7 @@ function compilePattern(state, patternPath) {
           console.error('Unsupported pattern node type', pattern);
         }
         // FALL THROUGH
+      case 'BinaryExpression':
       case 'MemberExpression':
         return [t.nullLiteral(), pushConstant(pattern)];
     }
