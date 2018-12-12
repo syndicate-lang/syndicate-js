@@ -6,14 +6,22 @@ const UI = require("@syndicate-lang/driver-browser-ui");
 
 const Http = activate require("@syndicate-lang/driver-http-node");
 const S = activate require("@syndicate-lang/driver-streams-node");
+const M = activate require("@syndicate-lang/driver-mdns");
 
 import {
   Set, Bytes,
   Encoder, Observe,
-  Dataspace, Skeleton, currentFacet,
+  Dataspace, Skeleton, currentFacet, genUuid, RandomID
 } from "@syndicate-lang/core";
 
-const server = Http.HttpServer(null, 8000);
+const HTTP_PORT = 8000;
+const TCP_PORT = 8001;
+
+const server = Http.HttpServer(null, HTTP_PORT);
+
+const dataspaceId = 'EToUNUJI0ykSfudmN9Z99wu62qGQB1nd8SHvjNtL5tM'; // public key of root broker
+const localId = RandomID.randomId(8, false);
+const gatewayId = dataspaceId + ':' + localId;
 
 const fs = require('fs');
 
@@ -68,6 +76,11 @@ spawn named 'rootServer' {
 }
 
 spawn named 'websocketListener' {
+  assert M.Publish(M.Service(gatewayId, '_syndicate+ws._tcp'),
+                   null, HTTP_PORT, ["tier=0", "path=/broker"]);
+  assert M.Publish(M.Service(localId, '_syndicate+ws._tcp'),
+                   null, HTTP_PORT, ["tier=0", "path=/monitor"]);
+
   during Http.WebSocket($reqId, server, [$scope], _) spawn named ['wsConnection', scope, reqId] {
     const name = ConnectionName(scope, reqId);
     assert Connection(name);
@@ -82,7 +95,8 @@ spawn named 'websocketListener' {
 }
 
 spawn named 'tcpListener' {
-  on asserted S.IncomingConnection($id, S.TcpListener(8001)) {
+  assert M.Publish(M.Service(gatewayId, '_syndicate._tcp'), null, TCP_PORT, ["tier=0"]);
+  on asserted S.IncomingConnection($id, S.TcpListener(TCP_PORT)) {
     spawnStreamConnection('tcpBroker', id);
   }
 }
@@ -165,4 +179,40 @@ spawn named 'connectionHandler' {
     on message Request(connId, $req) console.log('IN: ', connId.toString(), req.toString());
     on message Response(connId, $resp) console.log('OUT:', connId.toString(), resp.toString());
   }
+}
+
+spawn named 'peerDiscovery' {
+  // during M.DefaultGateway($gwif, _) {
+  //   on start console.log('GW+', gwif);
+  //   on stop  console.log('GW-', gwif);
+    during M.Discovered(
+      M.Service($name, '_syndicate+ws._tcp'), $host, $port, $txt, $addr, "IPv4", $gwif)
+    {
+      const [dsId, peerId] = name.split(':');
+
+      let tier = null;
+      txt.forEach((t) => {
+        t.split(' ').forEach((kv) => {
+          const [k, v] = kv.split('=');
+          if (k === 'tier') {
+            tier = Number.parseInt(v);
+          }
+        });
+      });
+
+      on start console.log('+ws', gwif, tier, name, host, port, addr);
+      on stop  console.log('-ws', gwif, tier, name, host, port, addr);
+    }
+  // }
+
+  /*
+
+If there's a broker on our gateway interface, see if it's better than us.
+  - if it is, use it.
+  - if it's not, pretend it isn't there.
+
+If there's no broker on our gateway interface (or we're pretending
+none exists), try to connect to the top.
+
+   */
 }
