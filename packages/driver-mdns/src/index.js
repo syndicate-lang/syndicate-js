@@ -153,7 +153,7 @@ spawn named 'driver/avahi-browse' {
 
         on message BrowserInput(id, ["+", $interfaceName, $family, $name, $serviceType, $domain]) {
           react {
-            const svc = Service(unescapeLabel(name), serviceType);
+            const svc = Service(unescapeLabel(name), unescapeLabel(serviceType));
             stop on message BrowserInput(
               id, ["-", interfaceName, family, name, serviceType, domain]);
             on message BrowserInput(
