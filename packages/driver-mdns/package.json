@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@syndicate-lang/core": "^0.0.19",
-    "@syndicate-lang/driver-streams-node": "^0.0.1"
+    "@syndicate-lang/driver-streams-node": "^0.0.1",
+    "@syndicate-lang/driver-timer": "^0.0.20"
   }
 }

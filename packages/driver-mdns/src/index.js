@@ -21,6 +21,8 @@
 const { Observe, currentFacet, genUuid } = require("@syndicate-lang/core");
 const S = activate require("@syndicate-lang/driver-streams-node");
 
+Object.assign(module.exports, activate require('./routes.js'));
+
 assertion type Service(name, serviceType) = Symbol.for("mdns-service");
 assertion type Publish(svc, hostName, port, txtDataRecords) = Symbol.for("mdns-publish");
 assertion type Published(svc, hostName, port, txtDataRecords) = Symbol.for("mdns-published");
