@@ -56,7 +56,11 @@ spawn named 'NetDriver' {
                           } else {
                             retried = true;
                             const probe = new net.Socket();
+                            function destroyProbe() {
+                              try { probe.destroy() } catch (e) { console.error(e); }
+                            }
                             probe.on('error', Dataspace.wrapExternal((e) => {
+                              destroyProbe();
                               if (e.code === 'ECONNREFUSED') {
                                 fs.unlinkSync(path);
                                 server.listen(path);
@@ -66,8 +70,8 @@ spawn named 'NetDriver' {
                                 throw err;
                               }
                             }));
-                            probe.connect(path, Dataspace.wrapExternal((sock) => {
-                              try { sock.destroy() } catch (e) { console.error(e); }
+                            probe.connect(path, Dataspace.wrapExternal(() => {
+                              destroyProbe();
                               throw err;
                             }));
                           }
