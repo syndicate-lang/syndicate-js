@@ -1,0 +1,3 @@
+#!/bin/sh
+s6-svwait ../dbus-daemon
+exec avahi-daemon

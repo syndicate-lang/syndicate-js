@@ -1,0 +1,4 @@
+#!/bin/sh
+s6-svwait ../avahi-daemon
+cd /data/packages/broker
+exec node lib/index.js

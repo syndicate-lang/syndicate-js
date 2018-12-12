@@ -1,0 +1,13 @@
+#!/bin/sh
+kill -TERM -1
+while true
+do
+    running="$(ps a)"
+    if [ "$(echo "${running}" | wc -l)" = "3" ]
+    then
+        break
+    else
+        echo Waiting for services to shut down...
+        sleep 1
+    fi
+done

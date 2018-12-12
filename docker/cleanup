@@ -1,0 +1,6 @@
+#!/bin/sh
+cd "$(dirname "$0")"
+sudo rm -rf service/.s6-svscan/control
+sudo rm -rf service/.s6-svscan/lock
+sudo rm -rf service/*/event/
+sudo rm -rf service/*/supervise/
