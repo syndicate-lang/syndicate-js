@@ -10,7 +10,7 @@
     "prepare": "which redo >/dev/null && redo || ../../do"
   },
   "dependencies": {
-    "@oclif/command": "^1",
+    "@oclif/command": "^1.5.6",
     "@oclif/config": "^1",
     "@oclif/plugin-help": "^2",
     "unzip": "^0.1.11"

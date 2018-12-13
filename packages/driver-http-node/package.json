@@ -14,12 +14,12 @@
   },
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-http-node",
   "devDependencies": {
-    "@babel/core": "^7.1.2",
-    "@babel/preset-env": "^7.1.0",
-    "@syndicate-lang/syntax": "^0.0.21"
+    "@babel/core": "^7.2.0",
+    "@babel/preset-env": "^7.2.0",
+    "@syndicate-lang/syntax": "0.0.21"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.0.19",
-    "ws": "^6.1.0"
+    "@syndicate-lang/core": "0.0.19",
+    "ws": "^6.1.2"
   }
 }

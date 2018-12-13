@@ -14,14 +14,14 @@
   },
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-websocket",
   "devDependencies": {
-    "@babel/core": "^7.1.2",
-    "@babel/preset-env": "^7.1.0",
-    "@syndicate-lang/syntax": "^0.0.21"
+    "@babel/core": "^7.2.0",
+    "@babel/preset-env": "^7.2.0",
+    "@syndicate-lang/syntax": "0.0.21"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.0.19",
-    "@syndicate-lang/driver-timer": "^0.0.20",
+    "@syndicate-lang/core": "0.0.19",
+    "@syndicate-lang/driver-timer": "0.0.20",
     "isomorphic-ws": "^4.0.1",
-    "ws": "^6.1.0"
+    "ws": "^6.1.2"
   }
 }

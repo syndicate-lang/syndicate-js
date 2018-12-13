@@ -7,17 +7,17 @@
   "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "devDependencies": {
-    "@babel/core": "^7.1.2",
-    "@babel/plugin-syntax-jsx": "^7.0.0",
-    "@babel/plugin-transform-react-jsx": "^7.0.0",
-    "@babel/preset-env": "^7.1.0",
-    "@syndicate-lang/syntax": "^0.0.21"
+    "@babel/core": "^7.2.0",
+    "@babel/plugin-syntax-jsx": "^7.2.0",
+    "@babel/plugin-transform-react-jsx": "^7.2.0",
+    "@babel/preset-env": "^7.2.0",
+    "@syndicate-lang/syntax": "0.0.21"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.0.19",
-    "@syndicate-lang/driver-browser-ui": "^0.0.17",
-    "@syndicate-lang/driver-timer": "^0.0.20",
-    "webpack": "^4.23.1",
+    "@syndicate-lang/core": "0.0.19",
+    "@syndicate-lang/driver-browser-ui": "0.0.17",
+    "@syndicate-lang/driver-timer": "0.0.20",
+    "webpack": "^4.27.1",
     "webpack-cli": "^3.1.2"
   }
 }
