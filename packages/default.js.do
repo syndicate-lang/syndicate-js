@@ -19,6 +19,7 @@ case "$1" in
         file=$(basename "$1")
         redo-ifchange "src/$file"
         npx syndicate-babel "src/$file"
+        # curl -fsS --data-binary @"src/$file" http://localhost:14641/compile/"$file"
         ;;
     */dist/*)
         # Conservatively assume the distribution depends on ALL the
