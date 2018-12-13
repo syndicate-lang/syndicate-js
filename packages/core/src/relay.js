@@ -117,6 +117,7 @@ NestedDataspace.prototype.hookEndpointLifecycle = function (innerEp, outerEp) {
 };
 
 NestedDataspace.prototype.start = function () {
+  this.outerFacet.actor.dataspace.start();
   this.outerFacet.actor.pushScript(() => {
     Dataspace.withCurrentFacet(this.outerFacet, () => {
       if (this.outerFacet.isLive) {
