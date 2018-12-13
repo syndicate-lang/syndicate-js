@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@syndicate-lang/core": "^0.0.20",
+    "@syndicate-lang/driver-streams-node": "^0.0.2",
     "ws": "^6.1.2"
   }
 }

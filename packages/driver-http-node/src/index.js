@@ -22,6 +22,7 @@ import { parse as parseUrl } from "url";
 const http = require('http');
 const https = require('https');
 const _WebSocket = require('ws');
+const S = activate require("@syndicate-lang/driver-streams-node");
 
 assertion type HttpServer(host, port);
 assertion type HttpsServer(host, port, options);
@@ -169,6 +170,7 @@ function _server(host, port, httpsOptions) {
         res.writeHead(500, "Internal server error", {});
         res.end();
       }
+      on asserted Observe(S.Readable(id)) react S.readableStreamBehaviour(id, req);
       on asserted Response(id, $code, $message, $headers, $detail)
       {
         res.writeHead(code, message, headers.toJS());
