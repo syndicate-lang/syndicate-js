@@ -730,7 +730,9 @@ Facet.prototype.addDataflow = function (subjectFun, priority) {
   return this.addEndpoint(() => {
     let subjectId = this.actor.dataspace.dataflow.currentSubjectId;
     this.actor.scheduleScript(() => {
-      this.actor.dataspace.dataflow.withSubject(subjectId, () => subjectFun.call(this.fields));
+      if (this.isLive) {
+        this.actor.dataspace.dataflow.withSubject(subjectId, () => subjectFun.call(this.fields));
+      }
     }, priority);
     return [void 0, null];
   });
