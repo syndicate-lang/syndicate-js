@@ -21,7 +21,6 @@
     "@syndicate-lang/driver-browser-ui": "^0.0.18",
     "@syndicate-lang/driver-http-node": "^0.0.17",
     "@syndicate-lang/driver-streams-node": "^0.0.2",
-    "@syndicate-lang/driver-worker-node": "^0.0.0",
     "@syndicate-lang/syntax": "^0.0.22"
   },
   "bin": {
