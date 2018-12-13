@@ -18,8 +18,20 @@ case "$1" in
         redo-ifchange ../syntax/all
         file=$(basename "$1")
         redo-ifchange "src/$file"
-        npx syndicate-babel "src/$file"
-        # curl -fsS --data-binary @"src/$file" http://localhost:14641/compile/"$file"
+        if [ -n "$SYNDICATE_COMPILE_SERVER" ]
+        then
+            if wget -q -O - --content-on-error --post-file="src/$file" \
+                    ${SYNDICATE_COMPILE_SERVER}/"$file" \
+                    > ${targettempfile} 2>/dev/null
+            then
+                :
+            else
+                cat ${targettempfile} >&2
+                rm -f ${targettempfile}
+            fi
+        else
+            npx syndicate-babel "src/$file"
+        fi
         ;;
     */dist/*)
         # Conservatively assume the distribution depends on ALL the

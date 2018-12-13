@@ -1,18 +1,12 @@
 "use strict";
 
-require("@syndicate-lang/syntax/lib/index"); // patches babel -- load before any of babel loads!!
-const BabelTransform = require("@babel/core/lib/transform");
-
-const UI = require("@syndicate-lang/driver-browser-ui");
-// @jsx UI.html
-// @jsxFrag UI.htmlFragment
-
+import { Bytes, spawnWorker } from "@syndicate-lang/core";
 const Http = activate require("@syndicate-lang/driver-http-node");
 const S = activate require("@syndicate-lang/driver-streams-node");
+const C = require("./compiler");
+const J = activate require("./job");
 
 const fs = require('fs');
-
-import { Dataspace, Bytes, genUuid } from "@syndicate-lang/core";
 
 const options = {
   "port": 14641,
@@ -60,19 +54,21 @@ console.info(`http://localhost:${options.port}/compile/FILENAME`);
 console.info(options);
 
 spawn named 'rootServer' {
+  assert C.CompilationOptions(options["babel-options"]);
+
   const server = Http.HttpServer(null, options.port);
   during Http.Request($reqId, server, 'post', ['compile', $file], _, $reqSeal) spawn named reqId {
     stop on retracted S.Readable(reqId);
     _collectSource.call(this, reqId, (source) => {
-      const finalOptions = Object.assign({filename: '/' + file}, options["babel-options"]);
-      BabelTransform.transform(source, finalOptions, Dataspace.wrapExternal((err, output) => {
-        if (err) {
+      react {
+        stop on asserted J.Job(C.Compilation(file, source), J.JobError($errmsg)) {
           react assert Http.Response(
-            reqId, 400, "Error", {"Content-Type": "text/plain"}, err.toString());
-        } else {
-          react assert Http.Response(reqId, 200, "OK", {}, output.code);
+            reqId, 400, "Error", {"Content-Type": "text/plain"}, errmsg);
         }
-      }));
+        stop on asserted J.Job(C.Compilation(file, source), J.JobResult($output)) {
+          react assert Http.Response(reqId, 200, "OK", {}, output);
+        }
+      }
     });
   }
 }
@@ -83,5 +79,13 @@ function _collectSource(streamId, cb) {
   on asserted S.End(streamId) {
     const source = Bytes.concat(chunks).toString();
     cb(source);
+  }
+}
+
+{
+  const nCPUs = require('os').cpus().length;
+  for (let i = 0; i < nCPUs; i++) {
+    // spawn dataspace activate C;
+    spawnWorker(__dirname + '/compiler.js');
   }
 }
