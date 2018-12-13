@@ -141,6 +141,9 @@ function spawnWorkerRelay() {
     Dataspace.spawn('WorkerRelay', function () {
       const outerFacet = Dataspace.currentFacet();
 
+      const finish = Dataspace.backgroundTask();
+      outerFacet.addStopScript(finish);
+
       let outboundEndpoints = Map();
       let inboundEndpoints = Map();
       let nextId = 0;
