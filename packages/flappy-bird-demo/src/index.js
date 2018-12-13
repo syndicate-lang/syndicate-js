@@ -44,9 +44,8 @@ spawn named 'game-factory' {
   on start spawnGame();
   during GameOver() {
     on stop spawnGame();
-    on message UI.WindowEvent('+keypress', $e) {
-      if (e.key !== ' ') send Reset();
-    }
+    on message UI.WindowEvent('+keypress', $e) send Reset();
+    on message UI.WindowEvent('+click', $e) send Reset();
   }
 }
 
@@ -97,9 +96,8 @@ function spawnGame() {
       on start react {
         stop on asserted GameOver();
 
-        on message Inbound(UI.WindowEvent('+keypress', $e)) {
-          this.yvel = -10;
-        }
+        on message Inbound(UI.WindowEvent('+keypress', $e)) this.yvel = -10;
+        on message Inbound(UI.WindowEvent('+click', $e)) this.yvel = -10;
 
         const ms_per_tick = 1000.0 / 60;
         on message Inbound(PeriodicTick(Double(ms_per_tick))) {
