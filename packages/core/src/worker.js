@@ -62,7 +62,7 @@ function spawnWorker(workerSourceFilename, workerData) {
     let endpoints = Map();
 
     const w = new worker_threads.Worker(workerSourceFilename, {
-      workerData: encodePacket(workerData)
+      workerData: encodePacket(workerData || false)
     });
     w.on('error', Dataspace.wrapExternal((err) => {
       throw err;
