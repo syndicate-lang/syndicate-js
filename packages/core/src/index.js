@@ -24,6 +24,7 @@ const Ground = require('./ground.js');
 const Assertions = require('./assertions.js');
 const Relay = require('./relay.js');
 const Bag = require('./bag.js');
+const Worker = require('./worker.js');
 
 Object.assign(module.exports, require("preserves"));
 
@@ -52,6 +53,7 @@ module.exports.NestedDataspace = Relay.NestedDataspace;
 module.exports.inNestedDataspace = Relay.inNestedDataspace;
 
 module.exports.bootModule = Ground.bootModule;
+module.exports.spawnWorker = Worker.spawnWorker;
 
 // These aren't so much "Universal" as they are "VM-wide-unique".
 let uuidIndex = 0;

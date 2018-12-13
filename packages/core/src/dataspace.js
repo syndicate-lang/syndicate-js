@@ -205,7 +205,7 @@ Dataspace.prototype.applyPatch = function (ac, delta) {
       } else {
         removals.push([count, a]);
       }
-      ac.cleanupChanges.change(a, -count);
+      if (ac) ac.cleanupChanges.change(a, -count);
     }
   });
   removals.forEach(([count, a]) => {

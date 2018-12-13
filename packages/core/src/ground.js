@@ -2,6 +2,7 @@
 
 const Immutable = require('immutable');
 const Dataspace = require('./dataspace.js').Dataspace;
+const Worker = require('./worker');
 
 function Ground(bootProc) {
   Dataspace.call(this, bootProc);
@@ -89,6 +90,7 @@ Ground.prototype.addStopHandler = function (h) {
 
 function bootModule(mod) {
   let g = new Ground(() => {
+    Worker.spawnWorkerRelay();
     if (Dataspace.BootSteps in mod) {
       // It's really an exports dict, not a module.
       Dataspace.activate(mod);
