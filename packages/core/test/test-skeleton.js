@@ -24,7 +24,7 @@ chai.use(require('chai-immutable'));
 const Immutable = require('immutable');
 
 const Syndicate = require('../src/index.js');
-const { Seal, Skeleton, Capture, Discard, Record } = Syndicate;
+const { Seal, Skeleton, Capture, Discard, Record, Observe } = Syndicate;
 
 const __ = Discard();
 const _$ = Capture(Discard());
@@ -58,14 +58,16 @@ describe('skeleton', () => {
   describe('pattern analysis', () => {
     it('should handle leaf captures', () => {
       expect(Immutable.fromJS(_analyzeAssertion(A(B(_$), _$))))
-        .to.equal(Immutable.fromJS({skeleton: [A.constructorInfo, [B.constructorInfo, null], null],
+        .to.equal(Immutable.fromJS({assertion: Observe(A(B(_$), _$)),
+                                    skeleton: [A.constructorInfo, [B.constructorInfo, null], null],
                                     constPaths: Immutable.fromJS([]),
                                     constVals: Immutable.fromJS([]),
                                     capturePaths: Immutable.fromJS([[0, 0], [1]])}));
     });
     it('should handle atomic constants', () => {
       expect(Immutable.fromJS(_analyzeAssertion(A(B("x"), _$))))
-        .to.equal(Immutable.fromJS({skeleton: [A.constructorInfo, [B.constructorInfo, null], null],
+        .to.equal(Immutable.fromJS({assertion: Observe(A(B("x"), _$)),
+                                    skeleton: [A.constructorInfo, [B.constructorInfo, null], null],
                                     constPaths: Immutable.fromJS([[0, 0]]),
                                     constVals: Immutable.fromJS(["x"]),
                                     capturePaths: Immutable.fromJS([[1]])}));
@@ -80,6 +82,7 @@ describe('skeleton', () => {
       const complexPlaceholder = new Object();
       const analysis = Immutable.fromJS(_analyzeAssertion(A(complexPlaceholder, C(_$))));
       const expected = Immutable.fromJS({
+        assertion: Observe(A(complexPlaceholder, C(_$))),
         skeleton: [A.constructorInfo, null, [C.constructorInfo, null]],
         constPaths: Immutable.fromJS([[0]]),
         constVals: Immutable.fromJS([complexPlaceholder]),
@@ -95,7 +98,8 @@ describe('skeleton', () => {
       // that situation without the static analysis half of the code.
       // TODO later.
       expect(Immutable.fromJS(_analyzeAssertion(A(B(B("y")), Capture(C(__))))))
-        .to.equal(Immutable.fromJS({skeleton: [A.constructorInfo,
+        .to.equal(Immutable.fromJS({assertion: Observe(A(B(B("y")), Capture(C(__)))),
+                                    skeleton: [A.constructorInfo,
                                                [B.constructorInfo, [B.constructorInfo, null]],
                                                [C.constructorInfo, null]],
                                     constPaths: Immutable.fromJS([[0, 0, 0]]),
@@ -104,14 +108,16 @@ describe('skeleton', () => {
     });
     it('should handle list patterns with discards', () => {
       expect(Immutable.fromJS(_analyzeAssertion([__, __])))
-        .to.equal(Immutable.fromJS({skeleton: [2, null, null],
+        .to.equal(Immutable.fromJS({assertion: Observe([__, __]),
+                                    skeleton: [2, null, null],
                                     constPaths: Immutable.fromJS([]),
                                     constVals: Immutable.fromJS([]),
                                     capturePaths: Immutable.fromJS([])}));
     });
     it('should handle list patterns with constants and captures', () => {
       expect(Immutable.fromJS(_analyzeAssertion(["hi", _$, _$])))
-        .to.equal(Immutable.fromJS({skeleton: [3, null, null, null],
+        .to.equal(Immutable.fromJS({assertion: Observe(["hi", _$, _$]),
+                                    skeleton: [3, null, null, null],
                                     constPaths: Immutable.fromJS([[0]]),
                                     constVals: Immutable.fromJS(["hi"]),
                                     capturePaths: Immutable.fromJS([[1],[2]])}));
