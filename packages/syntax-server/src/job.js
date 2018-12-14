@@ -17,8 +17,9 @@ spawn named 'JobDispatcher' {
 
   during Observe(Observe(WorkItem($worker, $pattern, _))) {
     if (!Skeleton.isCompletelyConcrete(pattern)) {
-      on start addWorker(pattern, worker);
-      on stop removeWorker(pattern, worker);
+      const p = Skeleton.withoutCaptures(pattern);
+      on start addWorker(p, worker);
+      on stop removeWorker(p, worker);
     }
   }
 

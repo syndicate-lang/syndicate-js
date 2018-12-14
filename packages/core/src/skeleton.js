@@ -460,6 +460,19 @@ function isCompletelyConcrete(p) {
   return walk(p);
 }
 
+function withoutCaptures(p) {
+  function walk(p) {
+    if (Capture.isClassOf(p)) return walk(p.get(0));
+    if (Discard.isClassOf(p)) return p;
+
+    const cls = classOf(p);
+    if (cls === null) return p;
+    if (typeof cls === 'number') return p.map(walk);
+    return new Record(p.label, p.fields.map(walk));
+  }
+  return walk(p);
+}
+
 ///////////////////////////////////////////////////////////////////////////
 
 module.exports.EVENT_ADDED = EVENT_ADDED;
@@ -471,3 +484,4 @@ module.exports.analyzeAssertion = analyzeAssertion;
 module.exports.instantiateAssertion = instantiateAssertion;
 module.exports.match = match;
 module.exports.isCompletelyConcrete = isCompletelyConcrete;
+module.exports.withoutCaptures = withoutCaptures;
