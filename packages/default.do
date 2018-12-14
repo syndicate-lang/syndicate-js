@@ -12,4 +12,9 @@ case "$1" in
         rm -rf lib
         rm -rf dist
         ;;
+    */veryclean)
+        redo clean
+        rm -rf node_modules
+        rm -f package-lock.json
+        ;;
 esac
