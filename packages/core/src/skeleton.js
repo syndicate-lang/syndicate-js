@@ -423,6 +423,32 @@ function unpackScoped(a, k) {
 
 ///////////////////////////////////////////////////////////////////////////
 
+function match(p, v) {
+  let captures = Immutable.List();
+
+  function walk(p, v) {
+    if (Capture.isClassOf(p)) {
+      if (!walk(p.get(0), v)) return false;
+      captures = captures.push(v);
+      return true;
+    }
+
+    if (Discard.isClassOf(p)) return true;
+
+    const pcls = classOf(p);
+    const vcls = classOf(v);
+    if (!Immutable.is(pcls, vcls)) return false;
+
+    if (pcls === null) return Immutable.is(p, v);
+    if (typeof pcls === 'number') return p.every((pv, i) => walk(pv, v.get(i)));
+    return p.fields.every((pv, i) => walk(pv, v.fields.get(i)));
+  }
+
+  return walk(p, v) ? captures : false;
+}
+
+///////////////////////////////////////////////////////////////////////////
+
 module.exports.EVENT_ADDED = EVENT_ADDED;
 module.exports.EVENT_REMOVED = EVENT_REMOVED;
 module.exports.EVENT_MESSAGE = EVENT_MESSAGE;
@@ -430,3 +456,4 @@ module.exports.Index = Index;
 
 module.exports.analyzeAssertion = analyzeAssertion;
 module.exports.instantiateAssertion = instantiateAssertion;
+module.exports.match = match;

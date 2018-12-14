@@ -266,4 +266,71 @@ describe('skeleton', () => {
     });
   });
 
+  describe('matching a single pattern against a value', () => {
+    it('should accept matching simple records', () => {
+      expect(Skeleton.match(Immutable.fromJS(A(1, 2)),
+                            Immutable.fromJS(A(1, 2))))
+        .to.equal(Immutable.List());
+    });
+    it('should capture from matching simple records', () => {
+      expect(Skeleton.match(Immutable.fromJS(A(1, _$)),
+                            Immutable.fromJS(A(1, 2))))
+        .to.equal(Immutable.List([2]));
+    });
+    it('should reject mismatching simple records', () => {
+      expect(Skeleton.match(Immutable.fromJS(A(1, 2)),
+                            Immutable.fromJS(A(1, "hi"))))
+        .to.equal(false);
+    });
+    it('should accept matching simple lists', () => {
+      expect(Skeleton.match(Immutable.fromJS([1, 2, 3]),
+                            Immutable.fromJS([1, 2, 3])))
+        .to.equal(Immutable.List());
+    });
+    it('should accept matching nested lists', () => {
+      expect(Skeleton.match(Immutable.fromJS([1, [2, 4], 3]),
+                            Immutable.fromJS([1, [2, 4], 3])))
+        .to.equal(Immutable.List());
+    });
+    it('should capture matches from simple lists', () => {
+      expect(Skeleton.match(Immutable.fromJS([1, Capture(2), 3]),
+                            Immutable.fromJS([1, 2, 3])))
+        .to.equal(Immutable.List([2]));
+    });
+    it('should capture discards from simple lists', () => {
+      expect(Skeleton.match(Immutable.fromJS([1, Capture(__), 3]),
+                            Immutable.fromJS([1, 2, 3])))
+        .to.equal(Immutable.List([2]));
+    });
+    it('should capture discards from nested lists', () => {
+      expect(Skeleton.match(Immutable.fromJS([1, Capture(__), 3]),
+                            Immutable.fromJS([1, [2, 4], 3])))
+        .to.equal(Immutable.fromJS([[2, 4]]));
+    });
+    it('should capture nested discards from nested lists', () => {
+      expect(Skeleton.match(Immutable.fromJS([1, Capture([__, 4]), 3]),
+                            Immutable.fromJS([1, [2, 4], 3])))
+        .to.equal(Immutable.fromJS([[2, 4]]));
+    });
+    it('should reject nested mismatches from nested lists', () => {
+      expect(Skeleton.match(Immutable.fromJS([1, Capture([__, 5]), 3]),
+                            Immutable.fromJS([1, [2, 4], 3])))
+        .to.equal(false);
+    });
+    it('should reject mismatching captures from simple lists', () => {
+      expect(Skeleton.match(Immutable.fromJS([1, Capture(9), 3]),
+                            Immutable.fromJS([1, 2, 3])))
+        .to.equal(false);
+    });
+    it('should reject simple lists varying in arity', () => {
+      expect(Skeleton.match(Immutable.fromJS([1, 2, 3, 4]),
+                            Immutable.fromJS([1, 2, 3])))
+        .to.equal(false);
+    });
+    it('should reject simple lists varying in order', () => {
+      expect(Skeleton.match(Immutable.fromJS([1, 3, 2]),
+                            Immutable.fromJS([1, 2, 3])))
+        .to.equal(false);
+    });
+  });
 });
