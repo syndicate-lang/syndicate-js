@@ -447,6 +447,19 @@ function match(p, v) {
   return walk(p, v) ? captures : false;
 }
 
+function isCompletelyConcrete(p) {
+  function walk(p) {
+    if (Capture.isClassOf(p)) return false;
+    if (Discard.isClassOf(p)) return false;
+
+    const cls = classOf(p);
+    if (cls === null) return true;
+    if (typeof cls === 'number') return p.every(walk);
+    return p.fields.every(walk);
+  }
+  return walk(p);
+}
+
 ///////////////////////////////////////////////////////////////////////////
 
 module.exports.EVENT_ADDED = EVENT_ADDED;
@@ -457,3 +470,4 @@ module.exports.Index = Index;
 module.exports.analyzeAssertion = analyzeAssertion;
 module.exports.instantiateAssertion = instantiateAssertion;
 module.exports.match = match;
+module.exports.isCompletelyConcrete = isCompletelyConcrete;
