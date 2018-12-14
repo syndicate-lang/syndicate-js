@@ -61,11 +61,12 @@ spawn named 'rootServer' {
     stop on retracted S.Readable(reqId);
     _collectSource.call(this, reqId, (source) => {
       react {
-        stop on asserted J.Job(C.Compilation(file, source), J.JobError($errmsg)) {
+        const job = C.Compilation(file, source);
+        stop on asserted J.Job(job, J.JobError($errmsg)) {
           react assert Http.Response(
             reqId, 400, "Error", {"Content-Type": "text/plain"}, errmsg);
         }
-        stop on asserted J.Job(C.Compilation(file, source), J.JobResult($output)) {
+        stop on asserted J.Job(job, J.JobResult($output)) {
           react assert Http.Response(reqId, 200, "OK", {}, output);
         }
       }
