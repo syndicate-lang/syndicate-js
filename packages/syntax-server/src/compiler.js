@@ -1,5 +1,3 @@
-"use strict";
-
 require("@syndicate-lang/syntax/lib/index"); // patches babel -- load before any of babel loads!!
 const BabelTransform = require("@babel/core/lib/transform");
 
@@ -19,7 +17,7 @@ spawn named 'compiler' {
   during Inbound(CompilationOptions($options)) {
     during Inbound(Observe(WorkItem(worker, Compilation($filename, $input), _))) {
       const finalOptions = Object.assign({filename: '/' + filename}, options.toJS());
-      console.log(worker, 'compiling', filename, '...');
+      console.log(worker, 'compiling', filename);
       BabelTransform.transform(input, finalOptions, Dataspace.wrapExternal((err, output) => {
         react assert Outbound(WorkItem(worker,
                                        Compilation(filename, input),

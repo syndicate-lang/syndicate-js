@@ -1,5 +1,3 @@
-"use strict";
-
 import { Bytes, spawnWorker } from "@syndicate-lang/core";
 const Http = activate require("@syndicate-lang/driver-http-node");
 const S = activate require("@syndicate-lang/driver-streams-node");
