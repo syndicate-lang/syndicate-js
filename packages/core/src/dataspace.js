@@ -100,13 +100,15 @@ Dataspace.wrapExternal = function (f) {
   let savedFacet = Dataspace._currentFacet;
   let ac = savedFacet.actor;
   return function () {
-    let actuals = arguments;
-    ac.dataspace.start();
-    ac.pushScript(function () {
-      Dataspace.withCurrentFacet(savedFacet, function () {
-        f.apply(this, actuals);
+    if (savedFacet.isLive) {
+      let actuals = arguments;
+      ac.dataspace.start();
+      ac.pushScript(function () {
+        Dataspace.withCurrentFacet(savedFacet, function () {
+          f.apply(this, actuals);
+        });
       });
-    });
+    }
   };
 };
 
