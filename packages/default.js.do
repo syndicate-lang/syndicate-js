@@ -20,14 +20,20 @@ case "$1" in
         redo-ifchange "src/$file"
         if [ -n "$SYNDICATE_COMPILE_SERVER" ]
         then
-            if wget -q -O - --content-on-error --post-file="src/$file" \
-                    ${SYNDICATE_COMPILE_SERVER}/"$file" \
+            if curl -fs --data-binary "@src/$file" ${SYNDICATE_COMPILE_SERVER}/"$file" \
                     > ${targettempfile} 2>/dev/null
             then
                 :
             else
-                cat ${targettempfile} >&2
+                # I can't figure out a way to get curl to both exit on
+                # error, and print the response body on error. So
+                # instead we try once, discarding the output but
+                # keeping the exit status, and if it fails, we try
+                # again, keeping the output but discarding the exit
+                # status.
+                curl -s --data-binary "@src/$file" ${SYNDICATE_COMPILE_SERVER}/"$file" >&2
                 rm -f ${targettempfile}
+                false
             fi
         else
             npx syndicate-babel "src/$file"
