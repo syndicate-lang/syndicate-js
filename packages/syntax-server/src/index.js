@@ -48,7 +48,7 @@ function process_command_line(args) {
 }
 
 process_command_line(process.argv.slice(2));
-console.info(`http://localhost:${options.port}/compile/FILENAME`);
+console.info(`export SYNDICATE_COMPILE_SERVER=http://localhost:${options.port}/compile`);
 console.info(options);
 
 spawn named 'rootServer' {
