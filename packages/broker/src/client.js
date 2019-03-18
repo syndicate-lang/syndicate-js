@@ -11,6 +11,7 @@ const WS = activate require("@syndicate-lang/driver-websocket");
 const {
   Assert, Clear, Message,
   Add, Del, Msg,
+  Ping, Pong,
   makeDecoder,
 } = activate require("./protocol");
 
@@ -55,6 +56,8 @@ spawn named "BrokerClientFactory" {
       }
 
       on message ToBroker(url, $a) w(Message(a));
+
+      on message _BrokerPacket(url, Ping()) w(Pong());
 
       during Observe(FromBroker(url, $spec)) {
         const ep = genUuid('sub');

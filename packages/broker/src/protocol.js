@@ -12,6 +12,10 @@ message type Add(endpointName, captures);
 message type Del(endpointName, captures);
 message type Msg(endpointName, captures);
 
+// Bidirectional
+message type Ping();
+message type Pong();
+
 function makeDecoder(initialBuffer) {
   return new Decoder(initialBuffer, {
     shortForms: {
@@ -25,5 +29,6 @@ function makeDecoder(initialBuffer) {
 Object.assign(module.exports, {
   Assert, Clear, Message,
   Add, Del, Msg,
+  Ping, Pong,
   makeDecoder,
 });
