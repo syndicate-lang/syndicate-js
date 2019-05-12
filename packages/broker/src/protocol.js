@@ -2,17 +2,18 @@
 
 import { Decoder, Discard, Capture, Observe } from "@syndicate-lang/core";
 
-// Client ---> Broker
+message type Connect(scope);
+message type Peer(scope);
+
 message type Assert(endpointName, assertion);
 message type Clear(endpointName);
 message type Message(body);
 
-// Client <--- Broker
 message type Add(endpointName, captures);
 message type Del(endpointName, captures);
 message type Msg(endpointName, captures);
+message type Err(detail);
 
-// Bidirectional
 message type Ping();
 message type Pong();
 
@@ -27,8 +28,9 @@ function makeDecoder(initialBuffer) {
 }
 
 Object.assign(module.exports, {
+  Connect, Peer,
   Assert, Clear, Message,
-  Add, Del, Msg,
+  Add, Del, Msg, Err,
   Ping, Pong,
   makeDecoder,
 });

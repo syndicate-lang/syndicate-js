@@ -25,7 +25,6 @@ const gatewayId = dataspaceId + ':' + localId;
 
 const fs = require('fs');
 
-assertion type ConnectionName(scope, id);
 assertion type Connection(connId);
 message type Request(connId, body);
 message type Response(connId, body);
@@ -35,9 +34,13 @@ message type Disconnect(connId);
 // Internal isolation
 assertion type Envelope(scope, body);
 
+// Monitoring
+assertion type ConnectionScope(connId, scope);
+
 const {
+  Connect, Peer,
   Assert, Clear, Message,
-  Add, Del, Msg,
+  Add, Del, Msg, Err,
   makeDecoder,
 } = activate require("./protocol");
 
@@ -66,13 +69,23 @@ spawn named 'rootServer' {
       ));
   }
 
+  during Http.Request($reqId, server, 'get', ['chat.html'], _, _) {
+    const contents = fs.readFileSync(__dirname + '/../chat.html');
+    assert :snapshot Http.Response(reqId, 200, "OK", {}, contents);
+  }
+
+  during Http.Request($reqId, server, 'get', ['style.css'], _, _) {
+    const contents = fs.readFileSync(__dirname + '/../style.css');
+    assert :snapshot Http.Response(reqId, 200, "OK", {}, contents);
+  }
+
   during Http.Request($reqId, server, 'get', ['dist', $file], _, _) {
     const contents = fs.readFileSync(__dirname + '/../dist/' + file);
     assert :snapshot Http.Response(reqId, 200, "OK", {}, contents);
   }
 
-  during Connection($name) assert Envelope('monitor', Connection(name));
-  on message Envelope('monitor', Disconnect($name)) send Disconnect(name);
+  during ConnectionScope($connId, $scope) assert Envelope('monitor', ConnectionScope(connId, scope));
+  on message Envelope('monitor', Disconnect($connId)) send Disconnect(connId);
 }
 
 spawn named 'websocketListener' {
@@ -81,16 +94,15 @@ spawn named 'websocketListener' {
   assert M.Publish(M.Service(localId, '_syndicate+ws._tcp'),
                    null, HTTP_PORT, ["tier=0", "path=/monitor"]);
 
-  during Http.WebSocket($reqId, server, [$scope], _) spawn named ['wsConnection', scope, reqId] {
-    const name = ConnectionName(scope, reqId);
-    assert Connection(name);
+  during Http.WebSocket($reqId, server, [], _) spawn named ['wsConnection', reqId] {
+    assert Connection(reqId);
     on message Http.DataIn(reqId, $data) {
       if (data instanceof Bytes) {
-        send Request(name, makeDecoder(data).next());
+        send Request(reqId, makeDecoder(data).next());
       }
     }
-    on message Response(name, $resp) send Http.DataOut(reqId, new Encoder().push(resp).contents());
-    stop on message Disconnect(name);
+    on message Response(reqId, $resp) send Http.DataOut(reqId, new Encoder().push(resp).contents());
+    stop on message Disconnect(reqId);
   }
 }
 
@@ -110,27 +122,34 @@ spawn named 'unixListener' {
 function spawnStreamConnection(debugLabel, id) {
   spawn named [debugLabel, id] {
     stop on retracted S.Duplex(id);
-    const name = ConnectionName('broker', id);
-    assert Connection(name);
+    assert Connection(id);
     const decoder = makeDecoder(null);
     on message S.Data(id, $data) {
       decoder.write(data);
       let v;
       while ((v = decoder.try_next())) {
-        send Request(name, v);
+        send Request(id, v);
       }
     }
-    on message Response(name, $resp) send S.Push(id, new Encoder().push(resp).contents(), null);
-    stop on message Disconnect(name);
+    on message Response(id, $resp) send S.Push(id, new Encoder().push(resp).contents(), null);
+    stop on message Disconnect(id);
   }
 }
 
 spawn named 'connectionHandler' {
-  during Connection($connId(ConnectionName($scope,_))) spawn named Connection(connId) {
+  during Connection($connId) spawn named Connection(connId) {
     on start console.log(connId.toString(), 'connected');
     on stop console.log(connId.toString(), 'disconnected');
 
+    field this.scope = null;
+    assert ConnectionScope(connId, this.scope) when (this.scope !== null);
+
     let endpoints = Set();
+
+    on message Request(connId, Connect($scope)) {
+      // TODO: Enforce requirement that Connect appear exactly once, before anything else
+      this.scope = scope;
+    }
 
     on message Request(connId, Assert($ep, $a)) {
       if (!endpoints.includes(ep)) {
@@ -142,7 +161,7 @@ spawn named 'connectionHandler' {
 
           currentFacet().addEndpoint(() => {
             if (Observe.isClassOf(this.assertion)) {
-              const spec = Envelope(scope, this.assertion.get(0));
+              const spec = Envelope(this.scope, this.assertion.get(0));
               const analysis = Skeleton.analyzeAssertion(spec);
               analysis.callback = Dataspace.wrap((evt, vs) => {
                 currentFacet().actor.scheduleScript(() => {
@@ -162,7 +181,7 @@ spawn named 'connectionHandler' {
               });
               return [Observe(spec), analysis];
             } else {
-              return [Envelope(scope, this.assertion), null];
+              return [Envelope(this.scope, this.assertion), null];
             }
           }, true);
 
@@ -173,7 +192,7 @@ spawn named 'connectionHandler' {
     }
 
     on message Request(connId, Message($body)) {
-      send Envelope(scope, body);
+      send Envelope(this.scope, body);
     }
 
     on message Request(connId, $req) console.log('IN: ', connId.toString(), req.toString());
