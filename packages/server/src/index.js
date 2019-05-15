@@ -19,7 +19,7 @@ const TCP_PORT = 8001;
 
 const server = Http.HttpServer(null, HTTP_PORT);
 
-const dataspaceId = 'EToUNUJI0ykSfudmN9Z99wu62qGQB1nd8SHvjNtL5tM'; // public key of root broker
+const dataspaceId = 'EToUNUJI0ykSfudmN9Z99wu62qGQB1nd8SHvjNtL5tM'; // public key of root server
 const localId = RandomID.randomId(8, false);
 const gatewayId = dataspaceId + ':' + localId;
 
@@ -109,13 +109,13 @@ spawn named 'websocketListener' {
 spawn named 'tcpListener' {
   assert M.Publish(M.Service(gatewayId, '_syndicate._tcp'), null, TCP_PORT, ["tier=0"]);
   on asserted S.IncomingConnection($id, S.TcpListener(TCP_PORT)) {
-    spawnStreamConnection('tcpBroker', id);
+    spawnStreamConnection('tcpServer', id);
   }
 }
 
 spawn named 'unixListener' {
   on asserted S.IncomingConnection($id, S.UnixSocketServer("./sock")) {
-    spawnStreamConnection('unixBroker', id);
+    spawnStreamConnection('unixServer', id);
   }
 }
 
@@ -226,11 +226,11 @@ spawn named 'peerDiscovery' {
 
   /*
 
-If there's a broker on our gateway interface, see if it's better than us.
+If there's a server on our gateway interface, see if it's better than us.
   - if it is, use it.
   - if it's not, pretend it isn't there.
 
-If there's no broker on our gateway interface (or we're pretending
+If there's no server on our gateway interface (or we're pretending
 none exists), try to connect to the top.
 
    */

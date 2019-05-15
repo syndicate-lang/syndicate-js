@@ -1,5 +1,5 @@
 {
-  "name": "@syndicate-lang/broker",
+  "name": "@syndicate-lang/server",
   "private": true,
   "version": "0.0.8",
   "license": "GPL-3.0+",
@@ -26,6 +26,6 @@
   },
   "main": "lib/index.js",
   "bin": {
-    "syndicate-broker": "./bin/syndicate-broker.js"
+    "syndicate-server": "./bin/syndicate-server.js"
   }
 }

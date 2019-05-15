@@ -4,7 +4,7 @@ const UI = activate require("@syndicate-lang/driver-browser-ui");
 // @jsx UI.html
 // @jsxFrag UI.htmlFragment
 
-const { WSBroker, ToBroker, FromBroker, BrokerConnected } = activate require("./client");
+const { WSServer, ToServer, FromServer, ServerConnected } = activate require("./client");
 
 assertion type Present(name);
 assertion type Says(who, what);
@@ -29,31 +29,31 @@ spawn {
   const ui = new UI.Anchor();
 
   during UI.UIChangeableProperty('#wsurl', 'value', $url) {
-    const addr = WSBroker(url, "broker");
-    during BrokerConnected(addr) {
+    const addr = WSServer(url, "broker");
+    during ServerConnected(addr) {
       on start outputItem(<span class="connected">connected to {addr}</span>,
                           'state_connected');
       on stop outputItem(<span class="disconnected">disconnected from {addr}</span>,
                          'state_disconnected');
 
-      assert ToBroker(addr, Present(this.nym));
-      during FromBroker(addr, Present($who)) {
+      assert ToServer(addr, Present(this.nym));
+      during FromServer(addr, Present($who)) {
         assert ui.context(who).html('#nymlist', <li><span class="nym">{who}</span></li>);
       }
 
       on message UI.GlobalEvent('#send_chat', 'click', _) {
-        if (this.next_chat) send ToBroker(addr, Says(this.nym, this.next_chat));
+        if (this.next_chat) send ToServer(addr, Says(this.nym, this.next_chat));
         send UI.SetProperty('#chat_input', 'value', '');
       }
 
-      on message FromBroker(addr, Says($who, $what)) {
+      on message FromServer(addr, Says($who, $what)) {
         outputItem(<span class="utterance">
                    <span class="nym">{who}</span><span class="utterance">{what}</span>
                    </span>);
       }
 
       // on message Syndicate.WakeDetector.wakeEvent() {
-      //   :: forceBrokerDisconnect(addr);
+      //   :: forceServerDisconnect(addr);
       // }
     }
   }

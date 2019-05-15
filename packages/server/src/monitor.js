@@ -4,7 +4,7 @@ const UI = activate require("@syndicate-lang/driver-browser-ui");
 // @jsx UI.html
 // @jsxFrag UI.htmlFragment
 
-const { WSBroker, ToBroker, FromBroker, BrokerConnected } = activate require("./client");
+const { WSServer, ToServer, FromServer, ServerConnected } = activate require("./client");
 
 assertion type ConnectionScope(connId, scope);
 message type Disconnect(connId);
@@ -13,7 +13,7 @@ spawn {
   const ui = new UI.Anchor();
   assert ui.html('body',
                  <div id="main">
-                   <h1>Broker monitor</h1>
+                   <h1>Server monitor</h1>
                    <div id="scopes"></div>
                  </div>);
 
@@ -23,22 +23,22 @@ spawn {
     u.pathname = '/';
     return u.toString();
   })();
-  const addr = WSBroker(url, "monitor");
+  const addr = WSServer(url, "monitor");
 
-  during BrokerConnected(addr) {
-    during FromBroker(addr, ConnectionScope(_, $scope)) {
+  during ServerConnected(addr) {
+    during FromServer(addr, ConnectionScope(_, $scope)) {
       const ui = new UI.Anchor();
       assert ui.html('#scopes',
                      <div class={`scope_${scope}`}>
                        <p>Scope: <tt>{scope}</tt></p>
                        <ul></ul>
                      </div>);
-      during FromBroker(addr, ConnectionScope($id, scope)) {
+      during FromServer(addr, ConnectionScope($id, scope)) {
         const ui = new UI.Anchor();
         assert ui.html(`#scopes div.scope_${scope} ul`,
                        <li>{id.toString()} <button class="disconnect">Disconnect</button></li>);
         on message UI.UIEvent(ui.fragmentId, 'button.disconnect', 'click', _) {
-          send ToBroker(addr, Disconnect(id));
+          send ToServer(addr, Disconnect(id));
         }
       }
     }

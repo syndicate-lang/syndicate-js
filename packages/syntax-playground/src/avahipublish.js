@@ -19,7 +19,7 @@ spawn named 'test' {
   // }
 
   field this.count = 0;
-  dataflow console.log('Broker count:', this.count);
+  dataflow console.log('Service count:', this.count);
 
   during M.Discovered(M.Service($name, '_syndicate+ws._tcp'), $host, $port, $txt, $addr, "IPv4", _)
   {
