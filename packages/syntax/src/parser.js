@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { _original_Parser, tokTypes as tt } from "@babel/parser";
+import { _original_Parser, BIND_LEXICAL, tokTypes as tt } from "@babel/parser";
 
 export default class SyndicateParser extends _original_Parser {
   // Overrides ExpressionParser.parseMaybeAssign
@@ -141,6 +141,7 @@ export default class SyndicateParser extends _original_Parser {
                 this.eatContextual("type");
                 if (!this.match(tt.name)) { this.unexpected(null, tt.name); }
                 node.id = this.parseIdentifier();
+                this.scope.declareName(node.id.name, BIND_LEXICAL, node.id.start);
                 this.parseFunctionParams(node); // eww
                 node.formals = node.params;
                 delete node.params; // eww
