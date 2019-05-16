@@ -32,6 +32,7 @@ message type Response(connId, body);
 message type Disconnect(connId);
 
 // Internal isolation
+assertion type Proposal(scope, body);
 assertion type Envelope(scope, body);
 
 // Monitoring
@@ -137,6 +138,9 @@ function spawnStreamConnection(debugLabel, id) {
 }
 
 spawn named 'connectionHandler' {
+  during Proposal($scope, $assertion) assert Envelope(scope, assertion);
+  on message Proposal($scope, $assertion) send Envelope(scope, assertion);
+
   during Connection($connId) spawn named Connection(connId) {
     on start console.log(connId.toString(), 'connected');
     on stop console.log(connId.toString(), 'disconnected');
@@ -158,6 +162,7 @@ spawn named 'connectionHandler' {
           on stop { endpoints = endpoints.remove(ep); }
 
           field this.assertion = a;
+          assert Proposal(this.scope, this.assertion);
 
           currentFacet().addEndpoint(() => {
             if (Observe.isClassOf(this.assertion)) {
@@ -181,7 +186,7 @@ spawn named 'connectionHandler' {
               });
               return [Observe(spec), analysis];
             } else {
-              return [Envelope(this.scope, this.assertion), null];
+              return [void 0, null];
             }
           }, true);
 
@@ -192,7 +197,7 @@ spawn named 'connectionHandler' {
     }
 
     on message Request(connId, Message($body)) {
-      send Envelope(this.scope, body);
+      send Proposal(this.scope, body);
     }
 
     on message Request(connId, $req) console.log('IN: ', connId.toString(), req.toString());
