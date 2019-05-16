@@ -29,7 +29,7 @@ spawn {
   const ui = new UI.Anchor();
 
   during UI.UIChangeableProperty('#wsurl', 'value', $url) {
-    const addr = WSServer(url, "broker");
+    const addr = WSServer(url, "local");
     during ServerConnected(addr) {
       on start outputItem(<span class="connected">connected to {addr}</span>,
                           'state_connected');

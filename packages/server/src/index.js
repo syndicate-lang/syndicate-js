@@ -91,7 +91,7 @@ spawn named 'rootServer' {
 
 spawn named 'websocketListener' {
   assert M.Publish(M.Service(gatewayId, '_syndicate+ws._tcp'),
-                   null, HTTP_PORT, ["tier=0", "path=/broker"]);
+                   null, HTTP_PORT, ["tier=0", "path=/local"]);
   assert M.Publish(M.Service(localId, '_syndicate+ws._tcp'),
                    null, HTTP_PORT, ["tier=0", "path=/monitor"]);
 
