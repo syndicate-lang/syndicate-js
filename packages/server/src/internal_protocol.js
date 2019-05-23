@@ -15,10 +15,14 @@ assertion type Envelope(scope, body) = Symbol.for('server-envelope');
 // Monitoring
 assertion type POAScope(connId, scope) = Symbol.for('server-poa-scope');
 
+// Federation
+assertion type FederatedLink(id, scope) = Symbol.for('federated-link');
+
 Object.assign(module.exports, {
   ServerActive,
   POA, FromPOA, ToPOA,
   Disconnect,
   Proposal, Envelope,
   POAScope,
+  FederatedLink,
 });

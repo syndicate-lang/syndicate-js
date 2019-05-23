@@ -9,6 +9,7 @@ const S = activate require("@syndicate-lang/driver-streams-node");
 const M = activate require("@syndicate-lang/driver-mdns");
 const P = activate require("./internal_protocol");
 const Server = activate require("./server");
+const Federation = activate require("./federation");
 
 import {
   Set, Bytes,
@@ -37,6 +38,8 @@ spawn named 'serverLogger' {
 }
 
 spawn named 'rootServer' {
+  assert Federation.ManagementScope('local');
+
   during Http.Request($reqId, server, 'get', [], _, _) {
     assert :snapshot Http.Response(
       reqId, 200, "OK", {"Content-type": "text/html"},
