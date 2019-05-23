@@ -2,17 +2,71 @@
 
 const P = activate require("./internal_protocol");
 const W = activate require("./protocol");
+const C = activate require("./client");
 
 assertion type ManagementScope(scope) = Symbol.for('federation-management-scope');
 
-module.exports.ManagementScope = ManagementScope;
+assertion type Uplink(localScope, peer, remoteScope) = Symbol.for('federated-uplink');
+assertion type UplinkConnected(link) = Symbol.for('federated-uplink-connected');
+
+Object.assign(module.exports, {
+  ManagementScope,
+  Uplink, UplinkConnected,
+});
 
 import {
-  Set, Map,
+  Set, Map, List,
   Observe,
   Skeleton, Dataspace, currentFacet,
   genUuid,
 } from "@syndicate-lang/core";
+
+spawn named '@syndicate-lang/server/federation/UplinkFactory' {
+  during ManagementScope($managementScope) {
+    during P.Envelope(managementScope, $link(Uplink($localScope, $peerAddr, $remoteScope)))
+      spawn named link
+    {
+      during C.ServerConnected(peerAddr) {
+        const sessionId = genUuid('peer');
+        assert P.Proposal(managementScope, UplinkConnected(link));
+        assert P.Proposal(managementScope, P.FederatedLink(sessionId, localScope));
+        assert C.ToServer(peerAddr, P.FederatedLink(sessionId, remoteScope));
+
+        field this.pendingIn = List();
+        field this.pendingOut = List();
+
+        on message C.FromServer(peerAddr, P.ToPOA(sessionId, $p)) {
+          this.pendingIn = this.pendingIn.push(p);
+        }
+
+        on message P.Envelope(managementScope, P.ToPOA(sessionId, $p)) {
+          this.pendingOut = this.pendingOut.push(p);
+        }
+
+        during P.Envelope(managementScope, Observe(P.FromPOA(sessionId, _))) {
+          during C.FromServer(peerAddr, Observe(P.FromPOA(sessionId, _))) {
+            dataflow {
+              if (!this.pendingIn.isEmpty()) {
+                this.pendingIn.forEach((p) => {
+                  send P.Proposal(managementScope, P.FromPOA(sessionId, p));
+                });
+                this.pendingIn = List();
+              }
+            }
+            dataflow {
+              if (!this.pendingOut.isEmpty()) {
+                this.pendingOut.forEach((p) => {
+                  send C.ToServer(peerAddr, P.FromPOA(sessionId, p));
+                });
+                this.pendingOut = List();
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
 
 spawn named '@syndicate-lang/server/federation/LocalLinkFactory' {
   during ManagementScope($managementScope) {
