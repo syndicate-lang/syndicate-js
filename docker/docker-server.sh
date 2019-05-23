@@ -11,7 +11,15 @@ then
     docker network create --internal ${networkname}
 fi
 
+if [ -z "$1" ]
+then
+    nameopt=
+else
+    nameopt="--hostname $1"
+fi
+
 exec docker run -it --rm \
      --network ${networkname} \
+     $nameopt \
      -v "${dir}":/data \
      syndicate-js
