@@ -5,9 +5,7 @@ const UI = activate require("@syndicate-lang/driver-browser-ui");
 // @jsxFrag UI.htmlFragment
 
 const { WSServer, ToServer, FromServer, ServerConnected } = activate require("./client");
-
-assertion type ConnectionScope(connId, scope);
-message type Disconnect(connId);
+const P = activate require("./internal_protocol");
 
 spawn {
   const ui = new UI.Anchor();
@@ -26,19 +24,19 @@ spawn {
   const addr = WSServer(url, "monitor");
 
   during ServerConnected(addr) {
-    during FromServer(addr, ConnectionScope(_, $scope)) {
+    during FromServer(addr, P.POAScope(_, $scope)) {
       const ui = new UI.Anchor();
       assert ui.html('#scopes',
                      <div class={`scope_${scope}`}>
                        <p>Scope: <tt>{scope}</tt></p>
                        <ul></ul>
                      </div>);
-      during FromServer(addr, ConnectionScope($id, scope)) {
+      during FromServer(addr, P.POAScope($id, scope)) {
         const ui = new UI.Anchor();
         assert ui.html(`#scopes div.scope_${scope} ul`,
                        <li>{id.toString()} <button class="disconnect">Disconnect</button></li>);
         on message UI.UIEvent(ui.fragmentId, 'button.disconnect', 'click', _) {
-          send ToServer(addr, Disconnect(id));
+          send ToServer(addr, P.Disconnect(id));
         }
       }
     }
