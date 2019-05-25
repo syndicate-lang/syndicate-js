@@ -94,6 +94,7 @@ spawn named 'server' {
 }
 
 function spawnTcpServer(port, advertise) {
+  console.info('TCP server on port', port, advertise ? '(advertised)' : '(not advertised)');
   spawn named ['tcpServer', port] {
     if (advertise) {
       assert M.Publish(M.Service(gatewayId, '_syndicate._tcp'), null, port, ["tier=0"]);
@@ -105,6 +106,7 @@ function spawnTcpServer(port, advertise) {
 }
 
 function spawnWebSocketServer(port, advertise) {
+  console.info('WebSocket server on port', port, advertise ? '(advertised)' : '(not advertised)');
   spawn named ['wsConnection', port] {
     const server = Http.HttpServer(null, port);
     if (advertise) {
@@ -120,6 +122,7 @@ function spawnWebSocketServer(port, advertise) {
 }
 
 function spawnUnixSocketServer(path) {
+  console.info('Unix socket server on path', path, advertise ? '(advertised)' : '(not advertised)');
   spawn named ['unixServer', path] {
     on asserted S.IncomingConnection($id, S.UnixSocketServer(path)) {
       Server.streamServerActor(id, ['unixServer', path, id]);
@@ -128,6 +131,7 @@ function spawnUnixSocketServer(path) {
 }
 
 function spawnMonitorAppServer(port) {
+  console.info('Monitor app on port', port, advertise ? '(advertised)' : '(not advertised)');
   spawn named ['monitorAppServer', port] {
     const server = Http.HttpServer(null, port);
 
@@ -161,6 +165,7 @@ spawn named 'monitorApp' {
 }
 
 spawn named 'peerDiscovery' {
+  console.info('Peer discovery running');
   // during M.DefaultGateway($gwif, _) {
   //   on start console.log('GW+', gwif);
   //   on stop  console.log('GW-', gwif);
