@@ -35,6 +35,7 @@ const fs = require('fs');
 spawn named 'peerAdvertisement' {
   const localId = RandomID.randomId(8, false);
   assert OverlayNode(localId);
+  console.log('Local node ID is', localId);
 
   during Federation.ManagementScope($managementScope) {
     during P.Envelope(managementScope, Overlay($overlayId, _)) {
@@ -135,10 +136,10 @@ spawn named 'uplinkSelection' {
           this.peers.forEach((p) => { if (better(p)) best = p; });
           if (best && (best.get(1) !== localId)) {
             this.bestAddr = best.get(3);
-            this.bestPeer = best;
+            this.bestPeer = OverlayNode(best.get(1));
           } else {
             this.bestAddr = rootAddr;
-            this.bestPeer = null;
+            this.bestPeer = OverlayRoot();
           }
         }
 
@@ -149,8 +150,7 @@ spawn named 'uplinkSelection' {
         assert P.Proposal(managementScope, Federation.Uplink(overlayId, this.bestAddr, overlayId))
           when (this.bestAddr);
 
-        assert P.Proposal(overlayId, OverlayLink(OverlayNode(localId),
-                                                 this.bestPeer || OverlayRoot()))
+        assert P.Proposal(overlayId, OverlayLink(OverlayNode(localId), this.bestPeer))
           when (this.bestAddr);
       }
     }
