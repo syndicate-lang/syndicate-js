@@ -25,6 +25,7 @@
   },
   "main": "lib/index.js",
   "bin": {
-    "syndicate-server": "./bin/syndicate-server.js"
+    "syndicate-server": "./bin/syndicate-server.js",
+    "syndicate-tree-disco": "./bin/syndicate-tree-disco.js"
   }
 }

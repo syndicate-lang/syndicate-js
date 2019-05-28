@@ -6,22 +6,11 @@ const UI = require("@syndicate-lang/driver-browser-ui");
 
 const Http = activate require("@syndicate-lang/driver-http-node");
 const S = activate require("@syndicate-lang/driver-streams-node");
-const P = activate require("./internal_protocol");
 const C = activate require("./client");
+const P = activate require("./internal_protocol");
+const D = activate require("./disco_protocol");
 const Server = activate require("./server");
 const Federation = activate require("./federation");
-
-import {
-  Set, Bytes,
-  Encoder, Observe,
-  Dataspace, Skeleton, currentFacet, genUuid, RandomID
-} from "@syndicate-lang/core";
-
-assertion type AvailableTransport(spec);
-assertion type WebSocketTransport(port, path);
-// S.TcpListener specifies TCP transport
-// S.UnixSocketServer specifies Unix socket transport
-
 const fs = require('fs');
 
 let currentManagementScope = 'local';
@@ -86,18 +75,18 @@ spawn named 'server' {
 }
 
 spawn named 'helpful info output' {
-  on asserted AvailableTransport($spec) console.info('Transport:', spec.toString());
+  on asserted D.AvailableTransport($spec) console.info('Transport:', spec.toString());
 }
 
 spawn named 'federationRoutingInfo' {
   during Federation.ManagementScope($managementScope) {
-    during $t(AvailableTransport(_)) assert P.Proposal(managementScope, t);
+    during $t(D.AvailableTransport(_)) assert P.Proposal(managementScope, t);
   }
 }
 
 function _spawnStreamServer(spec) {
   spawn named spec {
-    assert AvailableTransport(spec);
+    assert D.AvailableTransport(spec);
     on asserted S.IncomingConnection($id, spec) Server.streamServerActor(id, [spec, id]);
   }
 }
@@ -111,10 +100,10 @@ function spawnUnixSocketServer(path) {
 }
 
 function spawnWebSocketServer(port) {
-  const spec = WebSocketTransport(port, '/');
+  const spec = D.WebSocketTransport(port, '/');
   spawn named spec {
     const server = Http.HttpServer(null, port);
-    assert AvailableTransport(spec);
+    assert D.AvailableTransport(spec);
     during Http.WebSocket($reqId, server, [], _) spawn named [spec, reqId] {
       Server.websocketServerFacet(reqId);
     }
@@ -154,36 +143,3 @@ spawn named 'monitorApp' {
   during P.POAScope($connId, $scope) assert P.Proposal('monitor', P.POAScope(connId, scope));
   on message P.Envelope('monitor', P.Disconnect($connId)) send P.Disconnect(connId);
 }
-
-// const localId = RandomID.randomId(8, false);
-// const dataspaceId = 'EToUNUJI0ykSfudmN9Z99wu62qGQB1nd8SHvjNtL5tM'; // public key of root server
-// const gatewayId = dataspaceId + ':' + localId;
-//
-// const M = activate require("@syndicate-lang/driver-mdns");
-//   // assert M.Publish(M.Service(gatewayId, '_syndicate._tcp'), null, port, []);
-//   // assert M.Publish(M.Service(gatewayId, '_syndicate+ws._tcp'), null, port, ["path=/"]);
-// spawn named 'peerDiscovery' {
-//   console.info('Peer discovery running');
-//   // during M.DefaultGateway($gwif, _) {
-//   //   on start console.log('GW+', gwif);
-//   //   on stop  console.log('GW-', gwif);
-//     during M.Discovered(
-//       M.Service($name, '_syndicate+ws._tcp'), $host, $port, $txt, $addr, "IPv4", $gwif)
-//     {
-//       const [dsId, peerId] = name.split(':');
-//
-//       let tier = null;
-//       txt.forEach((t) => {
-//         t.split(' ').forEach((kv) => {
-//           const [k, v] = kv.split('=');
-//           if (k === 'tier') {
-//             tier = Number.parseInt(v);
-//           }
-//         });
-//       });
-//
-//       on start console.log('+ws', gwif, tier, name, host, port, addr);
-//       on stop  console.log('-ws', gwif, tier, name, host, port, addr);
-//     }
-//   // }
-// }
