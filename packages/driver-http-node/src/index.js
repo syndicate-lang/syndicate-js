@@ -209,10 +209,20 @@ function _server(host, port, httpsOptions) {
 
     react {
       const facet = currentFacet();
+      const guard = (f) => {
+        try {
+          f()
+        } catch (e) {
+          // Swallow e, which will be some kind of websocket-related exception.
+          console.debug('WebSocket exception in actor '+facet.actor.toString(), e);
+          facet.stop();
+        }
+      };
+
       let id = genUuid('_wsRequest');
       assert WebSocket(id, server, pieces, url.query);
 
-      on stop ws.close();
+      on stop guard(() => ws.close());
 
       ws.on('close', Dataspace.wrapExternal(() => {
         facet.stop();
@@ -225,7 +235,7 @@ function _server(host, port, httpsOptions) {
       }
 
       on message DataOut(id, $message) {
-        ws.send(Bytes.toIO(message));
+        guard(() => ws.send(Bytes.toIO(message)));
       }
 
       stop on retracted Observe(WebSocket(_, server, pathPattern, _));
