@@ -199,21 +199,37 @@ function compilePattern(state, patternPath) {
 }
 
 function instantiatePatternToPattern(state, patternPath) {
+
+  function visitCallExpression(path) {
+    if (!isCaptureIdentifier(path.node.callee)) return true;
+    path.replaceWith(t.identifier(path.node.callee.name.slice(1)));
+    path.skip();
+    return false;
+  }
+  function visitIdentifier(path) {
+    if (!isCaptureIdentifier(path.node)) return true;
+    path.replaceWith(t.identifier(path.node.name.slice(1)));
+    path.skip();
+    return false;
+  }
+
   patternPath.node = cloneDeep(patternPath.node);
-  patternPath.traverse({
-    CallExpression(path) {
-      if (isCaptureIdentifier(path.node.callee)) {
-        path.replaceWith(t.identifier(path.node.callee.name.slice(1)));
-        path.skip();
-      }
-    },
-    Identifier(path) {
-      if (isCaptureIdentifier(path.node)) {
-        path.replaceWith(t.identifier(path.node.name.slice(1)));
-        path.skip();
-      }
-    },
-  });
+  // OK I must have misunderstood something, because could it really
+  // be the case that traverse recursively visits all the CHILDREN of
+  // the given node but NOT THE GIVEN NODE ITSELF???
+  let doTraverse = true;
+  if (doTraverse && (patternPath.node.type === 'CallExpression')) {
+    doTraverse = visitCallExpression(patternPath);
+  }
+  if (doTraverse && (patternPath.node.type === 'Identifier')) {
+    doTraverse = visitIdentifier(patternPath);
+  }
+  if (doTraverse) {
+    patternPath.traverse({
+      CallExpression(path) { visitCallExpression(path) },
+      Identifier(path) { visitIdentifier(path) },
+    });
+  }
   return patternPath.node;
 }
 
