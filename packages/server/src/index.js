@@ -8,7 +8,7 @@ const Http = activate require("@syndicate-lang/driver-http-node");
 const S = activate require("@syndicate-lang/driver-streams-node");
 const C = activate require("./client");
 const P = activate require("./internal_protocol");
-const D = activate require("./disco_protocol");
+const D = activate require("./disco");
 const Server = activate require("./server");
 const Federation = activate require("./federation");
 const fs = require('fs');
@@ -31,27 +31,46 @@ function usage() {
   console.info('  --uplink LOCALSCOPE WEBSOCKETURL REMOTESCOPE');
   console.info('                        Establish a federation uplink from the named local');
   console.info('                        scope to the remote scope within the server at the URL');
+  console.info('');
+  console.info('  --overlay OVERLAYID WEBSOCKETURL');
+  console.info('                        Participate in a self-assembling overlay with the');
+  console.info('                        given ID and root node server URL');
 }
 
 const uplinks = [];
+const overlays = [];
 function process_command_line(args) {
-  const strArg = () => args.shift();
-  const numArg = () => Number.parseInt(args.shift());
+  const notUndefined = (x, w) => {
+    if (x === void 0) {
+      console.error('Missing '+w+' argument on command line');
+      usage();
+      process.exit(1);
+    }
+    return x;
+  };
+  const strArg = (w) => notUndefined(args.shift(), w);
+  const numArg = (w) => Number.parseInt(notUndefined(args.shift(), w));
   while (args.length) {
     const opt = args.shift();
     switch (opt) {
-      case "--tcp": spawnTcpServer(numArg()); break;
-      case "--http": spawnWebSocketServer(numArg()); break;
-      case "--unix": spawnUnixSocketServer(strArg()); break;
-      case "--monitor": spawnMonitorAppServer(numArg()); break;
-      case "--management": currentManagementScope = strArg(); break;
+      case "--tcp": spawnTcpServer(numArg('TCP port')); break;
+      case "--http": spawnWebSocketServer(numArg('HTTP port')); break;
+      case "--unix": spawnUnixSocketServer(strArg('Unix socket path')); break;
+      case "--monitor": spawnMonitorAppServer(numArg('monitor HTTP port')); break;
+      case "--management": currentManagementScope = strArg('management scope'); break;
       case "--uplink": {
-        const localScope = strArg();
-        const target = strArg();
-        const remoteScope = strArg();
+        const localScope = strArg('local scope');
+        const target = strArg('remote WebSocket URL');
+        const remoteScope = strArg('remote scope');
         uplinks.push(Federation.Uplink(localScope,
                                        C.WSServer(target, currentManagementScope),
                                        remoteScope));
+        break;
+      }
+      case "--overlay": {
+        const overlayId = strArg('overlay id');
+        const rootUrl = strArg('overlay root WebSocket URL');
+        overlays.push(D.Overlay(overlayId, C.WSServer(rootUrl, currentManagementScope)));
         break;
       }
       default:
@@ -72,6 +91,9 @@ spawn named 'server' {
   uplinks.forEach((link) => {
     assert P.Proposal(currentManagementScope, link);
   });
+  overlays.forEach((o) => {
+    assert P.Proposal(currentManagementScope, o);
+  });
 }
 
 spawn named 'helpful info output' {
@@ -80,6 +102,7 @@ spawn named 'helpful info output' {
 
 spawn named 'federationRoutingInfo' {
   during Federation.ManagementScope($managementScope) {
+    // assert P.Proposal(managementScope, Federation.ManagementScope(managementScope));
     during $t(D.AvailableTransport(_)) assert P.Proposal(managementScope, t);
   }
 }
