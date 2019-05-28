@@ -16,7 +16,7 @@ const {
   makeDecoder,
 } = activate require("./protocol");
 
-assertion type WSServer(url, scope);
+assertion type WSServer(url, scope) = Symbol.for('server-websocket-connection');
 
 assertion type ToServer(addr, assertion);
 assertion type FromServer(addr, assertion);

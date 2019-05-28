@@ -6,7 +6,6 @@ const UI = require("@syndicate-lang/driver-browser-ui");
 
 const Http = activate require("@syndicate-lang/driver-http-node");
 const S = activate require("@syndicate-lang/driver-streams-node");
-const M = activate require("@syndicate-lang/driver-mdns");
 const P = activate require("./internal_protocol");
 const C = activate require("./client");
 const Server = activate require("./server");
@@ -18,6 +17,11 @@ import {
   Dataspace, Skeleton, currentFacet, genUuid, RandomID
 } from "@syndicate-lang/core";
 
+assertion type AvailableTransport(spec);
+assertion type WebSocketTransport(port, path);
+// S.TcpListener specifies TCP transport
+// S.UnixSocketServer specifies Unix socket transport
+
 const fs = require('fs');
 
 let currentManagementScope = 'local';
@@ -27,9 +31,6 @@ function usage() {
   console.info('Usage: syndicate-server [ OPTION [ OPTION ... ] ]');
   console.info('');
   console.info('where OPTION may be repeated any number of times and is drawn from:');
-  console.info('');
-  console.info('  --advertise           Enable mDNS advertisement for subsequent services');
-  console.info('  --no-advertise        Disable mDNS advertisement for subsequent services');
   console.info('');
   console.info('  --tcp PORTNUMBER      Create a plain TCP service on the given port');
   console.info('  --http PORTNUMBER     Create an HTTP WebSocket service on the given port');
@@ -41,24 +42,19 @@ function usage() {
   console.info('  --uplink LOCALSCOPE WEBSOCKETURL REMOTESCOPE');
   console.info('                        Establish a federation uplink from the named local');
   console.info('                        scope to the remote scope within the server at the URL');
-  console.info('');
-  console.info('mDNS advertisement starts out enabled.');
 }
 
 const uplinks = [];
 function process_command_line(args) {
   const strArg = () => args.shift();
   const numArg = () => Number.parseInt(args.shift());
-  let advertise = true;
   while (args.length) {
     const opt = args.shift();
     switch (opt) {
-      case "--advertise": advertise = true; break;
-      case "--no-advertise": advertise = false; break;
-      case "--tcp": spawnTcpServer(numArg(), advertise); break;
-      case "--http": spawnWebSocketServer(numArg(), advertise); break;
-      case "--unix": spawnUnixSocketServer(strArg(), advertise); break;
-      case "--monitor": spawnMonitorAppServer(numArg(), advertise); break;
+      case "--tcp": spawnTcpServer(numArg()); break;
+      case "--http": spawnWebSocketServer(numArg()); break;
+      case "--unix": spawnUnixSocketServer(strArg()); break;
+      case "--monitor": spawnMonitorAppServer(numArg()); break;
       case "--management": currentManagementScope = strArg(); break;
       case "--uplink": {
         const localScope = strArg();
@@ -80,10 +76,6 @@ function process_command_line(args) {
   }
 }
 
-const localId = RandomID.randomId(8, false);
-const dataspaceId = 'EToUNUJI0ykSfudmN9Z99wu62qGQB1nd8SHvjNtL5tM'; // public key of root server
-const gatewayId = dataspaceId + ':' + localId;
-
 process_command_line(process.argv.slice(2));
 
 spawn named 'server' {
@@ -93,45 +85,44 @@ spawn named 'server' {
   });
 }
 
-function spawnTcpServer(port, advertise) {
-  console.info('TCP server on port', port, advertise ? '(advertised)' : '(not advertised)');
-  spawn named ['tcpServer', port] {
-    if (advertise) {
-      assert M.Publish(M.Service(gatewayId, '_syndicate._tcp'), null, port, ["tier=0"]);
-    }
-    on asserted S.IncomingConnection($id, S.TcpListener(port)) {
-      Server.streamServerActor(id, ['tcpServer', port, id]);
-    }
+spawn named 'helpful info output' {
+  on asserted AvailableTransport($spec) console.info('Transport:', spec.toString());
+}
+
+spawn named 'federationRoutingInfo' {
+  during Federation.ManagementScope($managementScope) {
+    during $t(AvailableTransport(_)) assert P.Proposal(managementScope, t);
   }
 }
 
-function spawnWebSocketServer(port, advertise) {
-  console.info('WebSocket server on port', port, advertise ? '(advertised)' : '(not advertised)');
-  spawn named ['wsConnection', port] {
+function _spawnStreamServer(spec) {
+  spawn named spec {
+    assert AvailableTransport(spec);
+    on asserted S.IncomingConnection($id, spec) Server.streamServerActor(id, [spec, id]);
+  }
+}
+
+function spawnTcpServer(port) {
+  _spawnStreamServer(S.TcpListener(port));
+}
+
+function spawnUnixSocketServer(path) {
+  _spawnStreamServer(S.UnixSocketServer(path));
+}
+
+function spawnWebSocketServer(port) {
+  const spec = WebSocketTransport(port, '/');
+  spawn named spec {
     const server = Http.HttpServer(null, port);
-    if (advertise) {
-      assert M.Publish(M.Service(gatewayId, '_syndicate+ws._tcp'), null, port,
-                       ["tier=0", "path=/local"]);
-      assert M.Publish(M.Service(localId, '_syndicate+ws._tcp'), null, port,
-                       ["tier=0", "path=/monitor"]);
-    }
-    during Http.WebSocket($reqId, server, [], _) spawn named ['wsConnection', port, reqId] {
+    assert AvailableTransport(spec);
+    during Http.WebSocket($reqId, server, [], _) spawn named [spec, reqId] {
       Server.websocketServerFacet(reqId);
     }
   }
 }
 
-function spawnUnixSocketServer(path) {
-  console.info('Unix socket server on path', path, advertise ? '(advertised)' : '(not advertised)');
-  spawn named ['unixServer', path] {
-    on asserted S.IncomingConnection($id, S.UnixSocketServer(path)) {
-      Server.streamServerActor(id, ['unixServer', path, id]);
-    }
-  }
-}
-
 function spawnMonitorAppServer(port) {
-  console.info('Monitor app on port', port, advertise ? '(advertised)' : '(not advertised)');
+  console.info('Monitor app on port', port);
   spawn named ['monitorAppServer', port] {
     const server = Http.HttpServer(null, port);
 
@@ -164,39 +155,35 @@ spawn named 'monitorApp' {
   on message P.Envelope('monitor', P.Disconnect($connId)) send P.Disconnect(connId);
 }
 
-spawn named 'peerDiscovery' {
-  console.info('Peer discovery running');
-  // during M.DefaultGateway($gwif, _) {
-  //   on start console.log('GW+', gwif);
-  //   on stop  console.log('GW-', gwif);
-    during M.Discovered(
-      M.Service($name, '_syndicate+ws._tcp'), $host, $port, $txt, $addr, "IPv4", $gwif)
-    {
-      const [dsId, peerId] = name.split(':');
-
-      let tier = null;
-      txt.forEach((t) => {
-        t.split(' ').forEach((kv) => {
-          const [k, v] = kv.split('=');
-          if (k === 'tier') {
-            tier = Number.parseInt(v);
-          }
-        });
-      });
-
-      on start console.log('+ws', gwif, tier, name, host, port, addr);
-      on stop  console.log('-ws', gwif, tier, name, host, port, addr);
-    }
-  // }
-
-  /*
-
-If there's a server on our gateway interface, see if it's better than us.
-  - if it is, use it.
-  - if it's not, pretend it isn't there.
-
-If there's no server on our gateway interface (or we're pretending
-none exists), try to connect to the top.
-
-   */
-}
+// const localId = RandomID.randomId(8, false);
+// const dataspaceId = 'EToUNUJI0ykSfudmN9Z99wu62qGQB1nd8SHvjNtL5tM'; // public key of root server
+// const gatewayId = dataspaceId + ':' + localId;
+//
+// const M = activate require("@syndicate-lang/driver-mdns");
+//   // assert M.Publish(M.Service(gatewayId, '_syndicate._tcp'), null, port, []);
+//   // assert M.Publish(M.Service(gatewayId, '_syndicate+ws._tcp'), null, port, ["path=/"]);
+// spawn named 'peerDiscovery' {
+//   console.info('Peer discovery running');
+//   // during M.DefaultGateway($gwif, _) {
+//   //   on start console.log('GW+', gwif);
+//   //   on stop  console.log('GW-', gwif);
+//     during M.Discovered(
+//       M.Service($name, '_syndicate+ws._tcp'), $host, $port, $txt, $addr, "IPv4", $gwif)
+//     {
+//       const [dsId, peerId] = name.split(':');
+//
+//       let tier = null;
+//       txt.forEach((t) => {
+//         t.split(' ').forEach((kv) => {
+//           const [k, v] = kv.split('=');
+//           if (k === 'tier') {
+//             tier = Number.parseInt(v);
+//           }
+//         });
+//       });
+//
+//       on start console.log('+ws', gwif, tier, name, host, port, addr);
+//       on stop  console.log('-ws', gwif, tier, name, host, port, addr);
+//     }
+//   // }
+// }
