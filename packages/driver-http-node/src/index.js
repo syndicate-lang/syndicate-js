@@ -42,8 +42,8 @@ Object.assign(module.exports, {
 });
 
 spawn named 'driver/HttpServerFactory' {
-  during Observe(Request(_, HttpServer($h, $p), _, _, _, _)) assert HttpServer(h, p);
-  during Observe(Request(_, HttpsServer($h, $p, $o), _, _, _, _)) assert HttpsServer(h, p, o);
+  during Observe(Request(_, $server, _, _, _, _)) assert server;
+  during Observe(WebSocket(_, $server, _, _)) assert server;
 
   during HttpServer($host, $port) spawn named ['driver/HttpServer', host, port] {
     _server.call(this, host, port, null);
