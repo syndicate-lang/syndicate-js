@@ -1,8 +1,17 @@
 {
   "name": "@syndicate-lang/server",
-  "private": true,
   "version": "0.0.8",
+  "description": "Client-server for Syndicate",
+  "repository": "github:syndicate-lang/syndicate-js",
+  "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "license": "GPL-3.0+",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepare": "which redo >/dev/null && redo || ../../do"
+  },
+  "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/server",
   "devDependencies": {
     "@babel/core": "^7.2.0",
     "@babel/plugin-syntax-jsx": "^7.2.0",
@@ -19,9 +28,6 @@
     "@syndicate-lang/driver-websocket": "^0.0.12",
     "webpack": "^4.27.1",
     "webpack-cli": "^3.1.2"
-  },
-  "scripts": {
-    "prepare": "which redo >/dev/null && redo || ../../do"
   },
   "main": "lib/index.js",
   "bin": {
