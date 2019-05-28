@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/syntax-server",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Compilation server for Syndicate/js translation to JavaScript",
   "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
@@ -17,11 +17,11 @@
     "@babel/plugin-syntax-jsx": "^7.2.0",
     "@babel/plugin-transform-react-jsx": "^7.2.0",
     "@babel/preset-env": "^7.2.0",
-    "@syndicate-lang/core": "^0.0.20",
-    "@syndicate-lang/driver-browser-ui": "^0.0.18",
-    "@syndicate-lang/driver-http-node": "^0.0.17",
-    "@syndicate-lang/driver-streams-node": "^0.0.2",
-    "@syndicate-lang/syntax": "^0.0.22"
+    "@syndicate-lang/core": "^0.1.0",
+    "@syndicate-lang/driver-browser-ui": "^0.1.0",
+    "@syndicate-lang/driver-http-node": "^0.1.0",
+    "@syndicate-lang/driver-streams-node": "^0.1.0",
+    "@syndicate-lang/syntax": "^0.1.0"
   },
   "bin": {
     "syndicate-babel-server": "./bin/syndicate-babel-server.js"

@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/server",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "description": "Client-server for Syndicate",
   "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
@@ -17,15 +17,15 @@
     "@babel/plugin-syntax-jsx": "^7.2.0",
     "@babel/plugin-transform-react-jsx": "^7.2.0",
     "@babel/preset-env": "^7.2.0",
-    "@syndicate-lang/syntax": "^0.0.22"
+    "@syndicate-lang/syntax": "^0.1.0"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.0.20",
-    "@syndicate-lang/driver-browser-ui": "^0.0.18",
-    "@syndicate-lang/driver-http-node": "^0.0.17",
-    "@syndicate-lang/driver-mdns": "^0.0.2",
-    "@syndicate-lang/driver-streams-node": "^0.0.2",
-    "@syndicate-lang/driver-websocket": "^0.0.12",
+    "@syndicate-lang/core": "^0.1.0",
+    "@syndicate-lang/driver-browser-ui": "^0.1.0",
+    "@syndicate-lang/driver-http-node": "^0.1.0",
+    "@syndicate-lang/driver-mdns": "^0.1.0",
+    "@syndicate-lang/driver-streams-node": "^0.1.0",
+    "@syndicate-lang/driver-websocket": "^0.1.0",
     "webpack": "^4.27.1",
     "webpack-cli": "^3.1.2"
   },
