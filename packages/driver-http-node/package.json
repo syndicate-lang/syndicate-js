@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/driver-http-node",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "HTTP support for Syndicate/js on node.js",
   "main": "lib/index.js",
   "repository": "github:syndicate-lang/syndicate-js",
@@ -19,8 +19,8 @@
     "@syndicate-lang/syntax": "^0.1.0"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.1.1",
-    "@syndicate-lang/driver-streams-node": "^0.1.1",
+    "@syndicate-lang/core": "^0.1.2",
+    "@syndicate-lang/driver-streams-node": "^0.1.2",
     "ws": "^6.1.2"
   }
 }
