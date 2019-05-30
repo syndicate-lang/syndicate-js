@@ -57,18 +57,19 @@ export function htmlToString(j) {
 
   function walk(j) {
     if (htmlTag.isClassOf(j)) {
-      pieces.push('<', j.get(0));
-      j.get(1).forEach(
-        (p) => pieces.push(' ', escapeHtml(p.get(0)), '="', escapeHtml(p.get(1)), '"'));
+      pieces.push('<', htmlTag._label(j));
+      htmlTag._properties(j).forEach(
+        (p) => pieces.push(' ', escapeHtml(htmlProperty._key(p)),
+                           '="', escapeHtml(htmlProperty._value(p)), '"'));
       pieces.push('>');
-      j.get(2).forEach(walk);
-      if (!(j.get(0) in emptyHtmlElements)) {
-        pieces.push('</', j.get(0), '>');
+      htmlTag._children(j).forEach(walk);
+      if (!(htmlTag._label(j) in emptyHtmlElements)) {
+        pieces.push('</', htmlTag._label(j), '>');
       }
     } else if (htmlFragment.isClassOf(j)) {
-      j.get(0).forEach(walk);
+      htmlFragment._children(j).forEach(walk);
     } else if (htmlLiteral.isClassOf(j)) {
-      pieces.push(j.get(0));
+      pieces.push(htmlLiteral._text(j));
     } else if (typeof j === 'object' && j && typeof j[Symbol.iterator] === 'function') {
       for (let k of j) { walk(k); }
     } else {

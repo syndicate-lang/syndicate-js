@@ -70,7 +70,7 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
 
           currentFacet().addEndpoint(() => {
             if (Observe.isClassOf(this.assertion)) {
-              const spec = P.Envelope(this.scope, this.assertion.get(0));
+              const spec = P.Envelope(this.scope, Observe._specification(this.assertion));
               const analysis = Skeleton.analyzeAssertion(spec);
               analysis.callback = Dataspace.wrap((evt, vs) => {
                 currentFacet().actor.scheduleScript(() => {

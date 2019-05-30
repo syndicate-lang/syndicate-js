@@ -249,7 +249,7 @@ describe('skeleton', () => {
       expect(trace.size).to.equal(8);
     });
     it('should have a correct 3-EVENT subtrace', () => {
-      expect(trace.filter((e) => { return e.get(0) === "3-EVENT"; }))
+      expect(trace.filter((e) => { return Event._label(e) === "3-EVENT"; }))
         .to.equal(Immutable.List([
           Event("3-EVENT", Skeleton.EVENT_ADDED, [123, 234]),
           Event("3-EVENT", Skeleton.EVENT_ADDED, [999, 999]),
@@ -258,7 +258,7 @@ describe('skeleton', () => {
           Event("3-EVENT", Skeleton.EVENT_REMOVED, [123, 234])]));
     });
     it('should have a correct 2-EVENT subtrace', () => {
-      expect(trace.filter((e) => { return e.get(0) === "2-EVENT"; }))
+      expect(trace.filter((e) => { return Event._label(e) === "2-EVENT"; }))
         .to.equal(Immutable.List([
           Event("2-EVENT", Skeleton.EVENT_ADDED, []),
           Event("2-EVENT", Skeleton.EVENT_MESSAGE, []),

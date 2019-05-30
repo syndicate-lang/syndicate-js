@@ -23,9 +23,11 @@ assertion type Tick(who, n);
 assertion type Tock(msg);
 assertion type Tack(who);
 
+assertion type Employee(id);
+
 spawn named 'workerMain' {
   const myData = require('worker_threads').workerData;
-  const limit = myData.get(0) === 1 ? 2 : 3;
+  const limit = Employee._id(myData) === 1 ? 2 : 3;
 
   const me = myData.toString();
 
