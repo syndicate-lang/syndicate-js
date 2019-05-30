@@ -832,3 +832,4 @@ Endpoint.prototype.toString = function () {
 
 module.exports.Dataspace = Dataspace;
 module.exports.ActionCollector = ActionCollector;
+module.exports.PRIORITY = PRIORITY;
