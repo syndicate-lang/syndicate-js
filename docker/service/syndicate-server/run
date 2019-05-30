@@ -1,4 +1,4 @@
 #!/bin/sh
 s6-svwait ../avahi-daemon
 cd /data/packages/server
-exec node lib/index.js --http 8000 --tcp 8001 --monitor 8000 --overlay test ws://test-server.syndicate-lang.org/
+DEBUG='syndicate/server:*' exec node lib/index.js --http 8000 --tcp 8001 --monitor 8000 --overlay test ws://test-server.syndicate-lang.org/
