@@ -125,18 +125,18 @@ spawn named 'uplinkSelection' {
           let best = null;
           const better = (a) => {
             if (!best) return true;
-            if ((a.get(2) === this.gatewayIp)) {
-              if (best.get(2) !== this.gatewayIp) return true;
-              return (a.get(1) < best.get(1));
+            if (Peer._ip(a) === this.gatewayIp) {
+              if (Peer._ip(best) !== this.gatewayIp) return true;
+              return (Peer._nodeId(a) < Peer._nodeId(best));
             } else {
-              if (best.get(2) === this.gatewayIp) return false;
-              return (a.get(1) < best.get(1));
+              if (Peer._ip(best) === this.gatewayIp) return false;
+              return (Peer._nodeId(a) < Peer._nodeId(best));
             }
           };
           this.peers.forEach((p) => { if (better(p)) best = p; });
-          if (best && (best.get(1) !== localId)) {
-            this.bestAddr = best.get(3);
-            this.bestPeer = OverlayNode(best.get(1));
+          if (best && (Peer._nodeId(best) !== localId)) {
+            this.bestAddr = Peer._addr(best);
+            this.bestPeer = OverlayNode(Peer._nodeId(best));
           } else {
             this.bestAddr = rootAddr;
             this.bestPeer = OverlayRoot();

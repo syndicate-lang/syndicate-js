@@ -22,6 +22,6 @@
   },
   "dependencies": {
     "immutable": "^3.8.2",
-    "preserves": "^0.0.6"
+    "preserves": "0.0.8"
   }
 }
