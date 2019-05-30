@@ -3,6 +3,8 @@
 const P = activate require("./internal_protocol");
 const W = activate require("./protocol");
 const C = activate require("./client");
+const B = activate require("./buffer");
+const debugFactory = require('debug');
 
 assertion type ManagementScope(scope) = Symbol.for('federation-management-scope');
 
@@ -28,39 +30,36 @@ spawn named '@syndicate-lang/server/federation/UplinkFactory' {
     {
       during C.ServerConnected(peerAddr) {
         const sessionId = genUuid('peer');
+
+        const debug = debugFactory('syndicate/server:federation:uplink:' + sessionId);
+        on start debug('+', peerAddr.toString());
+        on stop debug('-', peerAddr.toString());
+
         assert P.Proposal(managementScope, UplinkConnected(link));
         assert P.Proposal(managementScope, P.FederatedLink(sessionId, localScope));
         assert C.ToServer(peerAddr, P.FederatedLink(sessionId, remoteScope));
 
-        field this.pendingIn = List();
-        field this.pendingOut = List();
+        const pendingIn = B.buffer(this, 'pendingIn');
+        const pendingOut = B.buffer(this, 'pendingOut');
 
         on message C.FromServer(peerAddr, P.ToPOA(sessionId, $p)) {
-          this.pendingIn = this.pendingIn.push(p);
+          pendingIn.push(p);
         }
 
         on message P.Envelope(managementScope, P.ToPOA(sessionId, $p)) {
-          this.pendingOut = this.pendingOut.push(p);
+          pendingOut.push(p);
         }
 
-        during P.Envelope(managementScope, Observe(P.FromPOA(sessionId, _))) {
-          during C.FromServer(peerAddr, Observe(P.FromPOA(sessionId, _))) {
-            dataflow {
-              if (!this.pendingIn.isEmpty()) {
-                this.pendingIn.forEach((p) => {
-                  send P.Proposal(managementScope, P.FromPOA(sessionId, p));
-                });
-                this.pendingIn = List();
-              }
-            }
-            dataflow {
-              if (!this.pendingOut.isEmpty()) {
-                this.pendingOut.forEach((p) => {
-                  send C.ToServer(peerAddr, P.FromPOA(sessionId, p));
-                });
-                this.pendingOut = List();
-              }
-            }
+        during P.Envelope(managementScope, P.FederatedLinkReady(sessionId)) {
+          during C.FromServer(peerAddr, P.FederatedLinkReady(sessionId)) {
+            pendingIn.drain((p) => {
+              debug('<', p.toString());
+              send P.Proposal(managementScope, P.FromPOA(sessionId, p));
+            });
+            pendingOut.drain((p) => {
+              debug('>', p.toString());
+              send C.ToServer(peerAddr, P.FromPOA(sessionId, p));
+            });
           }
         }
       }
@@ -75,6 +74,11 @@ spawn named '@syndicate-lang/server/federation/LocalLinkFactory' {
         spawn named ['@syndicate-lang/server/federation/LocalLink', managementScope, scope]
       {
         const sessionId = genUuid('localLink');
+
+        const debug = debugFactory('syndicate/server:federation:local:' + scope);
+        on start debug('+', sessionId);
+        on stop debug('-', sessionId);
+
         assert P.Proposal(managementScope, P.FederatedLink(sessionId, scope));
 
         const sendFromPOA = (m) => {
@@ -83,6 +87,8 @@ spawn named '@syndicate-lang/server/federation/LocalLinkFactory' {
 
         on message P.Envelope(managementScope, P.ToPOA(sessionId, W.Assert($ep, Observe($spec)))) {
           react {
+            on start debug('remoteObs+', spec.toString());
+            on stop debug('remoteObs-', spec.toString());
             currentFacet().addEndpoint(() => {
               const outerSpec = P.Proposal(scope, spec);
               const analysis = Skeleton.analyzeAssertion(outerSpec);
@@ -104,6 +110,8 @@ spawn named '@syndicate-lang/server/federation/LocalLinkFactory' {
 
         during Observe($pat(P.Envelope(scope, $spec))) {
           const ep = genUuid('ep');
+          on start debug('localObs+', spec.toString(), ep);
+          on stop debug('localObs-', spec.toString(), ep);
           on start sendFromPOA(W.Assert(ep, Observe(spec)));
           on stop sendFromPOA(W.Clear(ep));
           on message P.Envelope(managementScope, P.ToPOA(sessionId, W.Add(ep, $captures))) {
@@ -242,6 +250,14 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
       };
 
       during P.Envelope(managementScope, P.FederatedLink($linkid, scope)) {
+        const debug = debugFactory('syndicate/server:federation:link:' + linkid);
+        on start debug('+', scope.toString());
+        on stop debug('-', scope.toString());
+        on message P.Envelope(managementScope, P.FromPOA(linkid, $m)) debug('<', m.toString());
+        on message P.Envelope(managementScope, P.ToPOA(linkid, $m)) debug('>', m.toString());
+
+        assert P.Proposal(managementScope, P.FederatedLinkReady(linkid));
+
         field this.linkSubs = Map();
         field this.linkMatches = Map();
 
@@ -266,8 +282,8 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
         };
 
         on start {
-          // console.log('+PEER', linkid, scope, this.peers);
           this.peers = this.peers.add(linkid);
+          // console.log('+PEER', linkid, scope, this.peers);
           this.specs.forEach((localid, spec) => {
             sendToLink(linkid, W.Assert(localid, Observe(spec)));
           });
@@ -275,8 +291,8 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
         }
 
         on stop {
-          // console.log('-PEER', linkid, scope);
           this.peers = this.peers.remove(linkid);
+          // console.log('-PEER', linkid, scope);
           this.linkMatches.forEach((matches, localid) => {
             matches.forEach((captures) => removeMatch(localid, captures, linkid));
           });

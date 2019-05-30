@@ -2,37 +2,44 @@
 
 const Http = activate require("@syndicate-lang/driver-http-node");
 const S = activate require("@syndicate-lang/driver-streams-node");
+const debugFactory = require('debug');
 
 import {
   Set, Bytes,
   Encoder, Observe,
-  Dataspace, Skeleton, currentFacet, genUuid, RandomID
+  Dataspace, Skeleton, currentFacet, genUuid,
 } from "@syndicate-lang/core";
 
 const P = activate require("./internal_protocol");
 const W = activate require("./protocol");
+const B = activate require("./buffer");
+const Turn = activate require("./turn");
 
 export function websocketServerFacet(reqId) {
   assert P.POA(reqId);
-  on message Http.DataIn(reqId, $data) {
+  const buf = B.buffer(this, 'chunks');
+  on message Http.DataIn(reqId, $data) buf.push(data);
+  during P.POAReady(reqId) buf.drain((data) => {
     if (data instanceof Bytes) send P.FromPOA(reqId, W.makeDecoder(data).next());
-  }
+  });
   on message P.ToPOA(reqId, $resp) send Http.DataOut(reqId, new Encoder().push(resp).contents());
   stop on message P.Disconnect(reqId);
-  stop on retracted P.POAScope(reqId, _);
+  stop on retracted P.POAReady(reqId);
 }
 
 export function streamServerFacet(id) {
   assert P.POA(id);
   const decoder = W.makeDecoder(null);
-  on message S.Data(id, $data) {
+  const buf = B.buffer(this, 'chunks');
+  on message S.Data(id, $data) buf.push(data);
+  during P.POAReady(reqId) buf.drain((data) => {
     decoder.write(data);
     let v;
     while ((v = decoder.try_next())) send P.FromPOA(id, v);
-  }
+  });
   on message P.ToPOA(id, $resp) send S.Push(id, new Encoder().push(resp).contents(), null);
   stop on message P.Disconnect(id);
-  stop on retracted P.POAScope(id, _);
+  stop on retracted P.POAReady(id);
 }
 
 export function streamServerActor(id, debugLabel) {
@@ -48,7 +55,14 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
   during Observe(P.Envelope($scope, $spec)) assert P.Proposal(scope, Observe(spec));
 
   during P.POA($connId) spawn named P.POA(connId) {
+    const debug = debugFactory('syndicate/server:server:' + connId.toString());
+    on start debug('+');
+    on stop debug('-');
+    on message P.FromPOA(connId, $m) debug('<', m.toString());
+    on message P.ToPOA(connId, $m) debug('>', m.toString());
+
     field this.scope = null;
+    assert P.POAReady(connId);
     assert P.POAScope(connId, this.scope) when (this.scope !== null);
     assert P.ServerActive(this.scope) when (this.scope !== null);
 
@@ -59,10 +73,20 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
       this.scope = scope;
     }
 
-    on message P.FromPOA(connId, W.Assert($ep, $a)) {
+    const outboundTurn = Turn.recorder(this, 'commitNeeded',
+                                       {
+                                         extend: (m) => { send P.ToPOA(connId, m); },
+                                         commit: () => { send P.ToPOA(connId, W.Commit()); },
+                                         debug: debug
+                                       });
+    const inboundTurn = Turn.replayer({ debug: debug });
+
+    on message P.FromPOA(connId, W.Assert($ep, $a)) inboundTurn.extend(() => {
       if (!endpoints.includes(ep)) {
         endpoints = endpoints.add(ep);
         react {
+          const epFacet = currentFacet();
+
           on stop { endpoints = endpoints.remove(ep); }
 
           field this.assertion = a;
@@ -75,9 +99,9 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
               analysis.callback = Dataspace.wrap((evt, vs) => {
                 currentFacet().actor.scheduleScript(() => {
                   switch (evt) {
-                    case Skeleton.EVENT_ADDED:   send P.ToPOA(connId, W.Add(ep, vs)); break;
-                    case Skeleton.EVENT_REMOVED: send P.ToPOA(connId, W.Del(ep, vs)); break;
-                    case Skeleton.EVENT_MESSAGE: send P.ToPOA(connId, W.Msg(ep, vs)); break;
+                    case Skeleton.EVENT_ADDED:   outboundTurn.extend(W.Add(ep, vs)); break;
+                    case Skeleton.EVENT_REMOVED: outboundTurn.extend(W.Del(ep, vs)); break;
+                    case Skeleton.EVENT_MESSAGE: outboundTurn.extend(W.Msg(ep, vs)); break;
                   }
                 });
               });
@@ -87,14 +111,20 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
             }
           }, true);
 
-          on message P.FromPOA(connId, W.Assert(ep, $newAssertion)) this.assertion = newAssertion;
-          stop on message P.FromPOA(connId, W.Clear(ep));
+          on message P.FromPOA(connId, W.Assert(ep, $newAssertion)) inboundTurn.extend(() => {
+            this.assertion = newAssertion;
+          });
+          on message P.FromPOA(connId, W.Clear(ep)) inboundTurn.extend(() => {
+            epFacet.stop();
+          });
         }
       }
-    }
+    });
 
-    on message P.FromPOA(connId, W.Message($body)) {
+    on message P.FromPOA(connId, W.Message($body)) inboundTurn.extend(() => {
       send P.Proposal(this.scope, body);
-    }
+    });
+
+    on message P.FromPOA(connId, W.Commit()) inboundTurn.commit();
   }
 }

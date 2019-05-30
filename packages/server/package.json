@@ -27,7 +27,8 @@
     "@syndicate-lang/driver-http-node": "^0.1.2",
     "@syndicate-lang/driver-mdns": "^0.1.1",
     "@syndicate-lang/driver-streams-node": "^0.1.1",
-    "@syndicate-lang/driver-websocket": "^0.1.1"
+    "@syndicate-lang/driver-websocket": "^0.1.1",
+    "debug": "^4.1.1"
   },
   "main": "lib/index.js",
   "bin": {

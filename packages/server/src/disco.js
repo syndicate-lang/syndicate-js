@@ -27,29 +27,31 @@ const Federation = activate require("./federation");
 
 import {
   Set, Map,
-  RandomID,
 } from "@syndicate-lang/core";
 
 const fs = require('fs');
 
+const debugFactory = require('debug');
+const debug = debugFactory('syndicate/server:disco');
+
 spawn named 'peerAdvertisement' {
-  const localId = RandomID.randomId(8, false);
-  assert OverlayNode(localId);
-  console.log('Local node ID is', localId);
+  during OverlayNode($localId) {
+    on start debug('Local node ID is', localId);
 
-  during Federation.ManagementScope($managementScope) {
-    during P.Envelope(managementScope, Overlay($overlayId, _)) {
-      const gatewayId = overlayId + ':' + localId;
+    during Federation.ManagementScope($managementScope) {
+      during P.Envelope(managementScope, Overlay($overlayId, _)) {
+        const gatewayId = overlayId + ':' + localId;
 
-      during P.Envelope(managementScope, AvailableTransport(WebSocketTransport($port, $path))) {
-        assert M.Publish(M.Service(gatewayId, '_syndicate+ws._tcp'), null, port, [
-          "path="+path,
-          "scope="+managementScope
-        ]);
+        during P.Envelope(managementScope, AvailableTransport(WebSocketTransport($port, $path))) {
+          assert M.Publish(M.Service(gatewayId, '_syndicate+ws._tcp'), null, port, [
+            "path="+path,
+            "scope="+managementScope
+          ]);
+        }
+
+        // Other variants for later:
+        // assert M.Publish(M.Service(gatewayId, '_syndicate._tcp'), null, port, []);
       }
-
-      // Other variants for later:
-      // assert M.Publish(M.Service(gatewayId, '_syndicate._tcp'), null, port, []);
     }
   }
 }
@@ -67,7 +69,7 @@ function txtsToMap(txts) {
 
 spawn named 'peerDiscovery' {
   during M.DefaultGateway($gatewayInterface, $gatewayIp) {
-    on start console.log('Gateway IP is', gatewayIp, 'on interface', gatewayInterface);
+    on start debug('Gateway IP is', gatewayIp, 'on interface', gatewayInterface);
 
     during M.Discovered(M.Service($name, '_syndicate+ws._tcp'),
                         _, // hostname
@@ -88,11 +90,24 @@ spawn named 'peerDiscovery' {
   }
 }
 
-spawn named 'helpful info output' {
-  console.info('Peer discovery running');
+spawn named 'syndicate/server:disco:transport' {
+  const debug = debugFactory('syndicate/server:disco:transport');
+  on asserted AvailableTransport($spec) console.info(spec.toString());
+}
+
+spawn named 'syndicate/server:disco:mdns' {
+  const debug = debugFactory('syndicate/server:disco:mdns');
+  debug('Peer discovery running');
   during Peer($overlayId, $nodeId, $ip, $addr) {
-    on start console.info("+PEER", ip, overlayId, nodeId, addr.toString());
-    on stop  console.info("-PEER", ip, overlayId, nodeId, addr.toString());
+    on start debug("+", ip, overlayId, nodeId, addr.toString());
+    on stop  debug("-", ip, overlayId, nodeId, addr.toString());
+  }
+}
+
+spawn named 'federationRoutingInfo' {
+  during Federation.ManagementScope($managementScope) {
+    // assert P.Proposal(managementScope, Federation.ManagementScope(managementScope));
+    during $t(AvailableTransport(_)) assert P.Proposal(managementScope, t);
   }
 }
 
@@ -144,14 +159,17 @@ spawn named 'uplinkSelection' {
         }
 
         dataflow if (this.bestAddr) {
-          console.log('Selected uplink for overlay', overlayId, 'is', this.bestAddr.toString());
+          debug('Selected uplink peer for overlay', overlayId, 'is', this.bestPeer.toString(), 'at', this.bestAddr.toString());
         }
 
         assert P.Proposal(managementScope, Federation.Uplink(overlayId, this.bestAddr, overlayId))
           when (this.bestAddr);
 
-        assert P.Proposal(overlayId, OverlayLink(OverlayNode(localId), this.bestPeer))
-          when (this.bestAddr);
+        const loopbackAddr = C.Loopback(overlayId);
+        during C.ServerConnected(loopbackAddr) {
+          assert C.ToServer(loopbackAddr, OverlayLink(OverlayNode(localId), this.bestPeer))
+            when (this.bestAddr);
+        }
       }
     }
   }

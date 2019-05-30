@@ -13,6 +13,10 @@ const Server = activate require("./server");
 const Federation = activate require("./federation");
 const fs = require('fs');
 
+import {
+  RandomID,
+} from "@syndicate-lang/core";
+
 let currentManagementScope = 'local';
 
 function usage() {
@@ -91,20 +95,13 @@ spawn named 'server' {
   uplinks.forEach((link) => {
     assert P.Proposal(currentManagementScope, link);
   });
+  if (overlays.length > 0) {
+    const localId = RandomID.randomId(8, false);
+    assert D.OverlayNode(localId);
+  }
   overlays.forEach((o) => {
     assert P.Proposal(currentManagementScope, o);
   });
-}
-
-spawn named 'helpful info output' {
-  on asserted D.AvailableTransport($spec) console.info('Transport:', spec.toString());
-}
-
-spawn named 'federationRoutingInfo' {
-  during Federation.ManagementScope($managementScope) {
-    // assert P.Proposal(managementScope, Federation.ManagementScope(managementScope));
-    during $t(D.AvailableTransport(_)) assert P.Proposal(managementScope, t);
-  }
 }
 
 function _spawnStreamServer(spec) {

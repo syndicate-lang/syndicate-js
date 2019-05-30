@@ -5,6 +5,8 @@ import { Decoder, Discard, Capture, Observe } from "@syndicate-lang/core";
 message type Connect(scope);
 message type Peer(scope);
 
+message type Commit();
+
 message type Assert(endpointName, assertion);
 message type Clear(endpointName);
 message type Message(body);
@@ -29,6 +31,7 @@ function makeDecoder(initialBuffer) {
 
 Object.assign(module.exports, {
   Connect, Peer,
+  Commit,
   Assert, Clear, Message,
   Add, Del, Msg, Err,
   Ping, Pong,
