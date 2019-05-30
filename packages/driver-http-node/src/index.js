@@ -209,17 +209,17 @@ function _server(host, port, httpsOptions) {
 
     react {
       const facet = currentFacet();
+      const id = genUuid('_wsRequest');
       const guard = (f) => {
         try {
           f()
         } catch (e) {
           // Swallow e, which will be some kind of websocket-related exception.
-          console.debug('WebSocket exception in actor '+facet.actor.toString(), e);
+          console.debug('WebSocket '+id+' exception in actor '+facet.actor.toString(), e);
           facet.stop();
         }
       };
 
-      let id = genUuid('_wsRequest');
       assert WebSocket(id, server, pieces, url.query);
 
       on stop guard(() => ws.close());
