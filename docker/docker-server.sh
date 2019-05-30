@@ -16,10 +16,12 @@ then
     nameopt=
 else
     nameopt="--hostname $1"
+    shift
 fi
 
 exec docker run -it --rm \
      --network ${networkname} \
      $nameopt \
      -v "${dir}":/data \
+     "$@" \
      syndicate-js
