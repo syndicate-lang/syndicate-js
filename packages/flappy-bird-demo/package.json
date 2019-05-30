@@ -1,7 +1,7 @@
 {
   "name": "@syndicate-lang/flappy-bird-demo",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/flappy-bird-demo",
   "license": "GPL-3.0+",
   "repository": "github:syndicate-lang/syndicate-js",
@@ -14,9 +14,9 @@
     "@syndicate-lang/syntax": "^0.1.0"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.1.0",
-    "@syndicate-lang/driver-browser-ui": "^0.1.0",
-    "@syndicate-lang/driver-timer": "^0.1.0",
+    "@syndicate-lang/core": "^0.1.1",
+    "@syndicate-lang/driver-browser-ui": "^0.1.1",
+    "@syndicate-lang/driver-timer": "^0.1.1",
     "webpack": "^4.27.1",
     "webpack-cli": "^3.1.2"
   }
