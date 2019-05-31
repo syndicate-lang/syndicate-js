@@ -39,6 +39,8 @@ function usage() {
   console.info('  --overlay OVERLAYID WEBSOCKETURL');
   console.info('                        Participate in a self-assembling overlay with the');
   console.info('                        given ID and root node server URL');
+  console.info('');
+  console.info('  --help, -h            Produce this message and terminate');
 }
 
 const uplinks = [];
