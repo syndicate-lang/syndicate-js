@@ -77,9 +77,9 @@ spawn named 'driver/avahi-publish' {
         field this.established = false;
         assert Published(svc, hostName, port, txtDataRecords) when (this.established);
 
-        on retracted S.Readable(stderr) topFacet.stop();
+        on retracted S.Stream(stderr, S.Readable()) topFacet.stop();
 
-        on message S.Line(stderr, $line) {
+        on message S.Stream(stderr, S.Line($line)) {
           line = line.toString('utf-8');
           if (line.startsWith('Established')) {
             this.established = true;
@@ -126,8 +126,8 @@ spawn named 'driver/avahi-browse' {
 
     on asserted S.SubprocessRunning(id, _, [_, $stdout, _]) {
       react {
-        on retracted S.Readable(stdout) topFacet.stop();
-        on message S.Line(stdout, $line) {
+        on retracted S.Stream(stdout, S.Readable()) topFacet.stop();
+        on message S.Stream(stdout, S.Line($line)) {
           // Parsing of TXT record data (appearing after the port
           // number in an '=' record) is unreliable given the way
           // avahi-browse formats it.

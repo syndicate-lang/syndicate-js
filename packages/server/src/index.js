@@ -109,7 +109,7 @@ spawn named 'server' {
 function _spawnStreamServer(spec) {
   spawn named spec {
     assert D.AvailableTransport(spec);
-    on asserted S.IncomingConnection($id, spec) Server.streamServerActor(id, [spec, id]);
+    on asserted S.Stream($id, S.Incoming(spec)) Server.streamServerActor(id, [spec, id]);
   }
 }
 

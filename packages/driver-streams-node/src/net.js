@@ -30,7 +30,7 @@ assertion type UnixSocketServer(path);
 export { UnixSocketClient, UnixSocketServer };
 
 spawn named 'NetDriver' {
-  during Observe(S.IncomingConnection(_, TcpListener($port))) spawn named ['TcpListener', port] {
+  during Observe(S.Stream(_, S.Incoming(TcpListener($port)))) spawn named ['TcpListener', port] {
     _netListener.call(this,
                       () => genUuid('tcp' + port),
                       TcpListener(port),
@@ -38,7 +38,7 @@ spawn named 'NetDriver' {
                       (server, err) => { throw err; });
   }
 
-  during Observe(S.IncomingConnection(_, UnixSocketServer($path)))
+  during Observe(S.Stream(_, S.Incoming(UnixSocketServer($path))))
   spawn named ['UnixSocketServer', path] {
     let retried = false;
     _netListener.call(this,
@@ -94,14 +94,14 @@ spawn named 'NetDriver' {
     on stop try { server.close() } catch (e) { console.error(e); }
   }
 
-  during S.OutgoingConnection($id, TcpAddress($host, $port)) spawn named ['Tcp', id, host, port] {
+  during S.Stream($id, S.Outgoing(TcpAddress($host, $port))) spawn named ['Tcp', id, host, port] {
     _netConnector.call(this,
                        id,
                        (socket) => { socket.connect(port, host) },
                        TcpAddress(host, port));
   }
 
-  during S.OutgoingConnection($id, UnixSocketClient($path)) spawn named ['Unix', id, path] {
+  during S.Stream($id, S.Outgoing(UnixSocketClient($path))) spawn named ['Unix', id, path] {
     _netConnector.call(this,
                        id,
                        (socket) => { socket.connect(path) },
@@ -118,11 +118,11 @@ spawn named 'NetDriver' {
       finish();
       establishingFacet.stop(() => {
         socket.destroy();
-        send S.ConnectionRejected(id, err);
+        send S.Stream(id, S.Rejected(err));
       });
     });
 
-    on retracted S.OutgoingConnection(id, spec) {
+    on retracted S.Stream(id, S.Outgoing(spec)) {
       connectionErrorHandler(null);
     }
 
@@ -130,7 +130,7 @@ spawn named 'NetDriver' {
       const readyHandler = Dataspace.wrapExternal(() => {
         socket.off('error', connectionErrorHandler);
         socket.off('ready', readyHandler);
-        send S.ConnectionAccepted(id);
+        send S.Stream(id, S.Accepted());
         establishingFacet.stop(() => {
           react {
             on stop finish();

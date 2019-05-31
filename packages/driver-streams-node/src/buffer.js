@@ -19,7 +19,7 @@
 import { currentFacet, Observe, genUuid, Bytes, List } from "@syndicate-lang/core";
 const S = activate require("./streams");
 
-message type PacketRequest(id, size);
+message type PacketRequest(size);
 
 export {
   PacketRequest,
@@ -39,26 +39,26 @@ export function spawnBufferStream() {
 
 function _spawnBufferStream(id) {
   spawn named id {
-    stop on retracted Observe(S.Duplex(id));
-    assert S.Duplex(id);
-    assert S.StreamInfo(id, 'Duplex', null);
+    stop on retracted Observe(S.Stream(id, S.Duplex()));
+    assert S.Stream(id, S.Duplex());
+    assert S.Stream(id, S.Info(Symbol.for('Duplex'), null));
 
     field this.buffer = Bytes();
     field this.queue = List();
 
-    on message S.Push(id, $chunk, $ack) {
+    on message S.Stream(id, S.Push($chunk, $ack)) {
       this.buffer = Bytes.concat([this.buffer, chunk]);
       if (ack !== null) send ack;
     }
 
-    stop on message S.Close(id, $ack) {
+    stop on message S.Stream(id, S.Close($ack)) {
       if (ack !== null) send ack;
     }
 
-    on message PacketRequest(id, $size) {
+    on message S.Stream(id, PacketRequest($size)) {
       if (size === 0) {
         // Signal to terminate.
-        currentFacet().stop(() => { send S.Data(id, this.buffer); });
+        currentFacet().stop(() => { send S.Stream(id, S.Data(this.buffer)); });
       } else {
         this.queue = this.queue.push(size);
       }
@@ -68,7 +68,7 @@ function _spawnBufferStream(id) {
       if (!this.queue.isEmpty()) {
         const expected = this.queue.first();
         if (this.buffer.size >= expected) {
-          send S.Data(id, this.buffer.slice(0, expected));
+          send S.Stream(id, S.Data(this.buffer.slice(0, expected)));
           this.buffer = this.buffer.slice(expected);
           this.queue = this.queue.shift();
         }

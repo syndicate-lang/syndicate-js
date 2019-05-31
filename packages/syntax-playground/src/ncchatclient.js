@@ -23,8 +23,10 @@ const S = activate require("@syndicate-lang/driver-streams-node");
 const stdin = genUuid('stdin');
 const stdout = genUuid('stdout');
 spawn named 'stdioServer' {
-  during Observe(S.Readable(stdin)) spawn S.readableStreamBehaviour(stdin, process.stdin);
-  during Observe(S.Writable(stdout)) spawn S.writableStreamBehaviour(stdout, process.stdout);
+  during Observe(S.Stream(stdin, S.Readable()))
+    spawn S.readableStreamBehaviour(stdin, process.stdin);
+  during Observe(S.Stream(stdout, S.Writable()))
+    spawn S.writableStreamBehaviour(stdout, process.stdout);
 }
 
 spawn named 'chatclient-via-nc' {
@@ -33,20 +35,22 @@ spawn named 'chatclient-via-nc' {
   stop on message S.SubprocessError(id, $err) {
     console.error("Couldn't start subprocess", err);
   }
-  stop on retracted S.Readable(stdin);
-  stop on retracted S.Writable(stdout);
+  stop on retracted S.Stream(stdin, S.Readable());
+  stop on retracted S.Stream(stdout, S.Writable());
   on asserted S.SubprocessRunning(id, _, [$i, $o, _]) {
     react {
-      on message S.Line(stdin, $line) {
+      on message S.Stream(stdin, S.Line($line)) {
         console.log('INPUT:', line);
-        send S.Push(i, line.toString('utf-8') + '\n', null);
+        send S.Stream(i, S.Push(line.toString('utf-8') + '\n', null));
       }
-      on message S.End(stdin) {
+      on message S.Stream(stdin, S.End()) {
         console.log('INPUT EOF');
-        send S.Close(i, null);
+        send S.Stream(i, S.Close(null));
       }
 
-      on message S.Line(o, $line) send S.Push(stdout, line.toString('utf-8') + '\n', null);
+      on message S.Stream(o, S.Line($line)) {
+        send S.Stream(stdout, S.Push(line.toString('utf-8') + '\n', null));
+      }
     }
   }
   stop on asserted S.SubprocessExit(id, $code, $signal) {

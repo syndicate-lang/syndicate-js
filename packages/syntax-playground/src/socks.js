@@ -6,7 +6,7 @@ const S = activate require("@syndicate-lang/driver-streams-node");
 assertion type VirtualTcpAddress(host, port);
 
 spawn named 'socks-server' {
-  on asserted S.IncomingConnection($conn, S.TcpListener(1080)) {
+  on asserted S.Stream($conn, S.Incoming(S.TcpListener(1080))) {
     spawn named ['socksconn', conn] {
       const self = this;
 
@@ -15,32 +15,32 @@ spawn named 'socks-server' {
 
       const rootFacet = currentFacet();
 
-      stop on retracted S.Duplex(conn);
+      stop on retracted S.Stream(conn, S.Duplex());
 
       const buf = S.onStartSpawnBufferStream();
       field this.bufferWanted = true;
       on start react {
         stop on (!this.bufferWanted);
-        assert Observe(S.Duplex(buf));
-        on message S.Data(conn, $chunk) send S.Push(buf, chunk, null);
+        assert Observe(S.Stream(buf, S.Duplex()));
+        on message S.Stream(conn, S.Data($chunk)) send S.Stream(buf, S.Push(chunk, null));
       }
 
       on start selectAuthenticationMethod();
 
       function readChunk(size, k) {
         react {
-          on start send S.PacketRequest(buf, size);
-          stop on message S.Data(buf, $chunk) {
+          on start send S.Stream(buf, S.PacketRequest(size));
+          stop on message S.Stream(buf, S.Data($chunk)) {
             k(chunk);
           }
         }
       }
 
       function sendReply(replyCode, addrTypeAddrPort) {
-        send S.Push(conn, Bytes.concat([
+        send S.Stream(conn, S.Push(Bytes.concat([
           Bytes.from([5, replyCode, 0]),
           (addrTypeAddrPort || Bytes.from([1, 0,0,0,0, 0,0]))
-        ]), null);
+        ]), null));
       }
 
       function dieOnBadVersion(packet) {
@@ -54,10 +54,10 @@ spawn named 'socks-server' {
           readChunk(nMethods, (methods) => {
             if (!methods.includes(0)) {
               console.error('Client will not accept no-authentication');
-              send S.Push(conn, Bytes.from([5, 255]), null);
+              send S.Stream(conn, S.Push(Bytes.from([5, 255]), null));
               rootFacet.stop();
             } else {
-              send S.Push(conn, Bytes.from([5, 0]), null); // select no-authentication
+              send S.Stream(conn, S.Push(Bytes.from([5, 0]), null)); // select no-authentication
               readSocksRequest();
             }
           });
@@ -123,8 +123,8 @@ spawn named 'socks-server' {
         react {
           console.log(conn, 'CONNECT', addr, port);
           const out = genUuid('out');
-          assert S.OutgoingConnection(out, VirtualTcpAddress(addr, port));
-          stop on message S.ConnectionRejected(out, $err) {
+          assert S.Stream(out, S.Outgoing(VirtualTcpAddress(addr, port)));
+          stop on message S.Stream(out, S.Rejected($err)) {
             console.error('Could not connect outgoing', addr, port, err);
             switch (err.code) {
               case 'ENETUNREACH':
@@ -149,10 +149,10 @@ spawn named 'socks-server' {
                 break;
             }
           }
-          stop on message S.ConnectionAccepted(out) {
+          stop on message S.Stream(out, S.Accepted()) {
             react {
-              on retracted S.Duplex(out) rootFacet.stop();
-              on asserted S.StreamInfo(out, _, $handle) {
+              on retracted S.Stream(out, S.Duplex()) rootFacet.stop();
+              on asserted S.Stream(out, S.Info(_, $handle)) {
                 const localAddrStr = handle.localAddress || '127.255.255.254';
                 const localPort = handle.localPort || 0;
                 let localAddr = null;
@@ -175,12 +175,16 @@ spawn named 'socks-server' {
                 sendReply(0 /* success */, localEnd);
                 readChunk(0, (firstChunk) => {
                   self.bufferWanted = false;
-                  send S.Push(out, firstChunk, null);
+                  send S.Stream(out, S.Push(firstChunk, null));
                   react {
-                    assert S.BackPressure(conn, out);
-                    assert S.BackPressure(out, conn);
-                    on message S.Data(conn, $chunk) send S.Push(out, chunk, null);
-                    on message S.Data(out, $chunk) send S.Push(conn, chunk, null);
+                    assert S.Stream(conn, S.BackPressure(out));
+                    assert S.Stream(out, S.BackPressure(conn));
+                    on message S.Stream(conn, S.Data($chunk)) {
+                      send S.Stream(out, S.Push(chunk, null));
+                    }
+                    on message S.Stream(out, S.Data($chunk)) {
+                      send S.Stream(conn, S.Push(chunk, null));
+                    }
                   }
                 });
               }
@@ -195,14 +199,14 @@ spawn named 'socks-server' {
 spawn named 'remap-service' {
   field this.mapped = Set();
 
-  on asserted Observe(S.OutgoingConnection(_, $a(VirtualTcpAddress(_, _)))) {
+  on asserted Observe(S.Stream(_, S.Outgoing($a(VirtualTcpAddress(_, _))))) {
     this.mapped = this.mapped.add(a);
   }
-  on retracted Observe(S.OutgoingConnection(_, $a(VirtualTcpAddress(_, _)))) {
+  on retracted Observe(S.Stream(_, S.Outgoing($a(VirtualTcpAddress(_, _))))) {
     this.mapped = this.mapped.remove(a);
   }
 
-  during S.OutgoingConnection($id, $a(VirtualTcpAddress($host, $port))) {
+  during S.Stream($id, S.Outgoing($a(VirtualTcpAddress($host, $port)))) {
     if (host.endsWith('.fruit')) {
       if (!this.mapped.includes(a)) {
         console.error("No virtual mapping for", a.toString());
@@ -210,24 +214,24 @@ spawn named 'remap-service' {
         err.errno = err.code = 'ENOTFOUND';
         err.hostname = err.host = host;
         err.port = port;
-        on start send S.ConnectionRejected(id, err);
+        on start send S.Stream(id, S.Rejected(err));
       }
     } else {
-      assert S.OutgoingConnection(id, S.TcpAddress(host, port));
+      assert S.Stream(id, S.Outgoing(S.TcpAddress(host, port)));
     }
   }
 }
 
 spawn named 'test-remap' {
-  during S.OutgoingConnection($id, VirtualTcpAddress('foobar.fruit', 9999)) {
-    assert S.OutgoingConnection(id, S.TcpAddress('steam.eighty-twenty.org', 22));
+  during S.Stream($id, S.Outgoing(VirtualTcpAddress('foobar.fruit', 9999))) {
+    assert S.Stream(id, S.Outgoing(S.TcpAddress('steam.eighty-twenty.org', 22)));
   }
 
-  during S.OutgoingConnection($id, VirtualTcpAddress('foobar.fruit', 9998)) {
-    assert S.OutgoingConnection(id, S.SubprocessAddress('/bin/sh', [], {}));
+  during S.Stream($id, S.Outgoing(VirtualTcpAddress('foobar.fruit', 9998))) {
+    assert S.Stream(id, S.Outgoing(S.SubprocessAddress('/bin/sh', [], {})));
   }
 
-  during S.OutgoingConnection($id, VirtualTcpAddress('foobar.fruit', 9997)) {
-    assert S.OutgoingConnection(id, S.SubprocessAddress('/bin/cat', ['/proc/cpuinfo'], {}));
+  during S.Stream($id, S.Outgoing(VirtualTcpAddress('foobar.fruit', 9997))) {
+    assert S.Stream(id, S.Outgoing(S.SubprocessAddress('/bin/cat', ['/proc/cpuinfo'], {})));
   }
 }

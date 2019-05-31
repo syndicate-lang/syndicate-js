@@ -37,7 +37,7 @@ export {
 };
 
 spawn named 'driver/Subprocess' {
-  during S.OutgoingConnection($id, SubprocessAddress($command, $args, $options))
+  during S.Stream($id, S.Outgoing(SubprocessAddress($command, $args, $options)))
   spawn named ['SubprocessConnection', id] {
     const establishingFacet = currentFacet();
 
@@ -46,7 +46,7 @@ spawn named 'driver/Subprocess' {
                                    (options || Map()).set('stdio',
                                                           ['pipe', 'pipe', 'inherit']).toJS());
     const rejecter = Dataspace.wrapExternal(() => {
-      send S.ConnectionRejected(id, null);
+      send S.Stream(id, S.Rejected(null));
       establishingFacet.stop();
     });
     sp.on('exit', rejecter);
@@ -55,7 +55,7 @@ spawn named 'driver/Subprocess' {
     process.nextTick(Dataspace.wrapExternal(() => {
       sp.off('exit', rejecter);
       sp.off('error', rejecter);
-      send S.ConnectionAccepted(id);
+      send S.Stream(id, S.Accepted());
       const s = new Duplex(sp.stdout, sp.stdin);
       establishingFacet.stop(() => {
         react {

@@ -31,20 +31,20 @@ export function streamServerFacet(id) {
   assert P.POA(id);
   const decoder = W.makeDecoder(null);
   const buf = B.buffer(this, 'chunks');
-  on message S.Data(id, $data) buf.push(data);
+  on message S.Stream(id, S.Data($data)) buf.push(data);
   during P.POAReady(reqId) buf.drain((data) => {
     decoder.write(data);
     let v;
     while ((v = decoder.try_next())) send P.FromPOA(id, v);
   });
-  on message P.ToPOA(id, $resp) send S.Push(id, new Encoder().push(resp).contents(), null);
+  on message P.ToPOA(id, $resp) send S.Stream(id, S.Push(new Encoder().push(resp).contents(), null));
   stop on message P.Disconnect(id);
   stop on retracted P.POAReady(id);
 }
 
 export function streamServerActor(id, debugLabel) {
   spawn named [debugLabel || 'stream-poa', id] {
-    stop on retracted S.Duplex(id);
+    stop on retracted S.Stream(id, S.Duplex());
     streamServerFacet(id);
   }
 }

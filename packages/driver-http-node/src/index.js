@@ -170,7 +170,7 @@ function _server(host, port, httpsOptions) {
         res.writeHead(500, "Internal server error", {});
         res.end();
       }
-      on asserted Observe(S.Readable(id)) react S.readableStreamBehaviour(id, req);
+      on asserted Observe(S.Stream(id, S.Readable())) react S.readableStreamBehaviour(id, req);
       on asserted Response(id, $code, $message, $headers, $detail)
       {
         res.writeHead(code, message, headers.toJS());

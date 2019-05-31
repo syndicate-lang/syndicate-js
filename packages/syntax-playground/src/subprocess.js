@@ -29,11 +29,11 @@ spawn named 'lister' {
       stop on message S.SubprocessError(id, $err) console.error("Couldn't start subprocess", err);
 
       on asserted S.SubprocessRunning(id, _, [$i, $o, _]) {
-        send S.Push(i, "GET / HTTP/1.0\r\n\r\n", null);
-        send S.Close(i, null);
+        send S.Stream(i, S.Push("GET / HTTP/1.0\r\n\r\n", null));
+        send S.Stream(i, S.Close(null));
         react {
-          on message S.Data(o, $chunk) console.log(chunk);
-          on asserted S.End(o) console.log('DONE!');
+          on message S.Stream(o, S.Data($chunk)) console.log(chunk);
+          on asserted S.Stream(o, S.End()) console.log('DONE!');
         }
       }
 

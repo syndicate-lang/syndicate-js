@@ -23,27 +23,33 @@ const net = require('net');
 const stdin = genUuid('stdin');
 const stdout = genUuid('stdout');
 spawn named 'stdioServer' {
-  during Observe(S.Readable(stdin)) spawn S.readableStreamBehaviour(stdin, process.stdin);
-  during Observe(S.Writable(stdout)) spawn S.writableStreamBehaviour(stdout, process.stdout);
+  during Observe(S.Stream(stdin, S.Readable()))
+    spawn S.readableStreamBehaviour(stdin, process.stdin);
+  during Observe(S.Stream(stdout, S.Writable()))
+    spawn S.writableStreamBehaviour(stdout, process.stdout);
 }
 
 spawn named 'chatclient' {
   const id = genUuid('tcpconn');
-  assert S.OutgoingConnection(id, S.TcpAddress('localhost', 5999));
-  stop on message S.ConnectionRejected(id, $err) {
+  assert S.Stream(id, S.Outgoing(S.TcpAddress('localhost', 5999)));
+  stop on message S.Stream(id, S.Rejected($err)) {
     console.error('Connection rejected', err);
   }
-  stop on message S.ConnectionAccepted(id) {
+  stop on message S.Stream(id, S.Accepted()) {
     react {
-      stop on retracted S.Duplex(id);
-      stop on retracted S.Readable(stdin);
-      stop on retracted S.Writable(stdout);
+      stop on retracted S.Stream(id, S.Duplex());
+      stop on retracted S.Stream(stdin, S.Readable());
+      stop on retracted S.Stream(stdout, S.Writable());
 
-      assert S.BackPressure(stdin, id);
-      assert S.BackPressure(id, stdout);
+      assert S.Stream(stdin, S.BackPressure(id));
+      assert S.Stream(id, S.BackPressure(stdout));
 
-      on message S.Line(stdin, $line) send S.Push(id, line.toString('utf-8') + '\n', null);
-      on message S.Line(id, $line) send S.Push(stdout, line.toString('utf-8') + '\n', null);
+      on message S.Stream(stdin, S.Line($line)) {
+        send S.Stream(id, S.Push(line.toString('utf-8') + '\n', null));
+      }
+      on message S.Stream(id, S.Line($line)) {
+        send S.Stream(stdout, S.Push(line.toString('utf-8') + '\n', null));
+      }
     }
   }
 }
