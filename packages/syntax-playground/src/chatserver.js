@@ -29,11 +29,11 @@ spawn named 'chatserver' {
       stop on retracted S.Stream(id, S.Duplex());
 
       assert Present(me);
-      on asserted  Present($who) send S.Stream(id, S.Push(`${who} arrived.\n`, null));
-      on retracted Present($who) send S.Stream(id, S.Push(`${who} departed.\n`, null));
+      on asserted  Present($who) send S.Stream(id, S.Push(`${who} arrived.\n`, false));
+      on retracted Present($who) send S.Stream(id, S.Push(`${who} departed.\n`, false));
 
       on message S.Stream(id, S.Line($line)) send Speak(me, line);
-      on message Speak($who, $what) send S.Stream(id, S.Push(`${who}: ${what}\n`, null));
+      on message Speak($who, $what) send S.Stream(id, S.Push(`${who}: ${what}\n`, false));
     }
   }
 }

@@ -41,8 +41,8 @@ message type Rejected(err); // for both incoming and outgoing connections
 // Each `chunk` to/from a stream in OBJECT mode may be any value
 // except `null`.
 //
-// Each `ack`, if non-`null`, is an acknowledgement MESSAGE to be sent
-// when the corresponding chunk is completely processed.
+// Each `ack`, if non-`false`, is an acknowledgement MESSAGE to be
+// sent when the corresponding chunk is completely processed.
 
 // Interest in StreamInfo is non-creative
 assertion type Info(kind, stream); // kind ∈ Readable, Writable, Duplex
@@ -189,7 +189,7 @@ function _writableStreamBehaviour(id, s) {
 
   s.on('drain', Dataspace.wrapExternal(() => { this.inboundWindow = refreshWindow(); }));
 
-  const callbackFor = (k) => (k === null ? void 0 : Dataspace.wrapExternal(() => { send k; }));
+  const callbackFor = (k) => (k === false ? void 0 : Dataspace.wrapExternal(() => { send k; }));
 
   on message Stream(id, Push($chunk, $ack)) {
     s.write(objectMode ? chunk : Bytes.toIO(chunk), callbackFor(ack));

@@ -52,7 +52,7 @@ function _spawnBufferStream(id) {
     }
 
     stop on message S.Stream(id, S.Close($ack)) {
-      if (ack !== null) send ack;
+      if (ack !== false) send ack;
     }
 
     on message S.Stream(id, PacketRequest($size)) {

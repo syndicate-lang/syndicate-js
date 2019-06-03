@@ -22,7 +22,7 @@ spawn named 'socks-server' {
       on start react {
         stop on (!this.bufferWanted);
         assert Observe(S.Stream(buf, S.Duplex()));
-        on message S.Stream(conn, S.Data($chunk)) send S.Stream(buf, S.Push(chunk, null));
+        on message S.Stream(conn, S.Data($chunk)) send S.Stream(buf, S.Push(chunk, false));
       }
 
       on start selectAuthenticationMethod();
@@ -40,7 +40,7 @@ spawn named 'socks-server' {
         send S.Stream(conn, S.Push(Bytes.concat([
           Bytes.from([5, replyCode, 0]),
           (addrTypeAddrPort || Bytes.from([1, 0,0,0,0, 0,0]))
-        ]), null));
+        ]), false));
       }
 
       function dieOnBadVersion(packet) {
@@ -54,10 +54,10 @@ spawn named 'socks-server' {
           readChunk(nMethods, (methods) => {
             if (!methods.includes(0)) {
               console.error('Client will not accept no-authentication');
-              send S.Stream(conn, S.Push(Bytes.from([5, 255]), null));
+              send S.Stream(conn, S.Push(Bytes.from([5, 255]), false));
               rootFacet.stop();
             } else {
-              send S.Stream(conn, S.Push(Bytes.from([5, 0]), null)); // select no-authentication
+              send S.Stream(conn, S.Push(Bytes.from([5, 0]), false)); // select no-authentication
               readSocksRequest();
             }
           });
@@ -175,15 +175,15 @@ spawn named 'socks-server' {
                 sendReply(0 /* success */, localEnd);
                 readChunk(0, (firstChunk) => {
                   self.bufferWanted = false;
-                  send S.Stream(out, S.Push(firstChunk, null));
+                  send S.Stream(out, S.Push(firstChunk, false));
                   react {
                     assert S.Stream(conn, S.BackPressure(out));
                     assert S.Stream(out, S.BackPressure(conn));
                     on message S.Stream(conn, S.Data($chunk)) {
-                      send S.Stream(out, S.Push(chunk, null));
+                      send S.Stream(out, S.Push(chunk, false));
                     }
                     on message S.Stream(out, S.Data($chunk)) {
-                      send S.Stream(conn, S.Push(chunk, null));
+                      send S.Stream(conn, S.Push(chunk, false));
                     }
                   }
                 });

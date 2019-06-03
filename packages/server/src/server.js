@@ -37,7 +37,7 @@ export function streamServerFacet(id) {
     let v;
     while ((v = decoder.try_next())) send P.FromPOA(id, v);
   });
-  on message P.ToPOA(id, $resp) send S.Stream(id, S.Push(new Encoder().push(resp).contents(), null));
+  on message P.ToPOA(id, $resp) send S.Stream(id, S.Push(new Encoder().push(resp).contents(), false));
   stop on message P.Disconnect(id);
   stop on retracted P.POAReady(id);
 }

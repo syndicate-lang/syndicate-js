@@ -17,8 +17,8 @@ spawn named 'ssh-relay-server' {
           stop on retracted S.Stream(daemon, S.Duplex());
           assert S.Stream(conn, S.BackPressure(daemon));
           assert S.Stream(daemon, S.BackPressure(conn));
-          on message S.Stream(conn, S.Data($chunk)) send S.Stream(daemon, S.Push(chunk, null));
-          on message S.Stream(daemon, S.Data($chunk)) send S.Stream(conn, S.Push(chunk, null));
+          on message S.Stream(conn, S.Data($chunk)) send S.Stream(daemon, S.Push(chunk, false));
+          on message S.Stream(daemon, S.Data($chunk)) send S.Stream(conn, S.Push(chunk, false));
         }
       }
     }
