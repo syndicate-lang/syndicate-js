@@ -738,6 +738,39 @@ Facet.prototype.addEndpoint = function (updateFun, isDynamic) {
   return ep;
 };
 
+Facet.prototype._addRawObserverEndpoint = function (specThunk, callbacks) {
+  this.addEndpoint(() => {
+    const spec = specThunk();
+    if (spec === void 0) {
+      return [void 0, null];
+    } else {
+      const analysis = Skeleton.analyzeAssertion(spec);
+      analysis.callback = Dataspace.wrap((evt, vs) => {
+        let cb = null;
+        switch (evt) {
+          case Skeleton.EVENT_ADDED: cb = callbacks.add; break;
+          case Skeleton.EVENT_REMOVED: cb = callbacks.del; break;
+          case Skeleton.EVENT_MESSAGE: cb = callbacks.msg; break;
+        }
+        if (cb) cb(vs);
+      });
+      return [Assertions.Observe(spec), analysis];
+    }
+  });
+};
+
+Facet.prototype.addObserverEndpoint = function (specThunk, callbacks) {
+  const self = this;
+  function scriptify(f) {
+    return f && ((vs) => self.actor.scheduleScript(() => f(vs)));
+  }
+  this._addRawObserverEndpoint(specThunk, {
+    add: scriptify(callbacks.add),
+    del: scriptify(callbacks.del),
+    msg: scriptify(callbacks.msg),
+  });
+};
+
 Facet.prototype.addDataflow = function (subjectFun, priority) {
   return this.addEndpoint(() => {
     let subjectId = this.actor.dataspace.dataflow.currentSubjectId;

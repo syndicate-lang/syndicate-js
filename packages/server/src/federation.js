@@ -89,20 +89,11 @@ spawn named '@syndicate-lang/server/federation/LocalLinkFactory' {
           react {
             on start debug('remoteObs+', spec.toString());
             on stop debug('remoteObs-', spec.toString());
-            currentFacet().addEndpoint(() => {
-              const outerSpec = P.Proposal(scope, spec);
-              const analysis = Skeleton.analyzeAssertion(outerSpec);
-              analysis.callback = Dataspace.wrap((evt, vs) => {
-                currentFacet().actor.scheduleScript(() => {
-                  switch (evt) {
-                    case Skeleton.EVENT_ADDED:   sendFromPOA(W.Add(ep, vs)); break;
-                    case Skeleton.EVENT_REMOVED: sendFromPOA(W.Del(ep, vs)); break;
-                    case Skeleton.EVENT_MESSAGE: sendFromPOA(W.Msg(ep, vs)); break;
-                  }
-                });
-              });
-              return [Observe(outerSpec), analysis];
-            }, true);
+            currentFacet().addObserverEndpoint(() => P.Proposal(scope, spec), {
+              add: (vs) => sendFromPOA(W.Add(ep, vs)),
+              del: (vs) => sendFromPOA(W.Del(ep, vs)),
+              msg: (vs) => sendFromPOA(W.Msg(ep, vs)),
+            });
             assert P.Envelope(scope, Observe(spec));
             stop on message P.Envelope(managementScope, P.ToPOA(sessionId, W.Clear(ep)));
           }
