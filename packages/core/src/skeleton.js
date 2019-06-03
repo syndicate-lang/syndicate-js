@@ -413,6 +413,10 @@ function VisibilityRestriction(paths, term) {
   this.term = term;
 }
 
+VisibilityRestriction.prototype.toString = function () {
+  return "VisibilityRestriction(" + this.paths.toString() + "," + this.term.toString() + ")";
+};
+
 function unscope(a) {
   return (a instanceof VisibilityRestriction) ? a.term : a;
 }
