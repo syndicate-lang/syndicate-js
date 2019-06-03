@@ -83,7 +83,7 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
       react {
         const epFacet = currentFacet();
         assert Skeleton.instantiateAssertion(FromServer(addr, spec), vs);
-        on message _ServerPacket(addr, Del(ep, vs)) worklist.push(() => {
+        on message _ServerPacket(addr, Del(ep, vs)) inboundTurn.extend(() => {
           epFacet.stop();
         });
       }
