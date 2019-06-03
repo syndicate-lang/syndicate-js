@@ -19,6 +19,7 @@
     "@syndicate-lang/syntax": "^0.1.0"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.1.2"
+    "@syndicate-lang/core": "^0.1.2",
+    "debug": "^4.1.1"
   }
 }

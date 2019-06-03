@@ -20,6 +20,7 @@ import { currentFacet, Observe, Dataspace, genUuid, Bytes } from "@syndicate-lan
 const S = activate require("./streams");
 const Duplex = require("./duplex");
 const child_process = require('child_process');
+const debug = require('debug')('syndicate/driver-streams-node:subprocess');
 
 assertion type Subprocess(id, command, args, options);
 assertion type SubprocessAddress(command, args, options);
@@ -60,6 +61,8 @@ spawn named 'driver/Subprocess' {
       establishingFacet.stop(() => {
         react {
           S.duplexStreamBehaviour(id, s);
+          on start debug('+stream', id, command.toString(), args.toString(), options.toString());
+          on stop debug('-stream', id, command.toString(), args.toString(), options.toString());
           on stop try { sp.kill('SIGHUP'); } catch (e) {}
         }
       });
@@ -67,6 +70,9 @@ spawn named 'driver/Subprocess' {
   }
 
   during Subprocess($id, $command, $args, $options) spawn named ['Subprocess', id] {
+    on start debug('+subprocess', id, command.toString(), args.toString(), options.toString());
+    on stop debug('-subprocess', id, command.toString(), args.toString(), options.toString());
+
     const sp = child_process.spawn(command, args.toJS(), options ? options.toJS() : void 0);
 
     const stdio = sp.stdio.map((s, i) => {
