@@ -28,6 +28,11 @@ assertion type Incoming(spec);
 assertion type Outgoing(spec);
 message type Accepted(); // for both incoming and outgoing connections
 message type Rejected(err); // for both incoming and outgoing connections
+//
+// ^ TODO: This protocol is vulnerable to crashes between noticing
+// interest in a new stream and sending Accepted or Rejected for it.
+// There's no handshake assertion to signify "I see you want a new
+// stream, hang on, I'm thinking about it".
 
 // Each `chunk` to/from a stream in BINARY mode must be either a
 // String or a Uint8Array (or Buffer). Any `chunk` may be empty
