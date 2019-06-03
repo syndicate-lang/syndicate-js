@@ -56,7 +56,7 @@ spawn named 'rootServer' {
 
   const server = Http.HttpServer(null, options.port);
   during Http.Request($reqId, server, 'post', ['compile', $file], _, $reqSeal) spawn named reqId {
-    stop on retracted S.Readable(reqId);
+    stop on retracted S.Stream(reqId, S.Readable());
     _collectSource.call(this, reqId, (source) => {
       react {
         const job = C.Compilation(file, source);
@@ -74,8 +74,8 @@ spawn named 'rootServer' {
 
 function _collectSource(streamId, cb) {
   const chunks = [];
-  on message S.Data(streamId, $chunk) chunks.push(chunk);
-  on asserted S.End(streamId) {
+  on message S.Stream(streamId, S.Data($chunk)) chunks.push(chunk);
+  on asserted S.Stream(streamId, S.End()) {
     const source = Bytes.concat(chunks).toString();
     cb(source);
   }
