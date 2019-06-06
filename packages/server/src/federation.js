@@ -95,7 +95,9 @@ spawn named '@syndicate-lang/server/federation/LocalLinkFactory' {
               msg: (vs) => sendFromPOA(W.Msg(ep, vs)),
             });
             assert P.Envelope(scope, Observe(spec));
-            stop on message P.Envelope(managementScope, P.ToPOA(sessionId, W.Clear(ep)));
+            stop on message P.Envelope(managementScope, P.ToPOA(sessionId, W.Clear(ep))) {
+              sendFromPOA(W.End(ep));
+            }
           }
         }
 
@@ -338,8 +340,7 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
           // summarise();
         }
 
-        on message P.Envelope(managementScope, P.ToPOA(linkid, W.Clear($localid))) {
-          // NB ToPOA, not FromPOA!
+        on message P.Envelope(managementScope, P.FromPOA(linkid, W.End($localid))) {
           (this.linkMatches.get(localid) || Set()).forEach((captures) => {
             removeMatch(localid, captures, linkid);
           });

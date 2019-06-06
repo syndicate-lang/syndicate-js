@@ -14,6 +14,7 @@ message type Message(body);
 message type Add(endpointName, captures);
 message type Del(endpointName, captures);
 message type Msg(endpointName, captures);
+message type End(endpointName);
 message type Err(detail);
 
 message type Ping();
@@ -33,7 +34,7 @@ Object.assign(module.exports, {
   Connect, Peer,
   Commit,
   Assert, Clear, Message,
-  Add, Del, Msg, Err,
+  Add, Del, Msg, Err, End,
   Ping, Pong,
   makeDecoder,
 });

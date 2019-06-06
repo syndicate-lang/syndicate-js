@@ -115,7 +115,7 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
             this.assertion = newAssertion;
           });
           on message P.FromPOA(connId, W.Clear(ep)) inboundTurn.extend(() => {
-            epFacet.stop();
+            epFacet.stop(() => { outboundTurn.extend(W.End(ep)); });
           });
         }
       }
