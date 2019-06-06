@@ -164,4 +164,7 @@ function spawnMonitorAppServer(port) {
 spawn named 'monitorApp' {
   during P.POAScope($connId, $scope) assert P.Proposal('monitor', P.POAScope(connId, scope));
   on message P.Envelope('monitor', P.Disconnect($connId)) send P.Disconnect(connId);
+  during Federation.ManagementScope($scope) {
+    assert P.Proposal('monitor', Federation.ManagementScope(scope));
+  }
 }
