@@ -251,17 +251,25 @@ spawn named 'remap-service' {
   const debug = debugFactory('syndicate/server:socks:remap-service');
   field this.table = Map();
 
+  function lc(va) {
+    return VirtualTcpAddress(VirtualTcpAddress._host(va).toLowerCase(),
+                             VirtualTcpAddress._port(va));
+  }
+
   during C.ServerConnected(server_addr) {
     on asserted C.FromServer(server_addr, $entry(AddressMap(_, _, _))) {
       debug('+', entry.toString());
-      this.table = this.table.set(AddressMap._from(entry), entry);
+      this.table = this.table.set(lc(AddressMap._from(entry)), entry);
     }
     on retracted C.FromServer(server_addr, $entry(AddressMap(_, _, _))) {
       debug('-', entry.toString());
-      this.table = this.table.remove(AddressMap._from(entry));
+      this.table = this.table.remove(lc(AddressMap._from(entry)));
     }
 
-    during S.Stream($id, S.Outgoing($a(VirtualTcpAddress($host, $port)))) {
+    during S.Stream($id, S.Outgoing($a0(VirtualTcpAddress(_, _)))) {
+      const a = lc(a0);
+      const host = VirtualTcpAddress._host(a);
+      const port = VirtualTcpAddress._port(a);
       if (host.endsWith('.fruit')) {
         if (this.table.has(a)) {
           const entry = this.table.get(a);
