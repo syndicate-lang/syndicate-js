@@ -13,7 +13,7 @@ assertion type FromNode(nodeId, assertion);
 assertion type RestrictedFromNode(nodeId, spec, captures);
 
 function usage() {
-  console.info('Usage: syndicate-socks --server WEBSOCKETURL SCOPE');
+  console.info('Usage: syndicate-socks-gateway --server WEBSOCKETURL SCOPE');
   console.info('');
   console.info('  --help, -h            Produce this message and terminate');
 }
@@ -248,13 +248,16 @@ spawn named 'socks-server' {
 }
 
 spawn named 'remap-service' {
+  const debug = debugFactory('syndicate/server:socks:remap-service');
   field this.table = Map();
 
   during C.ServerConnected(server_addr) {
     on asserted C.FromServer(server_addr, $entry(AddressMap(_, _, _))) {
+      debug('+', entry.toString());
       this.table = this.table.set(AddressMap._from(entry), entry);
     }
     on retracted C.FromServer(server_addr, $entry(AddressMap(_, _, _))) {
+      debug('-', entry.toString());
       this.table = this.table.remove(AddressMap._from(entry));
     }
 
@@ -378,61 +381,6 @@ spawn named 'from-node-relay' {
       const a = Skeleton.instantiateAssertion(C.FromServer(addr, FromNode(node, spec)), vs);
       debug('!', a.toString());
       send a;
-    }
-  }
-}
-
-///////////////////////////////////////////////////////////////////////////
-
-const nodeId = genUuid('node');
-
-spawn named 'test-remap' {
-  during C.ServerConnected(server_addr) {
-    assert C.ToServer(server_addr, AddressMap(VirtualTcpAddress("steam.fruit", 22),
-                                              nodeId,
-                                              S.TcpAddress('steam.eighty-twenty.org', 22)));
-
-    assert C.ToServer(server_addr, AddressMap(VirtualTcpAddress("shell.fruit", 9999),
-                                              nodeId,
-                                              S.SubprocessAddress('/bin/sh', [], {})));
-  }
-}
-
-spawn named 'to-node-relay' {
-  const debug = debugFactory('syndicate/server:socks:to-node-relay');
-  during C.ServerConnected(server_addr) {
-    during C.FromServer(server_addr, ToNode(nodeId, $a)) {
-      on start debug('Remote peer has asserted', a && a.toString());
-      on stop debug('Remote peer has retracted', a && a.toString());
-      assert a;
-    }
-    on message C.FromServer(server_addr, ToNode(nodeId, $a)) {
-      send a;
-    }
-    during C.FromServer(server_addr, Observe(FromNode(nodeId, $spec))) {
-      on start debug('Remote peer has asserted interest in', spec && spec.toString());
-      on stop debug('Remote peer has retracted interest in', spec && spec.toString());
-      currentFacet().addObserverEndpoint(() => spec, {
-        add: (vs) => {
-          const a = RestrictedFromNode(nodeId, spec.toString(), vs);
-          debug('+', a && a.toString());
-          // The "react { assert; stop on retracted ... }" pattern won't work here because of
-          // the `VisibilityRestriction`s. We'll never see the "retracted" event if we "stop on
-          // retracted aLocal" where aLocal = Skeleton.instantiateAssertion(spec, vs). Instead,
-          // we need to use `adhocAssert` and the `del` callback.
-          currentFacet().actor.adhocAssert(C.ToServer(server_addr, a));
-        },
-        del: (vs) => {
-          const a = RestrictedFromNode(nodeId, spec.toString(), vs);
-          debug('-', a && a.toString());
-          currentFacet().actor.adhocRetract(C.ToServer(server_addr, a));
-        },
-        msg: (vs) => {
-          const a = RestrictedFromNode(nodeId, spec.toString(), vs);
-          debug('!', a && a.toString());
-          send C.ToServer(server_addr, a);
-        }
-      });
     }
   }
 }
