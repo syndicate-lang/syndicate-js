@@ -3,6 +3,7 @@
 const { currentFacet, genUuid, Bytes, Map, Observe, Skeleton } = require("@syndicate-lang/core");
 const C = activate require("@syndicate-lang/server/lib/client");
 const S = activate require("@syndicate-lang/driver-streams-node");
+const M = activate require("@syndicate-lang/driver-mdns");
 const debugFactory = require('debug');
 
 assertion type VirtualTcpAddress(host, port);
@@ -60,13 +61,11 @@ const nodeId = genUuid('node');
 
 spawn named 'test-remap' {
   during C.ServerConnected(server_addr) {
-    assert C.ToServer(server_addr, AddressMap(VirtualTcpAddress("steam.fruit", 22),
-                                              nodeId,
-                                              S.TcpAddress('steam.eighty-twenty.org', 22)));
-
-    assert C.ToServer(server_addr, AddressMap(VirtualTcpAddress("shell.fruit", 9999),
-                                              nodeId,
-                                              S.SubprocessAddress('/bin/sh', [], {})));
+    during M.Discovered(M.Service($name, '_ssh._tcp'), $host, $port, _, _, "IPv4", _) {
+      assert C.ToServer(server_addr, AddressMap(VirtualTcpAddress(name + ".ssh.fruit", 22),
+                                                nodeId,
+                                                S.TcpAddress(host, port)));
+    }
   }
 }
 
