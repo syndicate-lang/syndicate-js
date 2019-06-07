@@ -72,12 +72,16 @@ spawn named 'test-remap' {
 spawn named 'to-node-relay' {
   const debug = debugFactory('syndicate/server:socks:to-node-relay');
   during C.ServerConnected(server_addr) {
-    during C.FromServer(server_addr, ToNode(nodeId, $a)) {
-      on start debug('Remote peer has asserted', a && a.toString());
-      on stop debug('Remote peer has retracted', a && a.toString());
-      assert a;
+    on asserted C.FromServer(server_addr, ToNode(nodeId, $a)) {
+      debug('Remote peer has asserted', a && a.toString());
+      currentFacet().actor.adhocAssert(a);
+    }
+    on retracted C.FromServer(server_addr, ToNode(nodeId, $a)) {
+      debug('Remote peer has retracted', a && a.toString());
+      currentFacet().actor.adhocRetract(a);
     }
     on message C.FromServer(server_addr, ToNode(nodeId, $a)) {
+      debug('Remote peer has sent', a && a.toString());
       send a;
     }
     during C.FromServer(server_addr, Observe(FromNode(nodeId, $spec))) {
