@@ -348,6 +348,7 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
             this.linkSubs = this.linkSubs.remove(ep);
             unsubscribe(localid, linkid);
           }
+          sendToLink(linkid, W.End(ep));
           // summarise();
         }
 
