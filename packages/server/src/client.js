@@ -100,8 +100,8 @@ spawn named "ServerClientFactory" {
   during Observe(FromServer($addr, _)) assert ServerConnection(addr);
   during Observe(ServerConnected($addr)) assert ServerConnection(addr);
 
-  during ServerConnection($addr(WSServer($url, $scope))) spawn named ['Server', addr] {
-    const wsId = genUuid('server');
+  during ServerConnection($addr(WSServer($url, $scope))) spawn named ['ServerClient', addr] {
+    const wsId = genUuid('ws');
     const debug = debugFactory('syndicate/server:client:' + wsId);
 
     during WS.WebSocket(wsId, url, {}) {
@@ -117,7 +117,7 @@ spawn named "ServerClientFactory" {
     }
   }
 
-  during ServerConnection($addr(Loopback($scope))) spawn named ['Server', addr] {
+  during ServerConnection($addr(Loopback($scope))) spawn named ['ServerClient', addr] {
     const debug = debugFactory('syndicate/server:client:loopback:' + scope);
     assert P.POA(addr);
     on message P.ToPOA(addr, $p) send _ServerPacket(addr, p);
