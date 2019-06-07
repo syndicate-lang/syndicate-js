@@ -11,6 +11,7 @@ const Federation = require("./federation");
 
 assertion type DetectedOverlay(scope);
 assertion type AddressMap(from, nodeId, to);
+assertion type OverlayLink(downNode, upNode);
 
 spawn {
   const ui = new UI.Anchor();
@@ -19,7 +20,7 @@ spawn {
                  <h1>Server monitor</h1>
                  <h2>Local scopes</h2>
                  <div id="scopes"></div>
-                 <h2>Federated scopes</h2>
+                 <h2>Federation</h2>
                  <div id="federated_scopes"></div>
                  <h2>Overlays</h2>
                  <div id="overlays"></div>
@@ -64,8 +65,10 @@ spawn {
           assert DetectedOverlay(federatedScope);
           const ui = new UI.Anchor();
           assert ui.html(`#federated_scopes div.fs_${scope} ul`,
-                         <li>FederatedLink: session <tt>{id.toString()}</tt>
-                         scope <tt>{federatedScope.toString()}</tt></li>);
+                         <li>FederatedLink:
+                         <span> session <tt>{id.toString()}</tt></span>
+                         <span> scope <tt>{federatedScope.toString()}</tt></span>
+                         </li>);
         }
       }
     }
@@ -77,11 +80,17 @@ spawn {
         assert ui.html('#overlays',
                        <div class={`o_${scope}`}>
                        <p>Overlay <tt>{scope}</tt></p>
-                       <ul></ul>
+                       <ul class="links"></ul>
+                       <ul class="vaddrs"></ul>
                        </div>);
+        during FromServer(addr, $item(OverlayLink(_, _))) {
+          const ui = new UI.Anchor();
+          assert ui.html(`#overlays div.o_${scope} ul.links`,
+                         <li><tt>{item && item.toString()}</tt></li>);
+        }
         during FromServer(addr, $item(AddressMap(_, _, _))) {
           const ui = new UI.Anchor();
-          assert ui.html(`#overlays div.o_${scope} ul`,
+          assert ui.html(`#overlays div.o_${scope} ul.vaddrs`,
                          <li><tt>{item && item.toString()}</tt></li>);
         }
       }
