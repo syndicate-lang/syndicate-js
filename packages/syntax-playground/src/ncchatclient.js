@@ -41,7 +41,7 @@ spawn named 'chatclient-via-nc' {
     react {
       on message S.Stream(stdin, S.Line($line)) {
         console.log('INPUT:', line);
-        send S.Stream(i, S.Push(line.toString('utf-8') + '\n', false));
+        send S.Stream(i, S.Push(line.fromUtf8() + '\n', false));
       }
       on message S.Stream(stdin, S.End()) {
         console.log('INPUT EOF');
@@ -49,7 +49,7 @@ spawn named 'chatclient-via-nc' {
       }
 
       on message S.Stream(o, S.Line($line)) {
-        send S.Stream(stdout, S.Push(line.toString('utf-8') + '\n', false));
+        send S.Stream(stdout, S.Push(line.fromUtf8() + '\n', false));
       }
     }
   }

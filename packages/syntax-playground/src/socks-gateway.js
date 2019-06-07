@@ -142,7 +142,7 @@ spawn named 'socks-server' {
           case 3: // domain name
             readChunk(1, (octetCount) => {
               readChunk(octetCount.get(0), (domainNameBytes) => {
-                const domainName = domainNameBytes.toString('utf-8');
+                const domainName = domainNameBytes.fromUtf8();
                 readPort(domainName, k);
               });
             });

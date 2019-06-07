@@ -76,7 +76,7 @@ function _collectSource(streamId, cb) {
   const chunks = [];
   on message S.Stream(streamId, S.Data($chunk)) chunks.push(chunk);
   on asserted S.Stream(streamId, S.End()) {
-    const source = Bytes.concat(chunks).toString();
+    const source = Bytes.concat(chunks).fromUtf8();
     cb(source);
   }
 }

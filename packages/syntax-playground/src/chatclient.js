@@ -45,10 +45,10 @@ spawn named 'chatclient' {
       assert S.Stream(id, S.BackPressure(stdout));
 
       on message S.Stream(stdin, S.Line($line)) {
-        send S.Stream(id, S.Push(line.toString('utf-8') + '\n', false));
+        send S.Stream(id, S.Push(line.fromUtf8() + '\n', false));
       }
       on message S.Stream(id, S.Line($line)) {
-        send S.Stream(stdout, S.Push(line.toString('utf-8') + '\n', false));
+        send S.Stream(stdout, S.Push(line.fromUtf8() + '\n', false));
       }
     }
   }

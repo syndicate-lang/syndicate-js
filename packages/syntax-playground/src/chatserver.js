@@ -32,7 +32,7 @@ spawn named 'chatserver' {
       on asserted  Present($who) send S.Stream(id, S.Push(`${who} arrived.\n`, false));
       on retracted Present($who) send S.Stream(id, S.Push(`${who} departed.\n`, false));
 
-      on message S.Stream(id, S.Line($line)) send Speak(me, line);
+      on message S.Stream(id, S.Line($line)) send Speak(me, line.fromUtf8());
       on message Speak($who, $what) send S.Stream(id, S.Push(`${who}: ${what}\n`, false));
     }
   }

@@ -80,7 +80,7 @@ spawn named 'driver/avahi-publish' {
         on retracted S.Stream(stderr, S.Readable()) topFacet.stop();
 
         on message S.Stream(stderr, S.Line($line)) {
-          line = line.toString('utf-8');
+          line = line.fromUtf8();
           if (line.startsWith('Established')) {
             this.established = true;
           } else if (line.startsWith('Disconnected')) {
@@ -136,7 +136,7 @@ spawn named 'driver/avahi-browse' {
           //
           // However, it's still useful to have, so we do our best!
           //
-          const pieces = line.toString('utf-8').split(/;/);
+          const pieces = line.fromUtf8().split(/;/);
           if (pieces[0] === '=') {
             // A resolved address record, which has TXT data.
             const normalFields = pieces.slice(0, 9);
