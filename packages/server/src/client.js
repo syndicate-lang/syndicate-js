@@ -55,12 +55,11 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
     w0(x);
   };
 
-  const outboundTurn = Turn.recorder(this, 'commitNeeded',
-                                     {
-                                       extend: w,
-                                       commit: () => { w(Commit()); },
-                                       debug: debug
-                                     });
+  const outboundTurn = Turn.recorder(this, 'commitNeeded', {
+    extend: w,
+    commit: () => { w(Commit()); },
+    debug: debug
+  });
   const inboundTurn = Turn.replayer({ debug: debug });
 
   on start w(Connect(scope));
@@ -81,10 +80,10 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
     on stop outboundTurn.extend(Clear(ep));
     on message _ServerPacket(addr, Add(ep, $vs)) inboundTurn.extend(() => {
       react {
-        const epFacet = currentFacet();
+        const assertionFacet = currentFacet();
         assert Skeleton.instantiateAssertion(FromServer(addr, spec), vs);
         on message _ServerPacket(addr, Del(ep, vs)) inboundTurn.extend(() => {
-          epFacet.stop();
+          assertionFacet.stop();
         });
       }
     })
