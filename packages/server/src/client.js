@@ -70,7 +70,10 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
     on stop outboundTurn.extend(Clear(ep));
   }
 
-  on message ToServer(addr, $a) outboundTurn.extend(Message(a));
+  on message ToServer(addr, $a) {
+    outboundTurn.commit();
+    w(Message(a));
+  }
 
   on message _ServerPacket(addr, Ping()) w(Pong());
 
@@ -87,9 +90,9 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
         });
       }
     })
-    on message _ServerPacket(addr, Msg(ep, $vs)) inboundTurn.extend(() => {
+    on message _ServerPacket(addr, Msg(ep, $vs)) {
       send Skeleton.instantiateAssertion(FromServer(addr, spec), vs);
-    })
+    }
     on message _ServerPacket(addr, Commit()) inboundTurn.commit();
   }
 }

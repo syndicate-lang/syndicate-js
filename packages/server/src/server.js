@@ -73,10 +73,11 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
       this.scope = scope;
     }
 
+    const sendToPOA = (m) => { send P.ToPOA(connId, m); };
     const outboundTurn = Turn.recorder(this, 'commitNeeded',
                                        {
-                                         extend: (m) => { send P.ToPOA(connId, m); },
-                                         commit: () => { send P.ToPOA(connId, W.Commit()); },
+                                         extend: sendToPOA,
+                                         commit: () => { sendToPOA(W.Commit()); },
                                          debug: debug
                                        });
     const inboundTurn = Turn.replayer({ debug: debug });
@@ -101,7 +102,11 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
                   switch (evt) {
                     case Skeleton.EVENT_ADDED:   outboundTurn.extend(W.Add(ep, vs)); break;
                     case Skeleton.EVENT_REMOVED: outboundTurn.extend(W.Del(ep, vs)); break;
-                    case Skeleton.EVENT_MESSAGE: outboundTurn.extend(W.Msg(ep, vs)); break;
+                    case Skeleton.EVENT_MESSAGE: {
+                      outboundTurn.commit();
+                      sendToPOA(W.Msg(ep, vs));
+                      break;
+                    }
                   }
                 });
               });
@@ -121,9 +126,9 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
       }
     });
 
-    on message P.FromPOA(connId, W.Message($body)) inboundTurn.extend(() => {
+    on message P.FromPOA(connId, W.Message($body)) {
       send P.Proposal(this.scope, body);
-    });
+    }
 
     on message P.FromPOA(connId, W.Commit()) inboundTurn.commit();
   }

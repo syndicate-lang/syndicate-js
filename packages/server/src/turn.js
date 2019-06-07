@@ -4,19 +4,20 @@ import { Dataspace, _Dataspace, currentFacet } from "@syndicate-lang/core";
 const PRIORITY = _Dataspace.PRIORITY;
 
 export function recorder(fields, fieldName, callbacks) {
-  field fields[fieldName] = false;
-  currentFacet().addDataflow(() => {
+  function extend(item) {
+    callbacks.extend(item);
+    fields[fieldName] = true;
+  }
+  function commit() {
     if (fields[fieldName]) {
       callbacks.commit();
       fields[fieldName] = false;
     }
-  }, PRIORITY.IDLE);
-  return {
-    extend: function (item) {
-      callbacks.extend(item);
-      fields[fieldName] = true;
-    }
-  };
+  }
+
+  field fields[fieldName] = false;
+  currentFacet().addDataflow(commit, PRIORITY.IDLE);
+  return { extend, commit };
 }
 
 export function replayer(callbacks0) {
