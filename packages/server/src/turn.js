@@ -1,6 +1,6 @@
 "use strict";
 
-import { _Dataspace, currentFacet } from "@syndicate-lang/core";
+import { Dataspace, _Dataspace, currentFacet } from "@syndicate-lang/core";
 const PRIORITY = _Dataspace.PRIORITY;
 
 export function recorder(fields, fieldName, callbacks) {
@@ -24,7 +24,7 @@ export function replayer(callbacks0) {
   return {
     worklist: [],
     extend: function (thunk) {
-      this.worklist.push(thunk);
+      this.worklist.push(Dataspace.wrap(thunk));
     },
     commit: function () {
       this.worklist.forEach((thunk) => thunk());
