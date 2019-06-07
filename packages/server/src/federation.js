@@ -192,10 +192,21 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
       field this.subs = Map();
       const scopeThis = this;
 
-      const callWithSub = (localid, linkid, f) => {
+      const callWithSub = (localid, linkid, f, notFoundIsBad) => {
         const sub = this.subs.get(localid, false);
         if (!sub) {
-          console.error("Ignoring mention of nonexistent local ID", localid, linkid);
+          // Mention of a nonexistent local ID could be an error, or could be OK. It's fine if
+          // we receive Add/Del/Msg for an endpoint we've sent a Clear for but haven't yet seen
+          // the matching End; it's not OK if we receive a Clear for an ep that maps to a
+          // localid which is then not found.
+          if (notFoundIsBad) {
+            console.error("Ignoring mention of nonexistent local ID", localid, linkid);
+          } else {
+            // Nothing to do except wait for an appropriate End to arrive. Perhaps in future we
+            // could record the fact we're waiting for an End, so that we could positively know
+            // that a given nonexistent ID is a non-error, rather than assuming it's a
+            // non-error in all cases except Clear.
+          }
         } else {
           return f(sub);
         }
@@ -218,7 +229,7 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
             default:
               break;
           }
-        });
+        }, true);
       };
 
       const removeMatch = (localid, captures, linkid) => {
