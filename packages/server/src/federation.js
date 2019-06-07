@@ -265,21 +265,6 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
         field this.linkSubs = Map();
         field this.linkMatches = Map();
 
-        // const summarise = () => {
-        //   console.log('----------------------------------------', scope);
-        //   this.peers.forEach((peer) => console.log('  peer', peer));
-        //   this.specs.forEach((localid, spec) => {
-        //     console.log('  spec', spec.toString(), localid);
-        //     const sub = this.subs.get(localid);
-        //     sub.holders.forEach((peerEndpoint, peer) => {
-        //       console.log('    sub', peer, peerEndpoint);
-        //     });
-        //     sub.matches.forEach((matchHolders, captures) => {
-        //       console.log('    match', captures.toString(), matchHolders.toJSON());
-        //     });
-        //   });
-        // };
-
         const err = (detail) => {
           sendToLink(linkid, W.Err(detail));
           currentFacet().stop();
@@ -287,23 +272,19 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
 
         on start {
           this.peers = this.peers.add(linkid);
-          // console.log('+PEER', linkid, scope, this.peers);
           this.specs.forEach((localid, spec) => {
             sendToLink(linkid, W.Assert(localid, Observe(spec)));
           });
-          // summarise();
         }
 
         on stop {
           this.peers = this.peers.remove(linkid);
-          // console.log('-PEER', linkid, scope);
           this.linkMatches.forEach((matches, localid) => {
             matches.forEach((captures) => removeMatch(localid, captures, linkid));
           });
           this.linkSubs.forEach((localid, _endpointId) => {
             unsubscribe(localid, linkid);
           });
-          // summarise();
         }
 
         on message P.Envelope(managementScope, P.FromPOA(linkid, W.Assert($ep, Observe($spec)))) {
@@ -337,7 +318,6 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
               sendToLink(linkid, W.Add(ep, captures));
             }
           });
-          // summarise();
         }
 
         on message P.Envelope(managementScope, P.FromPOA(linkid, W.Clear($ep))) {
@@ -349,7 +329,6 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
             unsubscribe(localid, linkid);
           }
           sendToLink(linkid, W.End(ep));
-          // summarise();
         }
 
         on message P.Envelope(managementScope, P.FromPOA(linkid, W.End($localid))) {
@@ -357,7 +336,6 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
             removeMatch(localid, captures, linkid);
           });
           this.linkMatches = this.linkMatches.remove(localid);
-          // summarise();
         }
 
         on message P.Envelope(managementScope, P.FromPOA(linkid, W.Add($localid, $captures))) {
@@ -385,7 +363,6 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
               }
             });
           }
-          // summarise();
         }
 
         on message P.Envelope(managementScope, P.FromPOA(linkid, W.Del($localid, $captures))) {
@@ -399,7 +376,6 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
               : this.linkMatches.set(localid, newMatches);
             removeMatch(localid, captures, linkid);
           }
-          // summarise();
         }
 
         on message P.Envelope(managementScope, P.FromPOA(linkid, W.Msg($localid, $captures))) {
