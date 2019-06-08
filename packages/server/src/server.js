@@ -5,7 +5,7 @@ const S = activate require("@syndicate-lang/driver-streams-node");
 const debugFactory = require('debug');
 
 import {
-  Set, Bytes,
+  Map, Bytes,
   Encoder, Observe,
   Dataspace, Skeleton, currentFacet, genUuid,
 } from "@syndicate-lang/core";
@@ -13,7 +13,7 @@ import {
 const P = activate require("./internal_protocol");
 const W = activate require("./protocol");
 const B = activate require("./buffer");
-const Turn = activate require("./turn");
+const { recorder } = activate require("./turn");
 
 export function websocketServerFacet(reqId) {
   assert P.POA(reqId);
@@ -66,7 +66,7 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
     assert P.POAScope(connId, this.scope) when (this.scope !== null);
     assert P.ServerActive(this.scope) when (this.scope !== null);
 
-    let endpoints = Set();
+    let endpoints = Map();
 
     on message P.FromPOA(connId, W.Connect($scope)) {
       // TODO: Enforce requirement that Connect appear exactly once, before anything else
@@ -74,62 +74,52 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
     }
 
     const sendToPOA = (m) => { send P.ToPOA(connId, m); };
-    const outboundTurn = Turn.recorder(this, 'commitNeeded',
-                                       {
-                                         extend: sendToPOA,
-                                         commit: () => { sendToPOA(W.Commit()); },
-                                         debug: debug
-                                       });
-    const inboundTurn = Turn.replayer({ debug: debug });
+    const outboundTurn = recorder(this, 'commitNeeded', (items) => sendToPOA(W.Turn(items)));
 
-    on message P.FromPOA(connId, W.Assert($ep, $a)) inboundTurn.extend(() => {
-      if (!endpoints.includes(ep)) {
-        endpoints = endpoints.add(ep);
-        react {
-          const epFacet = currentFacet();
+    on message P.FromPOA(connId, W.Turn($items)) {
+      items.forEach((item) => {
+        if (W.Assert.isClassOf(item)) {
+          const ep = W.Assert._endpointName(item);
+          const a = W.Assert._assertion(item);
+          if (endpoints.has(ep)) {
+            throw new Error("Attempt to update existing endpoint " + ep + " with " + a.toString());
+          }
+          react {
+            const epFacet = currentFacet();
+            endpoints = endpoints.set(ep, epFacet);
+            on stop { endpoints = endpoints.remove(ep); }
 
-          on stop { endpoints = endpoints.remove(ep); }
+            assert P.Proposal(this.scope, a);
 
-          field this.assertion = a;
-          assert P.Proposal(this.scope, this.assertion);
-
-          currentFacet().addEndpoint(() => {
-            if (Observe.isClassOf(this.assertion)) {
-              const spec = P.Envelope(this.scope, Observe._specification(this.assertion));
-              const analysis = Skeleton.analyzeAssertion(spec);
-              analysis.callback = Dataspace.wrap((evt, vs) => {
-                currentFacet().actor.scheduleScript(() => {
-                  switch (evt) {
-                    case Skeleton.EVENT_ADDED:   outboundTurn.extend(W.Add(ep, vs)); break;
-                    case Skeleton.EVENT_REMOVED: outboundTurn.extend(W.Del(ep, vs)); break;
-                    case Skeleton.EVENT_MESSAGE: {
-                      outboundTurn.commit();
-                      sendToPOA(W.Msg(ep, vs));
-                      break;
+            if (Observe.isClassOf(a)) {
+              currentFacet().addEndpoint(() => {
+                const spec = P.Envelope(this.scope, Observe._specification(a));
+                const analysis = Skeleton.analyzeAssertion(spec);
+                analysis.callback = Dataspace.wrap((evt, vs) => {
+                  currentFacet().actor.scheduleScript(() => {
+                    switch (evt) {
+                      case Skeleton.EVENT_ADDED:   outboundTurn.extend(W.Add(ep, vs)); break;
+                      case Skeleton.EVENT_REMOVED: outboundTurn.extend(W.Del(ep, vs)); break;
+                      case Skeleton.EVENT_MESSAGE: outboundTurn.extend(W.Msg(ep, vs)); break;
                     }
-                  }
+                  });
                 });
-              });
-              return [Observe(spec), analysis];
-            } else {
-              return [void 0, null];
+                return [Observe(spec), analysis];
+              }, false);
             }
-          }, true);
-
-          on message P.FromPOA(connId, W.Assert(ep, $newAssertion)) inboundTurn.extend(() => {
-            this.assertion = newAssertion;
-          });
-          on message P.FromPOA(connId, W.Clear(ep)) inboundTurn.extend(() => {
-            epFacet.stop(() => { outboundTurn.extend(W.End(ep)); });
-          });
+          }
+        } else if (W.Clear.isClassOf(item)) {
+          const ep = W.Clear._endpointName(item);
+          if (!endpoints.has(ep)) {
+            throw new Error("Attempt to clear nonexistent endpoint " + ep);
+          }
+          endpoints.get(ep).stop(() => { outboundTurn.extend(W.End(ep)); });
+        } else if (W.Message.isClassOf(item)) {
+          send P.Proposal(this.scope, W.Message._body(item));
+        } else {
+          debug("Unhandled client/server message", item.toString());
         }
-      }
-    });
-
-    on message P.FromPOA(connId, W.Message($body)) {
-      send P.Proposal(this.scope, body);
+      });
     }
-
-    on message P.FromPOA(connId, W.Commit()) inboundTurn.commit();
   }
 }

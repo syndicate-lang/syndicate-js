@@ -3,7 +3,7 @@
 const debugFactory = require('debug');
 
 import {
-  Decoder, Encoder, Bytes,
+  Decoder, Encoder, Bytes, Map,
   Observe, Skeleton,
   genUuid, currentFacet,
 } from "@syndicate-lang/core";
@@ -12,14 +12,14 @@ const WS = activate require("@syndicate-lang/driver-websocket");
 
 const {
   Connect, Peer,
-  Commit,
+  Turn,
   Assert, Clear, Message,
-  Add, Del, Msg, Err,
+  Add, Del, Msg, Err, End,
   Ping, Pong,
   makeDecoder,
 } = activate require("./protocol");
 const P = activate require("./internal_protocol");
-const Turn = activate require("./turn");
+const { recorder } = activate require("./turn");
 
 assertion type WSServer(url, scope) = Symbol.for('server-websocket-connection');
 assertion type Loopback(scope) = Symbol.for('server-loopback-connection');
@@ -55,45 +55,79 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
     w0(x);
   };
 
-  const outboundTurn = Turn.recorder(this, 'commitNeeded', {
-    extend: w,
-    commit: () => { w(Commit()); },
-    debug: debug
-  });
-  const inboundTurn = Turn.replayer({ debug: debug });
+  const outboundTurn = recorder(this, 'commitNeeded', (items) => w(Turn(items)));
 
   on start w(Connect(scope));
 
-  during ToServer(addr, $a) {
+  let pubs = Map();
+  let subs = Map();
+  let matches = Map();
+
+  on asserted ToServer(addr, $a) {
     const ep = genUuid('pub');
-    on start outboundTurn.extend(Assert(ep, a));
-    on stop outboundTurn.extend(Clear(ep));
+    outboundTurn.extend(Assert(ep, a));
+    pubs = pubs.set(a, ep);
+  }
+
+  on retracted ToServer(addr, $a) {
+    const ep = pubs.get(a);
+    outboundTurn.extend(Clear(ep));
+    pubs = pubs.remove(a);
   }
 
   on message ToServer(addr, $a) {
-    outboundTurn.commit();
-    w(Message(a));
+    outboundTurn.extend(Message(a));
   }
 
   on message _ServerPacket(addr, Ping()) w(Pong());
 
-  during Observe(FromServer(addr, $spec)) {
+  on asserted Observe(FromServer(addr, $spec)) {
     const ep = genUuid('sub');
-    on start outboundTurn.extend(Assert(ep, Observe(spec)));
-    on stop outboundTurn.extend(Clear(ep));
-    on message _ServerPacket(addr, Add(ep, $vs)) inboundTurn.extend(() => {
-      react {
-        const assertionFacet = currentFacet();
-        assert Skeleton.instantiateAssertion(FromServer(addr, spec), vs);
-        on message _ServerPacket(addr, Del(ep, vs)) inboundTurn.extend(() => {
-          assertionFacet.stop();
-        });
+    outboundTurn.extend(Assert(ep, Observe(spec)));
+    subs = subs.set(spec, ep);
+    matches = matches.set(ep, { spec, captures: Map() });
+  }
+
+  on retracted Observe(FromServer(addr, $spec)) {
+    outboundTurn.extend(Clear(subs.get(spec)));
+    subs = subs.remove(spec);
+  }
+
+  const _instantiate = (m, vs) => Skeleton.instantiateAssertion(FromServer(addr, m.spec), vs);
+
+  const _lookup = (CTOR, item) => {
+    const m = matches.get(CTOR._endpointName(item));
+    const vs = CTOR._captures(item);
+    return { m, vs };
+  }
+
+  on message _ServerPacket(addr, Turn($items)) {
+    items.forEach((item) => {
+      if (Add.isClassOf(item)) {
+        const { m, vs } = _lookup(Add, item);
+        const a = _instantiate(m, vs);
+        m.captures = m.captures.set(vs, a);
+        currentFacet().actor.adhocAssert(a);
+      } else if (Del.isClassOf(item)) {
+        const { m, vs } = _lookup(Del, item);
+        currentFacet().actor.adhocRetract(m.captures.get(vs));
+        m.captures = m.captures.remove(vs);
+      } else if (Msg.isClassOf(item)) {
+        const { m, vs } = _lookup(Msg, item);
+        send _instantiate(m, vs);
+      } else if (End.isClassOf(item)) {
+        const ep = End._endpointName(item);
+        const m = matches.get(ep);
+        if (m) {
+          m.captures.forEach((a) => currentFacet().actor.adhocRetract(a));
+          matches = matches.remove(ep);
+        }
+      } else if (Err.isClassOf(item)) {
+        throw new Error(item.toString());
+      } else {
+        debug("Unhandled client/server message", item.toString());
       }
-    })
-    on message _ServerPacket(addr, Msg(ep, $vs)) {
-      send Skeleton.instantiateAssertion(FromServer(addr, spec), vs);
-    }
-    on message _ServerPacket(addr, Commit()) inboundTurn.commit();
+    });
   }
 }
 
