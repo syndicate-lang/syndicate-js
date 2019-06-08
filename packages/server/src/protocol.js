@@ -3,7 +3,6 @@
 import { Decoder, Discard, Capture, Observe } from "@syndicate-lang/core";
 
 message type Connect(scope);
-message type Peer(scope);
 
 message type Turn(items);
 
@@ -31,7 +30,7 @@ function makeDecoder(initialBuffer) {
 }
 
 Object.assign(module.exports, {
-  Connect, Peer,
+  Connect,
   Turn,
   Assert, Clear, Message,
   Add, Del, Msg, Err, End,
