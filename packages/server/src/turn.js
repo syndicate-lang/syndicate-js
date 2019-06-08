@@ -13,12 +13,15 @@ export function recorder(fields, fieldName, onCommit) {
   function commit() {
     if (fields[fieldName]) {
       onCommit(items);
-      items = [];
-      fields[fieldName] = false;
+      reset();
     }
+  }
+  function reset() {
+    items = [];
+    fields[fieldName] = false;
   }
 
   field fields[fieldName] = false;
   currentFacet().addDataflow(commit, PRIORITY.IDLE);
-  return { extend, commit };
+  return { extend, commit, reset };
 }

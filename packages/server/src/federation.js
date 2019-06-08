@@ -313,7 +313,8 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
         field this.linkMatches = Map();
 
         const err = (detail) => {
-          turn.extend(W.Err(detail));
+          send P.Proposal(managementScope, P.ToPOA(linkid, W.Err(detail)));
+          turn.reset();
           currentFacet().stop();
         };
 
