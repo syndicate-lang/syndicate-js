@@ -147,7 +147,7 @@ Index.prototype.addHandler = function(analysisResults, callback) {
       leaf.cachedAssertions.forEach((a) => {
         return unpackScoped(a, (restrictionPaths, term) => {
           if (restrictionPaths === false || restrictionPaths.equals(capturePaths)) {
-            let captures = projectPaths(a, capturePaths);
+            let captures = projectPaths(term, capturePaths);
             mutable.set(captures, mutable.get(captures, 0) + 1);
           }
           return true;
