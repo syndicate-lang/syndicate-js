@@ -312,8 +312,8 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
         field this.linkSubs = Map();
         field this.linkMatches = Map();
 
-        const err = (detail) => {
-          send P.Proposal(managementScope, P.ToPOA(linkid, W.Err(detail)));
+        const err = (detail, context) => {
+          send P.Proposal(managementScope, P.ToPOA(linkid, W.Err(detail, context || false)));
           turn.reset();
           currentFacet().stop();
         };
@@ -400,7 +400,7 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
               const captures = W.Add._captures(item);
               const matches = this.linkMatches.get(localid) || Set();
               if (matches.includes(captures)) {
-                err(Symbol.for('duplicate-capture'));
+                err(Symbol.for('duplicate-capture'), item);
               } else {
                 this.linkMatches = this.linkMatches.set(localid, matches.add(captures));
                 callWithSub(localid, linkid, (sub) => {
@@ -431,7 +431,7 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
               const captures = W.Del._captures(item);
               const matches = this.linkMatches.get(localid) || Set();
               if (!matches.includes(captures)) {
-                err(Symbol.for('nonexistent-capture'));
+                err(Symbol.for('nonexistent-capture'), item);
               } else {
                 const newMatches = matches.remove(captures);
                 this.linkMatches = (newMatches.isEmpty())
