@@ -127,7 +127,7 @@ function spawnWebSocketServer(port) {
     const server = Http.HttpServer(null, port);
     assert D.AvailableTransport(spec);
     during Http.WebSocket($reqId, server, [], _) spawn named [spec, reqId] {
-      Server.websocketServerFacet(reqId);
+      Server.websocketServerFacet.call(this, reqId);
     }
   }
 }

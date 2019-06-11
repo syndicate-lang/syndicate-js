@@ -32,7 +32,7 @@ export function streamServerFacet(id) {
   const decoder = W.makeDecoder(null);
   const buf = B.buffer(this, 'chunks');
   on message S.Stream(id, S.Data($data)) buf.push(data);
-  during P.POAReady(reqId) buf.drain((data) => {
+  during P.POAReady(id) buf.drain((data) => {
     decoder.write(data);
     let v;
     while ((v = decoder.try_next())) send P.FromPOA(id, v);
@@ -45,7 +45,7 @@ export function streamServerFacet(id) {
 export function streamServerActor(id, debugLabel) {
   spawn named [debugLabel || 'stream-poa', id] {
     stop on retracted S.Stream(id, S.Duplex());
-    streamServerFacet(id);
+    streamServerFacet.call(this, id);
   }
 }
 
