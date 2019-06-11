@@ -57,11 +57,12 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
 
   const outboundTurn = recorder(this, 'commitNeeded', (items) => w(Turn(items)));
 
-  on start w(Connect(scope));
-
   let pubs = Map();
   let subs = Map();
   let matches = Map();
+
+  on start w(Connect(scope));
+  on stop matches.forEach((m) => m.captures.forEach((a) => currentFacet().actor.adhocRetract(a)));
 
   on asserted ToServer(addr, $a) {
     const ep = genUuid('pub');
