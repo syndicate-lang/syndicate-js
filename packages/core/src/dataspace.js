@@ -37,22 +37,38 @@ const PRIORITY = Object.freeze({
   _count: 6
 });
 
-function Dataspace(bootProc) {
-  this.nextId = 0;
-  this.index = new Skeleton.Index();
-  this.dataflow = new Dataflow.Graph();
-  this.runnable = Immutable.List();
-  this.pendingActions = Immutable.List([
-    new ActionGroup(null, Immutable.List([new Spawn(null, bootProc, Immutable.Set())]))]);
-  this.activatedModules = Immutable.Set();
-  this.actors = Immutable.Map();
-}
+// Singleton hackery.
+const Dataspace = (function () {
+  const SYNDICATE = Symbol.for('@syndicate-lang/core');
+  const version = require('../package.json').version;
+  if (!(SYNDICATE in global)) {
+    global[SYNDICATE] = {
+      version: version,
+      Dataspace: function (bootProc) {
+        this.nextId = 0;
+        this.index = new Skeleton.Index();
+        this.dataflow = new Dataflow.Graph();
+        this.runnable = Immutable.List();
+        this.pendingActions = Immutable.List([
+          new ActionGroup(null, Immutable.List([new Spawn(null, bootProc, Immutable.Set())]))]);
+        this.activatedModules = Immutable.Set();
+        this.actors = Immutable.Map();
+      },
+    };
+  }
+  const g = global[SYNDICATE];
+  if (g.version !== version) {
+    console.warn('Potentially incompatible versions of @syndicate-lang/core loaded:',
+                 version, g.version);
+  }
+  return g.Dataspace;
+})();
 
 // Parameters
 Dataspace._currentFacet = null;
 Dataspace._inScript = true;
 
-Dataspace.BootSteps = Symbol('SyndicateBootSteps');
+Dataspace.BootSteps = Symbol.for('SyndicateBootSteps');
 
 Dataspace.currentFacet = function () {
   return Dataspace._currentFacet;
