@@ -11,7 +11,9 @@
     "@babel/plugin-syntax-jsx": "^7.2.0",
     "@babel/plugin-transform-react-jsx": "^7.2.0",
     "@babel/preset-env": "^7.2.0",
-    "@syndicate-lang/syntax": "^0.1.0"
+    "@syndicate-lang/syntax": "^0.1.0",
+    "webpack": "^4.27.1",
+    "webpack-cli": "^3.1.2"
   },
   "dependencies": {
     "@syndicate-lang/core": "^0.2.0",
@@ -24,8 +26,6 @@
     "@syndicate-lang/driver-websocket": "^0.2.0",
     "@syndicate-lang/server": "^0.2.0",
     "debug": "^4.1.1",
-    "dockerode": "^2.5.8",
-    "webpack": "^4.27.1",
-    "webpack-cli": "^3.1.2"
+    "dockerode": "^2.5.8"
   }
 }
