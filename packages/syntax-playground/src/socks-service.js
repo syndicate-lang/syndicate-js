@@ -95,10 +95,10 @@ spawn named 'docker-scan' {
       react {
         stop on message DockerContainers(_);
         containers.forEach((info) => {
-          const net = info.NetworkSettings.Networks.bridge;
-          if (net) {
+          for (let netname in info.NetworkSettings.Networks) {
+            const net = info.NetworkSettings.Networks[netname];
             info.Names.forEach((n) => {
-              const name = n.replace('/', '');
+              const name = n.replace('/', '') + '.' + netname;
               assert DockerContainerInfo(name, info);
               info.Ports.forEach((p) => {
                 if (p.Type === 'tcp') {
@@ -106,8 +106,6 @@ spawn named 'docker-scan' {
                 }
               });
             });
-          } else {
-            debug('No bridge network for container', info.Id, info.Names);
           }
         });
       }
