@@ -11,6 +11,8 @@ case "$1" in
     */clean)
         rm -rf lib
         rm -rf dist
+        rm -rf .nyc_output
+        rm -rf coverage
         ;;
     */veryclean)
         redo clean
