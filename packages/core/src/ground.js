@@ -88,7 +88,7 @@ Ground.prototype.addStopHandler = function (h) {
   this.stopHandlers.push(h);
 };
 
-function bootModule(mod) {
+function bootModule(mod, k) {
   let g = new Ground(() => {
     Worker.spawnWorkerRelay();
     if (Dataspace.BootSteps in mod) {
@@ -104,7 +104,10 @@ function bootModule(mod) {
     }
   });
   if (typeof document !== 'undefined') {
-    document.addEventListener("DOMContentLoaded", (e) => { g.start(); });
+    document.addEventListener("DOMContentLoaded", (e) => {
+      g.start();
+      if (k) k(g);
+    });
   } else {
     process.on('SIGQUIT', () => {
       console.log('---------------------------------------------------------------------------');
@@ -119,6 +122,7 @@ function bootModule(mod) {
       // sp.stdin.end(g._dotGraph());
     });
     g.start();
+    if (k) k(g);
   }
 }
 
