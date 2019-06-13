@@ -14,7 +14,7 @@ mkdir built-packages
              driver-udp-node \
              driver-websocket \
              server \
-             syntax-playground
+             socks
          do
              echo ../../packages/$p
          done))

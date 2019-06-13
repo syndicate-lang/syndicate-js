@@ -1,0 +1,35 @@
+{
+  "name": "@syndicate-lang/socks",
+  "version": "0.0.0",
+  "description": "SOCKS5 gateway and service registration",
+  "repository": "github:syndicate-lang/syndicate-js",
+  "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
+  "license": "GPL-3.0+",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepare": "which redo >/dev/null && redo || ../../do"
+  },
+  "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/socks",
+  "devDependencies": {
+    "@babel/core": "^7.2.0",
+    "@babel/plugin-syntax-jsx": "^7.2.0",
+    "@babel/plugin-transform-react-jsx": "^7.2.0",
+    "@babel/preset-env": "^7.2.0",
+    "@syndicate-lang/syntax": "^0.1.0"
+  },
+  "dependencies": {
+    "@syndicate-lang/core": "^0.2.0",
+    "@syndicate-lang/driver-mdns": "^0.2.0",
+    "@syndicate-lang/driver-streams-node": "^0.2.0",
+    "@syndicate-lang/driver-timer": "^0.2.0",
+    "@syndicate-lang/server": "^0.2.0",
+    "debug": "^4.1.1",
+    "dockerode": "^2.5.8"
+  },
+  "bin": {
+    "syndicate-socks-gateway": "./bin/syndicate-socks-gateway.js",
+    "syndicate-socks-service": "./bin/syndicate-socks-service.js"
+  }
+}

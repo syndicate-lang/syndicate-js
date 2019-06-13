@@ -116,7 +116,8 @@ spawn named 'docker-scan' {
 spawn named 'test-remap' {
   during C.ServerConnected(server_addr) {
     during M.Discovered(M.Service($name, '_ssh._tcp'), $host, $port, _, _, "IPv4", _) {
-      assert C.ToServer(server_addr, AddressMap(VirtualTcpAddress(name + ".ssh.fruit", 22),
+      const servicename = name + '.' + os.hostname() + '.ssh.fruit';
+      assert C.ToServer(server_addr, AddressMap(VirtualTcpAddress(servicename, 22),
                                                 nodeId,
                                                 S.TcpAddress(host, port)));
     }
