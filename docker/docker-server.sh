@@ -22,6 +22,5 @@ fi
 exec docker run -it --rm \
      --network ${networkname} \
      $nameopt \
-     -v "${dir}":/data \
      "$@" \
      syndicate-js

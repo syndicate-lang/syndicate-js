@@ -11,6 +11,9 @@ RUN apk add --no-cache nodejs npm
 RUN npm i -g preserves
 ENV NODE_PATH=/usr/lib/node_modules
 
+ADD built-packages /tmp/packages
+RUN npm i --unsafe-perm -g /tmp/packages/*
+
 # RUN apk add --no-cache daemontools --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing
 
 RUN apk add dbus avahi avahi-tools
