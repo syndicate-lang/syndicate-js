@@ -258,11 +258,11 @@ spawn named 'remap-service' {
 
   during C.ServerConnected(server_addr) {
     on asserted C.FromServer(server_addr, $entry(AddressMap(_, _, _))) {
-      debug('+', entry.toString());
+      console.log('+', entry.toString());
       this.table = this.table.set(lc(AddressMap._from(entry)), entry);
     }
     on retracted C.FromServer(server_addr, $entry(AddressMap(_, _, _))) {
-      debug('-', entry.toString());
+      console.log('-', entry.toString());
       this.table = this.table.remove(lc(AddressMap._from(entry)));
     }
 
