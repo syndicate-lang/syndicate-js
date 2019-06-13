@@ -377,17 +377,20 @@ spawn named 'from-node-relay' {
   during Observe(C.FromServer($addr, FromNode($node, $spec))) {
     on start debug('?+', addr.toString(), node.toString(), spec.toString());
     on stop debug('?-', addr.toString(), node.toString(), spec.toString());
+    let matches = Map();
     on asserted C.FromServer(addr, RestrictedFromNode(node, spec.toString(), $vs)) {
       // ^ TODO: Use real quoting instead of spec.toString() hack!!
       // TODO: Shouldn't the dataspace/client be doing the necessary quoting for us??
       const a = Skeleton.instantiateAssertion(C.FromServer(addr, FromNode(node, spec)), vs);
+      matches = matches.set(vs, a);
       debug('+', a.toString());
       currentFacet().actor.adhocAssert(a);
     }
     on retracted C.FromServer(addr, RestrictedFromNode(node, spec.toString(), $vs)) {
-      const a = Skeleton.instantiateAssertion(C.FromServer(addr, FromNode(node, spec)), vs);
-      debug('-', a.toString());
+      const a = matches.get(vs);
+      debug('-', a && a.toString());
       currentFacet().actor.adhocRetract(a);
+      matches = matches.remove(vs);
     }
     on message C.FromServer(addr, RestrictedFromNode(node, spec.toString(), $vs)) {
       const a = Skeleton.instantiateAssertion(C.FromServer(addr, FromNode(node, spec)), vs);
