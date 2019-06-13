@@ -1,7 +1,7 @@
 {
   "name": "@syndicate-lang/syntax-playground",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.2.0",
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/syntax-playground",
   "license": "GPL-3.0+",
   "repository": "github:syndicate-lang/syndicate-js",
@@ -14,15 +14,15 @@
     "@syndicate-lang/syntax": "^0.1.0"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.1.2",
-    "@syndicate-lang/driver-browser-ui": "^0.1.2",
-    "@syndicate-lang/driver-http-node": "^0.1.3",
-    "@syndicate-lang/driver-mdns": "^0.1.2",
-    "@syndicate-lang/driver-streams-node": "^0.1.2",
-    "@syndicate-lang/driver-timer": "^0.1.2",
-    "@syndicate-lang/driver-udp-node": "^0.1.2",
-    "@syndicate-lang/driver-websocket": "^0.1.2",
-    "@syndicate-lang/server": "^0.1.4",
+    "@syndicate-lang/core": "^0.2.0",
+    "@syndicate-lang/driver-browser-ui": "^0.2.0",
+    "@syndicate-lang/driver-http-node": "^0.2.0",
+    "@syndicate-lang/driver-mdns": "^0.2.0",
+    "@syndicate-lang/driver-streams-node": "^0.2.0",
+    "@syndicate-lang/driver-timer": "^0.2.0",
+    "@syndicate-lang/driver-udp-node": "^0.2.0",
+    "@syndicate-lang/driver-websocket": "^0.2.0",
+    "@syndicate-lang/server": "^0.2.0",
     "debug": "^4.1.1",
     "webpack": "^4.27.1",
     "webpack-cli": "^3.1.2"

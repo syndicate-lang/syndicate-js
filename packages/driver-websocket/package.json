@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/driver-websocket",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "WebSocket client support for Syndicate/js in the browser and on node.js",
   "main": "lib/index.js",
   "repository": "github:syndicate-lang/syndicate-js",
@@ -19,8 +19,8 @@
     "@syndicate-lang/syntax": "^0.1.0"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.1.2",
-    "@syndicate-lang/driver-timer": "^0.1.2",
+    "@syndicate-lang/core": "^0.2.0",
+    "@syndicate-lang/driver-timer": "^0.2.0",
     "isomorphic-ws": "^4.0.1",
     "ws": "^6.1.2"
   }
