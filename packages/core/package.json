@@ -23,6 +23,6 @@
   "dependencies": {
     "debug": "^4.1.1",
     "immutable": "^3.8.2",
-    "preserves": "0.0.10"
+    "preserves": "0.0.11"
   }
 }
