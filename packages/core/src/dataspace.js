@@ -42,18 +42,24 @@ const Dataspace = (function () {
   const SYNDICATE = Symbol.for('@syndicate-lang/core');
   const version = require('../package.json').version;
   if (!(SYNDICATE in global)) {
+    function Dataspace(bootProc) {
+      this.nextId = 0;
+      this.index = new Skeleton.Index();
+      this.dataflow = new Dataflow.Graph();
+      this.runnable = Immutable.List();
+      this.pendingActions = Immutable.List([
+        new ActionGroup(null, Immutable.List([new Spawn(null, bootProc, Immutable.Set())]))]);
+      this.activatedModules = Immutable.Set();
+      this.actors = Immutable.Map();
+    }
+
+    // Parameters
+    Dataspace._currentFacet = null;
+    Dataspace._inScript = true;
+
     global[SYNDICATE] = {
       version: version,
-      Dataspace: function (bootProc) {
-        this.nextId = 0;
-        this.index = new Skeleton.Index();
-        this.dataflow = new Dataflow.Graph();
-        this.runnable = Immutable.List();
-        this.pendingActions = Immutable.List([
-          new ActionGroup(null, Immutable.List([new Spawn(null, bootProc, Immutable.Set())]))]);
-        this.activatedModules = Immutable.Set();
-        this.actors = Immutable.Map();
-      },
+      Dataspace: Dataspace,
     };
   }
   const g = global[SYNDICATE];
@@ -63,10 +69,6 @@ const Dataspace = (function () {
   }
   return g.Dataspace;
 })();
-
-// Parameters
-Dataspace._currentFacet = null;
-Dataspace._inScript = true;
 
 Dataspace.BootSteps = Symbol.for('SyndicateBootSteps');
 
