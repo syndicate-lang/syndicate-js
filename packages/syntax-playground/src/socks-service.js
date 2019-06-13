@@ -1,13 +1,25 @@
 // https://www.ietf.org/rfc/rfc1928.txt
 
-const { currentFacet, genUuid, Bytes, Map, Observe, Skeleton } = require("@syndicate-lang/core");
+const {
+  currentFacet, genUuid,
+  Bytes, Map,
+  Observe, Skeleton,
+  Dataspace,
+} = require("@syndicate-lang/core");
 const C = activate require("@syndicate-lang/server/lib/client");
 const S = activate require("@syndicate-lang/driver-streams-node");
 const M = activate require("@syndicate-lang/driver-mdns");
+const { PeriodicTick } = activate require("@syndicate-lang/driver-timer");
 const debugFactory = require('debug');
+const os = require('os');
 
 assertion type VirtualTcpAddress(host, port);
 assertion type AddressMap(from, nodeId, to);
+
+assertion type DockerContainerInfo(name, info);
+assertion type DockerContainerPort(name, ip, port);
+assertion type DockerScan();
+message type DockerContainers(blob);
 
 assertion type ToNode(nodeId, assertion);
 assertion type FromNode(nodeId, assertion);
@@ -59,12 +71,62 @@ const server_addr = C.WSServer(server_url, server_scope);
 
 const nodeId = genUuid('node');
 
+spawn named 'docker-scan' {
+  const debug = debugFactory('syndicate/server:socks:docker:scan');
+  const Docker = require('dockerode');
+  during Observe(DockerContainerInfo(_, _)) assert DockerScan();
+  during Observe(DockerContainerPort(_, _, _)) assert DockerScan();
+  during DockerScan() {
+
+    const docker = new Docker();
+    function scan() {
+      docker.listContainers(Dataspace.wrapExternal((err, containers) => {
+        if (err) throw err;
+        react {
+          stop on message PeriodicTick(5000) scan();
+          on start send DockerContainers(containers);
+        }
+      }));
+    }
+    on start scan();
+
+    on message DockerContainers($containers0) {
+      const containers = containers0.toJSON();
+      react {
+        stop on message DockerContainers(_);
+        containers.forEach((info) => {
+          const net = info.NetworkSettings.Networks.bridge;
+          if (net) {
+            info.Names.forEach((n) => {
+              const name = n.replace('/', '');
+              assert DockerContainerInfo(name, info);
+              info.Ports.forEach((p) => {
+                if (p.Type === 'tcp') {
+                  assert DockerContainerPort(name, net.IPAddress, p.PrivatePort);
+                }
+              });
+            });
+          } else {
+            debug('No bridge network for container', info.Id, info.Names);
+          }
+        });
+      }
+    }
+  }
+}
+
 spawn named 'test-remap' {
   during C.ServerConnected(server_addr) {
     during M.Discovered(M.Service($name, '_ssh._tcp'), $host, $port, _, _, "IPv4", _) {
       assert C.ToServer(server_addr, AddressMap(VirtualTcpAddress(name + ".ssh.fruit", 22),
                                                 nodeId,
                                                 S.TcpAddress(host, port)));
+    }
+    during DockerContainerPort($name, $ip, $port) {
+      const servicename = name + '.' + os.hostname() + '.docker.fruit';
+      assert C.ToServer(server_addr, AddressMap(VirtualTcpAddress(servicename, port),
+                                                nodeId,
+                                                S.TcpAddress(ip, port)));
     }
   }
 }
