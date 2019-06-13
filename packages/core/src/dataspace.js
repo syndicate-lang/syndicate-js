@@ -19,7 +19,7 @@
 
 const Immutable = require("immutable");
 const Preserves = require("preserves");
-const debug = require("debug")("syndicate/core:dataspace");
+// const debug = require("debug")("syndicate/core:dataspace");
 
 const Skeleton = require('./skeleton.js');
 const $Special = require('./special.js');
@@ -189,7 +189,7 @@ Dataspace.prototype.refreshAssertions = function () {
 
 Dataspace.prototype.addActor = function (name, bootProc, initialAssertions, parentActor) {
   let ac = new Actor(this, name, initialAssertions, parentActor && parentActor.id);
-  debug('Spawn', ac && ac.toString());
+  // debug('Spawn', ac && ac.toString());
   this.applyPatch(ac, ac.adhocAssertions.snapshot());
   ac.addFacet(null, () => {
     // Root facet is a dummy "system" facet that exists to hold
@@ -201,12 +201,12 @@ Dataspace.prototype.addActor = function (name, bootProc, initialAssertions, pare
 };
 
 Dataspace.prototype.applyPatch = function (ac, delta) {
-  if (!delta.isEmpty()) debug('applyPatch BEGIN', ac && ac.toString());
+  // if (!delta.isEmpty()) debug('applyPatch BEGIN', ac && ac.toString());
   let removals = [];
   delta.forEach((count, a) => {
     if (a !== void 0) {
       if (count > 0) {
-        debug('applyPatch +', a && a.toString());
+        // debug('applyPatch +', a && a.toString());
         this.adjustIndex(a, count);
       } else {
         removals.push([count, a]);
@@ -215,14 +215,14 @@ Dataspace.prototype.applyPatch = function (ac, delta) {
     }
   });
   removals.forEach(([count, a]) => {
-    debug('applyPatch -', a && a.toString());
+    // debug('applyPatch -', a && a.toString());
     this.adjustIndex(a, count);
   });
-  if (!delta.isEmpty()) debug('applyPatch END');
+  // if (!delta.isEmpty()) debug('applyPatch END');
 };
 
 Dataspace.prototype.sendMessage = function (m, sendingActor) {
-  debug('sendMessage', sendingActor && sendingActor.toString(), m.toString());
+  // debug('sendMessage', sendingActor && sendingActor.toString(), m.toString());
   this.index.sendMessage(m);
   // this.index.sendMessage(m, (leaf, _m) => {
   //   sendingActor.touchedTopics = sendingActor.touchedTopics.add(leaf);
@@ -583,7 +583,7 @@ function Quit() { // TODO: rename? Perhaps to Cleanup?
 Quit.prototype.perform = function (ds, ac) {
   ds.applyPatch(ac, ac.cleanupChanges.snapshot());
   ds.actors = ds.actors.remove(ac.id);
-  debug('Quit', ac && ac.toString());
+  // debug('Quit', ac && ac.toString());
 };
 
 function DeferredTurn(continuation) {
@@ -591,7 +591,7 @@ function DeferredTurn(continuation) {
 }
 
 DeferredTurn.prototype.perform = function (ds, ac) {
-  debug('DeferredTurn', ac && ac.toString());
+  // debug('DeferredTurn', ac && ac.toString());
   ac.pushScript(this.continuation);
 };
 
@@ -608,7 +608,7 @@ function Activation(mod) {
 
 Activation.prototype.perform = function (ds, ac) {
   if (!ds.activatedModules.includes(this.mod)) {
-    debug('Activation', this.mod.id);
+    // debug('Activation', this.mod.id);
     ds.activatedModules = ds.activatedModules.add(this.mod);
     this.mod.exports[Dataspace.BootSteps].steps.forEach((a) => {
       // console.log('[ACTIVATION]', ac && ac.toString(), a);
