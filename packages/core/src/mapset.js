@@ -19,6 +19,11 @@
 
 // Utilities for Maps of Sets
 
+if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
+                                                require('../package.json').version,
+                                                require('path').basename(module.filename),
+                                                module)) return;
+
 var Immutable = require('immutable');
 
 function add(ms, key, val) {

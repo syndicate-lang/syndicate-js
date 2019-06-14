@@ -19,6 +19,11 @@
 
 // Bags and Deltas (which are Bags where item-counts can be negative).
 
+if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
+                                                require('../package.json').version,
+                                                require('path').basename(module.filename),
+                                                module)) return;
+
 const Immutable = require("immutable");
 const { fromJS } = require("preserves");
 

@@ -17,6 +17,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
+if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
+                                                require('../package.json').version,
+                                                require('path').basename(module.filename),
+                                                module)) return;
+
 const Skeleton = require('./skeleton.js');
 const RandomID = require('./randomid.js');
 const Dataspace = require('./dataspace.js');

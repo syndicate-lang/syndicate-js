@@ -19,6 +19,11 @@
 
 // Property-based "dataflow"
 
+if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
+                                                require('../package.json').version,
+                                                require('path').basename(module.filename),
+                                                module)) return;
+
 var Immutable = require("immutable");
 var MapSet = require("./mapset.js");
 

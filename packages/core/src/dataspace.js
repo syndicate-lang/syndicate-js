@@ -19,7 +19,7 @@
 
 if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
                                                 require('../package.json').version,
-                                                'dataspace.js',
+                                                require('path').basename(module.filename),
                                                 module)) return;
 
 const Immutable = require("immutable");

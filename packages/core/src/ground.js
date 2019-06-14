@@ -1,5 +1,10 @@
 "use strict";
 
+if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
+                                                require('../package.json').version,
+                                                require('path').basename(module.filename),
+                                                module)) return;
+
 const Immutable = require('immutable');
 const Dataspace = require('./dataspace.js').Dataspace;
 const Worker = require('./worker');
