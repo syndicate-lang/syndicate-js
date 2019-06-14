@@ -18,7 +18,7 @@
 
 if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
                                                 require('../package.json').version,
-                                                require('path').basename(module.filename),
+                                                'randomid.js',
                                                 module)) return;
 
 let randomId;

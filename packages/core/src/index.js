@@ -19,7 +19,7 @@
 
 if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
                                                 require('../package.json').version,
-                                                require('path').basename(module.filename),
+                                                'index.js',
                                                 module)) return;
 
 const Skeleton = require('./skeleton.js');

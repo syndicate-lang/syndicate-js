@@ -21,7 +21,7 @@
 
 if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
                                                 require('../package.json').version,
-                                                require('path').basename(module.filename),
+                                                'mapset.js',
                                                 module)) return;
 
 var Immutable = require('immutable');

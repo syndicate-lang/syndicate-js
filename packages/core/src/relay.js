@@ -19,7 +19,7 @@
 
 if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
                                                 require('../package.json').version,
-                                                require('path').basename(module.filename),
+                                                'relay.js',
                                                 module)) return;
 
 const $Special = require('./special.js');
