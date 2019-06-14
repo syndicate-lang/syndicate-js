@@ -42,6 +42,21 @@ const PRIORITY = Object.freeze({
   _count: 6
 });
 
+function Dataspace(bootProc) {
+  this.nextId = 0;
+  this.index = new Skeleton.Index();
+  this.dataflow = new Dataflow.Graph();
+  this.runnable = Immutable.List();
+  this.pendingActions = Immutable.List([
+    new ActionGroup(null, Immutable.List([new Spawn(null, bootProc, Immutable.Set())]))]);
+  this.activatedModules = Immutable.Set();
+  this.actors = Immutable.Map();
+}
+
+// Parameters
+Dataspace._currentFacet = null;
+Dataspace._inScript = true;
+
 Dataspace.BootSteps = Symbol.for('SyndicateBootSteps');
 
 Dataspace.currentFacet = function () {
