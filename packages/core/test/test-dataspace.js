@@ -46,12 +46,14 @@ describe('dataspace', () => {
         };
         return [Observe(Capture(Discard())), handler];
       });
-      Dataspace.deferTurn(() => {
-        // console.log('after defer');
-        Dataspace.send(1234);
-        // console.log('after send');
-        Dataspace.spawn('secondproc', () => {
-          // console.log('secondproc boot');
+      Dataspace.currentFacet().addStartScript(() => {
+        Dataspace.deferTurn(() => {
+          // console.log('after defer');
+          Dataspace.send(1234);
+          // console.log('after send');
+          Dataspace.spawn('secondproc', () => {
+            // console.log('secondproc boot');
+          });
         });
       });
     });
