@@ -57,23 +57,25 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
 
   const outboundTurn = recorder(this, 'commitNeeded', (items) => w(Turn(items)));
 
-  let pubs = Map();
-  let subs = Map();
-  let matches = Map();
+  field this.pubs = Map();
+  field this.subs = Map();
+  field this.matches = Map();
 
   on start w(Connect(scope));
-  on stop matches.forEach((m) => m.captures.forEach((a) => currentFacet().actor.adhocRetract(a)));
+  on stop this.matches.forEach((m) => {
+    m.captures.forEach((a) => currentFacet().actor.adhocRetract(a));
+  });
 
   on asserted ToServer(addr, $a) {
     const ep = genUuid('pub');
     outboundTurn.extend(Assert(ep, a));
-    pubs = pubs.set(a, ep);
+    this.pubs = this.pubs.set(a, ep);
   }
 
   on retracted ToServer(addr, $a) {
-    const ep = pubs.get(a);
+    const ep = this.pubs.get(a);
     outboundTurn.extend(Clear(ep));
-    pubs = pubs.remove(a);
+    this.pubs = this.pubs.remove(a);
   }
 
   on message ToServer(addr, $a) {
@@ -85,19 +87,19 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
   on asserted Observe(FromServer(addr, $spec)) {
     const ep = genUuid('sub');
     outboundTurn.extend(Assert(ep, Observe(spec)));
-    subs = subs.set(spec, ep);
-    matches = matches.set(ep, { spec, captures: Map() });
+    this.subs = this.subs.set(spec, ep);
+    this.matches = this.matches.set(ep, { spec, captures: Map() });
   }
 
   on retracted Observe(FromServer(addr, $spec)) {
-    outboundTurn.extend(Clear(subs.get(spec)));
-    subs = subs.remove(spec);
+    outboundTurn.extend(Clear(this.subs.get(spec)));
+    this.subs = this.subs.remove(spec);
   }
 
   const _instantiate = (m, vs) => Skeleton.instantiateAssertion(FromServer(addr, m.spec), vs);
 
   const _lookup = (CTOR, item) => {
-    const m = matches.get(CTOR._endpointName(item));
+    const m = this.matches.get(CTOR._endpointName(item));
     const vs = CTOR._captures(item);
     return { m, vs };
   }
@@ -118,10 +120,10 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
         send _instantiate(m, vs);
       } else if (End.isClassOf(item)) {
         const ep = End._endpointName(item);
-        const m = matches.get(ep);
+        const m = this.matches.get(ep);
         if (m) {
           m.captures.forEach((a) => currentFacet().actor.adhocRetract(a));
-          matches = matches.remove(ep);
+          this.matches = this.matches.remove(ep);
         }
       } else if (Err.isClassOf(item)) {
         throw new Error(item.toString());
