@@ -19,6 +19,7 @@
 
 const chai = require('chai');
 const expect = chai.expect;
+const assert = chai.assert;
 chai.use(require('chai-immutable'));
 
 const Immutable = require('immutable');
@@ -333,4 +334,31 @@ describe('skeleton', () => {
         .to.equal(false);
     });
   });
+});
+
+describe('path comparison', () => {
+  const { pathCmp } = require('../src/skeleton.js').__for_testing;
+  const L = (...args) => Immutable.List(args);
+  function c(a, b, expected) {
+    assert.strictEqual(pathCmp(a, b), expected);
+  }
+
+  it('should identify empty paths', () => c(L(), L(), 0));
+  it('should identify equal nonempty paths (1)', () => c(L(1, 1), L(1, 1), 0));
+  it('should identify equal nonempty paths (2)', () => c(L(2, 2), L(2, 2), 0));
+  it('should check upper end first (1)', () => c(L(2, 1), L(1, 1), +1));
+  it('should check upper end first (2)', () => c(L(1, 1), L(2, 1), -1));
+  it('should check upper end first (3)', () => c(L(2, 1), L(1, 2), +1));
+  it('should check upper end first (4)', () => c(L(1, 2), L(2, 1), -1));
+  it('should check upper end first (5)', () => c(L(2), L(1, 1), +1));
+  it('should check upper end first (6)', () => c(L(1), L(2, 1), -1));
+  it('should check upper end first (7)', () => c(L(2), L(1, 2), +1));
+  it('should check upper end first (8)', () => c(L(1), L(2, 1), -1));
+  it('should check upper end first (9)', () => c(L(2, 1), L(1), +1));
+  it('should check upper end first (A)', () => c(L(1, 1), L(2), -1));
+  it('should check upper end first (B)', () => c(L(2, 1), L(1), +1));
+  it('should check upper end first (C)', () => c(L(1, 2), L(2), -1));
+  it('should be lexicographic (1)', () => c(L(1, 2), L(1, 2), 0));
+  it('should be lexicographic (2)', () => c(L(1), L(1, 2), -1));
+  it('should be lexicographic (3)', () => c(L(1, 2), L(1), +1));
 });

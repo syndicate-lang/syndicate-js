@@ -131,6 +131,71 @@ Node.prototype.extend = function(skeleton) {
   return finalNode.continuation;
 };
 
+function pathCmp(a, b) {
+  const ai = a.values();
+  let result = 0;
+  b.forEach((bv) => {
+    const e = ai.next();
+    if (e.done || e.value < bv) { result = -1;  return false; }
+    else if (e.value > bv)      { result = +1;  return false; }
+    else                        { /* keep scanning down */    }
+  });
+  if (result !== 0) return result;
+  return ai.next().done ? 0 : +1;
+}
+
+function isUnrestricted(capturePaths, restrictionPaths) {
+  //------------------------------------------------------------------------------------------
+  // Determining a match between capturePaths and restrictionPaths relies on the particular
+  // *order* that captures are computed in `analyzeAssertion`. If the order is changed, or
+  // becomes non-deterministic, this function will have to be revisited.
+  //------------------------------------------------------------------------------------------
+
+  // We are "unrestricted" if we Set(capturePaths) ⊆ Set(restrictionPaths). Since both
+  // variables really hold lists, we operate with awareness of the order the lists are built
+  // here. We know that the lists are built in fringe order; that is, they are sorted wrt
+  // `pathCmp`.
+
+  if (restrictionPaths === false) return true; // not visibility-restricted in the first place
+
+  const rpi = restrictionPaths.values();
+  let result = true;
+  capturePaths.forEach((c) => {
+    while (true) { // (goto-target for "continue" below)
+      const e = rpi.next();
+      if (e.done) {
+        // there's at least one capturePaths entry (`c`) that does not appear in
+        // restrictionPaths, so we are restricted
+        result = false;
+        return false;
+      }
+      const r = e.value;
+      switch (pathCmp(c, r)) {
+        case -1:
+          // `c` is less than `r`, but restrictionPaths is sorted, so `c` does not appear in
+          // restrictionPaths, and we are thus restricted.
+          result = false;
+          return false;
+        case 0:
+          // `c` is equal to `r`, so we may yet be unrestricted. Discard both `c` and `r` and
+          // continue.
+          break;
+        case +1:
+          // `c` is greater than `r`, but capturePaths and restrictionPaths are sorted, so while
+          // we might yet come to an `r` that is equal to `c`, we will never find another `c`
+          // that is less than this `c`. Discard this `r` then, keeping the `c`, and compare
+          // against the next `r`.
+          continue;
+      }
+      break;
+    }
+  });
+  // Either we terminated early because we found some `c` not in restrictionPaths, or we went
+  // all the way through capturePaths without finding any such `c`, in which case `result`
+  // remains true and we don't need to bother looking at the rest of `rpi`.
+  return result;
+}
+
 Index.prototype.addHandler = function(analysisResults, callback) {
   let {skeleton, constPaths, constVals, capturePaths} = analysisResults;
   let continuation = this.root.extend(skeleton);
@@ -151,7 +216,7 @@ Index.prototype.addHandler = function(analysisResults, callback) {
     let cachedCaptures = Bag.Bag().withMutations((mutable) => {
       leaf.cachedAssertions.forEach((a) => {
         return unpackScoped(a, (restrictionPaths, term) => {
-          if (restrictionPaths === false || restrictionPaths.equals(capturePaths)) {
+          if (isUnrestricted(capturePaths, restrictionPaths)) {
             let captures = projectPaths(term, capturePaths);
             mutable.set(captures, mutable.get(captures, 0) + 1);
           }
@@ -219,7 +284,7 @@ Node.prototype.modify = function(outerValue, m_cont, m_leaf, m_handler) {
       if (leaf) {
         m_leaf(leaf, outerValue);
         leaf.handlerMap.forEach((handler, capturePaths) => {
-          if (restrictionPaths === false || restrictionPaths.equals(capturePaths)) {
+          if (isUnrestricted(capturePaths, restrictionPaths)) {
             m_handler(handler, projectPaths(outerValueTerm, capturePaths));
           }
           return true;
@@ -345,6 +410,8 @@ function analyzeAssertion(a) {
 
   function walk(path, a) {
     if (Capture.isClassOf(a)) {
+      // NB. isUnrestricted relies on the specific order that
+      // capturePaths is computed here.
       capturePaths = capturePaths.push(path);
       return walk(path, a.get(0));
     }
@@ -494,3 +561,8 @@ module.exports.instantiateAssertion = instantiateAssertion;
 module.exports.match = match;
 module.exports.isCompletelyConcrete = isCompletelyConcrete;
 module.exports.withoutCaptures = withoutCaptures;
+
+module.exports.__for_testing = {
+  pathCmp,
+  isUnrestricted,
+};
