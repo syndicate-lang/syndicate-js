@@ -114,6 +114,10 @@ spawn named 'UIFragmentFactory' {
       orderBy = newOrderBy;
       anchorNodes = (selector !== null) ? selectorMatch(document, selector) : [];
 
+      if (anchorNodes.length === 0) {
+        console.warn('UIFragment found no parent nodes matching selector', selector, fragmentId);
+      }
+
       anchorNodes.forEach((anchorNode) => {
         let insertionPoint = findInsertionPoint(anchorNode, orderBy, fragmentId);
         htmlToNodes(anchorNode, html).forEach((newNode) => {
