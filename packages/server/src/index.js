@@ -12,10 +12,9 @@ const D = activate require("./disco");
 const Server = activate require("./server");
 const Federation = activate require("./federation");
 const fs = require('fs');
+const os = require('os');
 
-import {
-  RandomID,
-} from "@syndicate-lang/core";
+import { genUuid } from "@syndicate-lang/core";
 
 let currentManagementScope = 'local';
 
@@ -39,10 +38,12 @@ function usage() {
   console.info('  --overlay OVERLAYID WEBSOCKETURL');
   console.info('                        Participate in a self-assembling overlay with the');
   console.info('                        given ID and root node server URL');
+  console.info('  --id NODEID           Set the ID of the new node; defaults to random');
   console.info('');
   console.info('  --help, -h            Produce this message and terminate');
 }
 
+let localId = genUuid(os.hostname());
 const uplinks = [];
 const overlays = [];
 function process_command_line(args) {
@@ -59,6 +60,7 @@ function process_command_line(args) {
   while (args.length) {
     const opt = args.shift();
     switch (opt) {
+      case "--id": localId = strArg('local node ID'); break;
       case "--tcp": spawnTcpServer(numArg('TCP port')); break;
       case "--http": spawnWebSocketServer(numArg('HTTP port')); break;
       case "--unix": spawnUnixSocketServer(strArg('Unix socket path')); break;
@@ -98,7 +100,6 @@ spawn named 'server' {
     assert P.Proposal(currentManagementScope, link);
   });
   if (overlays.length > 0) {
-    const localId = RandomID.randomId(8, false);
     assert D.OverlayNode(localId);
   }
   overlays.forEach((o) => {

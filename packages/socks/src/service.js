@@ -69,7 +69,7 @@ if (!server_url || !server_scope) {
 }
 const server_addr = C.WSServer(server_url, server_scope);
 
-const nodeId = genUuid('node');
+const nodeId = genUuid(os.hostname());
 
 spawn named 'docker-scan' {
   const debug = debugFactory('syndicate/server:socks:docker:scan');
