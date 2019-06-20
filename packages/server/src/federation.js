@@ -320,7 +320,11 @@ spawn named '@syndicate-lang/server/federation/ScopeFactory' {
 
         on start {
           this.turns = this.turns.set(linkid, turn);
-          this.specs.forEach((localid, spec) => turn.extend(W.Assert(localid, Observe(spec))));
+          this.specs.forEach((localid, spec) => {
+            if (this.subs.get(localid).holders.size > 0) {
+              turn.extend(W.Assert(localid, Observe(spec)));
+            }
+          });
           turn.commit();
         }
 
