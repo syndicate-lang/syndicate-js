@@ -67,6 +67,7 @@ spawn named 'WebSocketFactory' {
 
     const disconnect = () => {
       if (ws) {
+        console.log('WebSocket', id, url, 'disconnecting');
         try { ws.close(); } catch (_e) {}
         ws = null;
       }
