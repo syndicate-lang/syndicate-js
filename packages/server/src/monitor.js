@@ -4,6 +4,7 @@ const UI = activate require("@syndicate-lang/driver-browser-ui");
 // @jsx UI.html
 // @jsxFrag UI.htmlFragment
 
+const { Bytes } = require("@syndicate-lang/core");
 const { WSServer, ToServer, FromServer, ServerConnected } = activate require("./client");
 const P = activate require("./internal_protocol");
 
@@ -12,6 +13,8 @@ const Federation = require("./federation");
 assertion type DetectedOverlay(scope);
 assertion type AddressMap(from, nodeId, to);
 assertion type OverlayLink(downNode, upNode);
+assertion type OverlayNode(id);
+assertion type OverlayRoot();
 
 spawn {
   const ui = new UI.Anchor();
@@ -80,13 +83,18 @@ spawn {
         assert ui.html('#overlays',
                        <div class={`o_${scope}`}>
                        <p>Overlay <tt>{scope}</tt></p>
-                       <ul class="links"></ul>
+                       <ul class="root"></ul>
                        <ul class="vaddrs"></ul>
                        </div>);
-        during FromServer(addr, $item(OverlayLink(_, _))) {
+        const nodeName = (n) => {
+          if (OverlayNode.isClassOf(n)) return "node_" + Bytes.from(OverlayNode._id(n)).toHex();
+          return "root";
+        };
+        during FromServer(addr, $item(OverlayLink($down, $up))) {
+          console.log(down.toString(), '-->', up.toString());
           const ui = new UI.Anchor();
-          assert ui.html(`#overlays div.o_${scope} ul.links`,
-                         <li><tt>{item && item.toString()}</tt></li>);
+          assert ui.html(`#overlays div.o_${scope} ul.${nodeName(up)}`,
+                         <li><tt>{down.toString()}</tt><ul class={nodeName(down)}></ul></li>);
         }
         during FromServer(addr, $item(AddressMap(_, _, _))) {
           const ui = new UI.Anchor();
