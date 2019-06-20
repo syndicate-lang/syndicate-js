@@ -29,6 +29,11 @@ function makeDecoder(initialBuffer) {
   });
 }
 
+function shouldDebugPrint(m) {
+  // return !(Ping.isClassOf(m) || Pong.isClassOf(m));
+  return true;
+}
+
 Object.assign(module.exports, {
   Connect,
   Turn,
@@ -36,4 +41,5 @@ Object.assign(module.exports, {
   Add, Del, Msg, Err, End,
   Ping, Pong,
   makeDecoder,
+  shouldDebugPrint,
 });

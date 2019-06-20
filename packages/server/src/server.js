@@ -14,6 +14,7 @@ const P = activate require("./internal_protocol");
 const W = activate require("./protocol");
 const B = activate require("./buffer");
 const { recorder } = activate require("./turn");
+const { heartbeat } = activate require("./heartbeat");
 
 export function websocketServerFacet(reqId) {
   assert P.POA(reqId);
@@ -58,8 +59,8 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
     const debug = debugFactory('syndicate/server:server:' + connId.toString());
     on start debug('+');
     on stop debug('-');
-    on message P.FromPOA(connId, $m) debug('<', m.toString());
-    on message P.ToPOA(connId, $m) debug('>', m.toString());
+    on message P.FromPOA(connId, $m) if (W.shouldDebugPrint(m)) debug('<', m.toString());
+    on message P.ToPOA(connId, $m) if (W.shouldDebugPrint(m)) debug('>', m.toString());
 
     field this.scope = null;
     assert P.POAReady(connId);
@@ -75,6 +76,11 @@ spawn named '@syndicate-lang/server/server/POAHandler' {
 
     const sendToPOA = (m) => { send P.ToPOA(connId, m); };
     const outboundTurn = recorder(this, 'commitNeeded', (items) => sendToPOA(W.Turn(items)));
+
+    const poaFacet = currentFacet();
+    const resetHeartbeat = heartbeat(this, ['server', connId], sendToPOA, () => {poaFacet.stop();});
+    on message P.FromPOA(connId, _) resetHeartbeat();
+    on message P.FromPOA(connId, W.Ping()) sendToPOA(W.Pong());
 
     on message P.FromPOA(connId, W.Turn($items)) {
       items.forEach((item) => {

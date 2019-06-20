@@ -17,9 +17,11 @@ const {
   Add, Del, Msg, Err, End,
   Ping, Pong,
   makeDecoder,
+  shouldDebugPrint,
 } = activate require("./protocol");
 const P = activate require("./internal_protocol");
 const { recorder } = activate require("./turn");
+const { heartbeat } = activate require("./heartbeat");
 
 assertion type WSServer(url, scope) = Symbol.for('server-websocket-connection');
 assertion type Loopback(scope) = Symbol.for('server-loopback-connection');
@@ -39,7 +41,7 @@ Object.assign(module.exports, {
   ForceServerDisconnect,
 });
 
-export function _genericClientSessionFacet(addr, scope, w0, debug) {
+export function _genericClientSessionFacet(addr, scope, w0, teardown, debug) {
   if (debug === void 0) {
     debug = debugFactory('syndicate/server:client:' + genUuid('?'));
   }
@@ -48,10 +50,10 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
 
   on start debug('+', addr.toString(), scope);
   on stop debug('-', addr.toString(), scope);
-  on message _ServerPacket(addr, $m) debug('<', m.toString());
+  on message _ServerPacket(addr, $m) if (shouldDebugPrint(m)) debug('<', m.toString());
 
   const w = (x) => {
-    debug('>', x.toString());
+    if (shouldDebugPrint(x)) debug('>', x.toString());
     w0(x);
   };
 
@@ -95,6 +97,9 @@ export function _genericClientSessionFacet(addr, scope, w0, debug) {
     outboundTurn.extend(Clear(this.subs.get(spec)));
     this.subs = this.subs.remove(spec);
   }
+
+  const resetHeartbeat = heartbeat(this, ['client', addr, scope], w, teardown);
+  on message _ServerPacket(addr, _) resetHeartbeat();
 
   const _instantiate = (m, vs) => Skeleton.instantiateAssertion(FromServer(addr, m.spec), vs);
 
@@ -140,20 +145,36 @@ spawn named "ServerClientFactory" {
   during Observe(ServerConnected($addr)) assert ServerConnection(addr);
 
   during ServerConnection($addr(WSServer($url, $scope))) spawn named ['ServerClient', addr] {
-    const wsId = genUuid('ws');
-    const debug = debugFactory('syndicate/server:client:' + wsId);
+    const reestablish = () => {
+      react {
+        const establishingFacet = currentFacet();
+        const wsId = genUuid('ws');
 
-    during WS.WebSocket(wsId, url, {}) {
-      on message WS.DataIn(wsId, $data) {
-        if (data instanceof Bytes) send _ServerPacket(addr, makeDecoder(data).next());
+        during WS.WebSocket(wsId, url, {}) {
+          on message WS.DataIn(wsId, $data) {
+            if (data instanceof Bytes) send _ServerPacket(addr, makeDecoder(data).next());
+          }
+
+          _genericClientSessionFacet.call(
+            this,
+            addr, scope,
+            (x) => { send WS.DataOut(wsId, new Encoder().push(x).contents()); },
+            () => {
+              establishingFacet.stop(() => {
+                // TODO: abstract this into a flush() function somewhere
+                const ACK = Symbol('ACK');
+                react {
+                  stop on message ACK reestablish();
+                  on start send ACK;
+                }
+              });
+            },
+            debugFactory('syndicate/server:client:' + wsId));
+        }
       }
+    };
 
-      _genericClientSessionFacet.call(
-        this,
-        addr, scope,
-        (x) => { send WS.DataOut(wsId, new Encoder().push(x).contents()); },
-        debug);
-    }
+    on start reestablish();
   }
 
   during ServerConnection($addr(Loopback($scope))) spawn named ['ServerClient', addr] {
@@ -166,6 +187,7 @@ spawn named "ServerClientFactory" {
           this,
           addr, scope,
           (x) => { send P.FromPOA(addr, x); },
+          () => { throw new Error("Cannot teardown and reset Loopback connection"); },
           debug);
       }
     }
