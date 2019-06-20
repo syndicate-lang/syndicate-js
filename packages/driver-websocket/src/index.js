@@ -42,7 +42,7 @@ spawn named 'WebSocketFactory' {
     const connect = () => {
       disconnect();
       console.log('WebSocket', id, url, 'connecting');
-      ws = new _WebSocket(url, options);
+      ws = new _WebSocket(url, [], options.toJS());
 
       ws.onerror = Dataspace.wrapExternal((e) => {
         console.error('WebSocket', id, url, e);
