@@ -547,15 +547,40 @@ export default declare((api, options) => {
                INSTID: instId,
              }));
         } else {
+          // TODO: this is a hopefully-temporary performance hack. Ideally we'd expand to
+          // something like we had earlier, namely
+          //
+          // on asserted PATTERN1 react {
+          //   stop on retracted :snapshot PATTERN2
+          //   BODY
+          // }
+          //
+          // but for now, in order to avoid subscription churn, we use PATTERN1's retracted
+          // events to manage the lifetimes of the nested react.
+
+          const info = compilePattern(state, path.get('pattern'));
           path.replaceWith(syndicateTemplate(
-            `on asserted PATTERN1 react {
-               stop on retracted :snapshot PATTERN2;
-               BODY
-             }`)({
-               PATTERN1: node.pattern,
-               PATTERN2: instantiatePatternToPattern(state, path.get('pattern')),
-               BODY: node.body,
-             }));
+            `{
+              let FACETS = SYNDICATE.Map();
+              on asserted PATTERN react {
+                FACETS = FACETS.set(KEY, DATASPACE._currentFacet);
+                dataflow void 0; // TODO: horrible hack to keep the facet alive if no other endpoints
+                BODY
+              }
+              on retracted PATTERN {
+                let KEYID = KEY;
+                FACETS.get(KEYID).stop();
+                FACETS = FACETS.remove(KEYID);
+              }
+            }`)({
+              FACETS: path.scope.generateUidIdentifier("facets"),
+              SYNDICATE: state.SyndicateID,
+              PATTERN: node.pattern,
+              KEY: listAst(state, t.arrayExpression(info.captureIds)),
+              DATASPACE: state.DataspaceID,
+              BODY: node.body,
+              KEYID: path.scope.generateUidIdentifier("key"),
+            }));
         }
         path.parentPath.traverse(bindingRegistrationVisitor, state);
       },
