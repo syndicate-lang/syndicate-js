@@ -61,10 +61,14 @@ function Continuation(cachedAssertions) {
   this.leafMap = Immutable.Map();
 }
 
-function Leaf(cachedAssertions) {
-  this.cachedAssertions = cachedAssertions;
+function Leaf() {
+  this.cachedAssertions = Immutable.Set();
   this.handlerMap = Immutable.Map();
 }
+
+Leaf.prototype.isEmpty = function () {
+  return this.cachedAssertions.isEmpty() && this.handlerMap.isEmpty();
+};
 
 function Handler(cachedCaptures) {
   this.cachedCaptures = cachedCaptures;
@@ -201,13 +205,22 @@ Index.prototype.addHandler = function(analysisResults, callback) {
   let continuation = this.root.extend(skeleton);
   let constValMap = continuation.leafMap.get(constPaths, false);
   if (!constValMap) {
-    constValMap = Immutable.Map();
+    constValMap = Immutable.Map().withMutations((mutableConstValMap) => {
+      continuation.cachedAssertions.forEach((a) => {
+        const key = projectPaths(unscope(a), constPaths);
+        let leaf = mutableConstValMap.get(key, false);
+        if (!leaf) {
+          leaf = new Leaf();
+          mutableConstValMap.set(key, leaf);
+        }
+        leaf.cachedAssertions = leaf.cachedAssertions.add(a);
+      });
+    });
     continuation.leafMap = continuation.leafMap.set(constPaths, constValMap);
   }
   let leaf = constValMap.get(constVals, false);
   if (!leaf) {
-    leaf = new Leaf(continuation.cachedAssertions.filter(
-      (a) => projectPaths(unscope(a), constPaths).equals(constVals)));
+    leaf = new Leaf();
     constValMap = constValMap.set(constVals, leaf);
     continuation.leafMap = continuation.leafMap.set(constPaths, constValMap);
   }
@@ -247,7 +260,7 @@ Index.prototype.removeHandler = function(analysisResults, callback) {
   if (handler.callbacks.isEmpty()) {
     leaf.handlerMap = leaf.handlerMap.remove(capturePaths);
   }
-  if (leaf.handlerMap.isEmpty()) {
+  if (leaf.isEmpty()) {
     constValMap = constValMap.remove(constVals);
   }
   if (constValMap.isEmpty()) {
@@ -257,7 +270,7 @@ Index.prototype.removeHandler = function(analysisResults, callback) {
   }
 };
 
-Node.prototype.modify = function(outerValue, m_cont, m_leaf, m_handler) {
+Node.prototype.modify = function(operation, outerValue, m_cont, m_leaf, m_handler) {
   const [restrictionPaths, outerValueTerm] = unpackScoped(outerValue, (p,t) => [p,t]);
 
   function walkNode(node, termStack) {
@@ -281,6 +294,11 @@ Node.prototype.modify = function(outerValue, m_cont, m_leaf, m_handler) {
     continuation.leafMap.forEach((constValMap, constPaths) => {
       let constVals = projectPaths(outerValueTerm, constPaths);
       let leaf = constValMap.get(constVals, false);
+      if (!leaf && operation === EVENT_ADDED) {
+        leaf = new Leaf();
+        constValMap = constValMap.set(constVals, leaf);
+        continuation.leafMap = continuation.leafMap.set(constPaths, constValMap);
+      }
       if (leaf) {
         m_leaf(leaf, outerValue);
         leaf.handlerMap.forEach((handler, capturePaths) => {
@@ -289,6 +307,14 @@ Node.prototype.modify = function(outerValue, m_cont, m_leaf, m_handler) {
           }
           return true;
         });
+        if (operation === EVENT_REMOVED && leaf.isEmpty()) {
+          constValMap = constValMap.remove(constVals);
+          if (constValMap.isEmpty()) {
+            continuation.leafMap = continuation.leafMap.remove(constPaths);
+          } else {
+            continuation.leafMap = continuation.leafMap.set(constPaths, constValMap);
+          }
+        }
       }
       return true;
     });
@@ -328,10 +354,10 @@ Index.prototype.adjustAssertion = function(outerValue, delta) {
   ({bag: this.allAssertions, net: net} = Bag.change(this.allAssertions, outerValue, delta));
   switch (net) {
     case Bag.ABSENT_TO_PRESENT:
-      this.root.modify(outerValue, add_to_cont, add_to_leaf, add_to_handler);
+      this.root.modify(EVENT_ADDED, outerValue, add_to_cont, add_to_leaf, add_to_handler);
       break;
     case Bag.PRESENT_TO_ABSENT:
-      this.root.modify(outerValue, del_from_cont, del_from_leaf, del_from_handler);
+      this.root.modify(EVENT_REMOVED, outerValue, del_from_cont, del_from_leaf, del_from_handler);
       break;
   }
   return net;
@@ -342,7 +368,7 @@ Index.prototype.removeAssertion = function (v) { this.adjustAssertion(v, -1); };
 
 const _nop = () => {};
 Index.prototype.sendMessage = function(v, leafCallback) {
-  this.root.modify(v, _nop, leafCallback || _nop, (h, vs) => {
+  this.root.modify(EVENT_MESSAGE, v, _nop, leafCallback || _nop, (h, vs) => {
     h.callbacks.forEach((cb) => {
       cb(EVENT_MESSAGE, vs);
       return true;
