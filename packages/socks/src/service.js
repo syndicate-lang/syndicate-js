@@ -81,14 +81,22 @@ spawn named 'docker-scan' {
     const docker = new Docker();
     function scan() {
       docker.listContainers(Dataspace.wrapExternal((err, containers) => {
-        if (err) throw err;
-        react {
-          stop on message PeriodicTick(5000) scan();
-          on start send DockerContainers(containers);
+        if (err) {
+          if (err.code === 'ECONNREFUSED') {
+            debug('Connection refused contacting docker daemon; will retry');
+            // Docker not running, or no access. We'll come about
+            // again in a few seconds; maybe something will have
+            // changed then.
+            return;
+          } else {
+            throw err;
+          }
         }
+        send DockerContainers(containers);
       }));
     }
     on start scan();
+    on message PeriodicTick(5000) scan();
 
     on message DockerContainers($containers0) {
       const containers = containers0.toJSON();
