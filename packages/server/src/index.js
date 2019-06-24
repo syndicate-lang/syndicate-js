@@ -96,6 +96,7 @@ process_command_line(process.argv.slice(2));
 
 spawn named 'server' {
   assert Federation.ManagementScope(currentManagementScope);
+  assert P.Proposal(currentManagementScope, D.OverlayNode(localId));
   uplinks.forEach((link) => {
     assert P.Proposal(currentManagementScope, link);
   });
