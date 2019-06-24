@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/driver-mdns",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "mDNS support for Syndicate/js via Avahi",
   "main": "lib/index.js",
   "repository": "github:syndicate-lang/syndicate-js",
@@ -19,8 +19,8 @@
     "@syndicate-lang/syntax": "^0.1.1"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.2.8",
-    "@syndicate-lang/driver-streams-node": "^0.2.9",
-    "@syndicate-lang/driver-timer": "^0.2.9"
+    "@syndicate-lang/core": "^0.2.9",
+    "@syndicate-lang/driver-streams-node": "^0.2.10",
+    "@syndicate-lang/driver-timer": "^0.2.10"
   }
 }
