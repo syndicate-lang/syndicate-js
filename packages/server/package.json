@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/server",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "description": "Client-server for Syndicate",
   "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
