@@ -181,6 +181,14 @@ spawn named 'uplinkSelection' {
           assert P.Proposal(managementScope, link);
         };
 
+        const monitor_mDNS_retraction = (peer, retracted_callback) => {
+          if (OverlayNode.isClassOf(peer)) {
+            stop on retracted Peer(overlayId, OverlayNode._id(peer), _, _) {
+              retracted_callback();
+            }
+          }
+        };
+
         const START = () => {
           react {
             // Wait for stability:
@@ -202,7 +210,7 @@ spawn named 'uplinkSelection' {
             assertSelectedUplink(link);
             const timeout = futureTime(15000);
             stop on asserted TimeLaterThan(timeout) CONNECT(peer);
-            stop on retracted peer CONNECT(null);
+            monitor_mDNS_retraction(peer, () => CONNECT(null));
             stop on asserted P.Envelope(managementScope, Federation.UplinkConnected(link)) {
               MAINTAIN(peer, link);
             }
@@ -214,7 +222,7 @@ spawn named 'uplinkSelection' {
           react {
             assertSelectedUplink(link);
             assert C.ToServer(C.Loopback(overlayId), OverlayLink(OverlayNode(localId), peer));
-            stop on retracted peer CONNECT(null);
+            monitor_mDNS_retraction(peer, () => CONNECT(null));
             stop on retracted P.Envelope(managementScope, Federation.UplinkConnected(link)) {
               CONNECT(peer);
             }
