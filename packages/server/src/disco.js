@@ -214,6 +214,7 @@ spawn named 'uplinkSelection' {
           react {
             assertSelectedUplink(link);
             assert C.ToServer(C.Loopback(overlayId), OverlayLink(OverlayNode(localId), peer));
+            stop on retracted peer CONNECT(null);
             stop on retracted P.Envelope(managementScope, Federation.UplinkConnected(link)) {
               CONNECT(peer);
             }
