@@ -16,6 +16,8 @@ assertion type OverlayLink(downNode, upNode);
 assertion type OverlayNode(id);
 assertion type OverlayRoot();
 
+assertion type DisplayingNode(nodeDescription);
+
 spawn {
   const ui = new UI.Anchor();
   assert ui.html('body',
@@ -86,15 +88,20 @@ spawn {
                        <ul class="root"></ul>
                        <ul class="vaddrs"></ul>
                        </div>);
+        assert DisplayingNode(OverlayRoot());
         const nodeName = (n) => {
           if (OverlayNode.isClassOf(n)) return "node_" + Bytes.from(OverlayNode._id(n)).toHex();
           return "root";
         };
         during FromServer(addr, $item(OverlayLink($down, $up))) {
-          console.log(down.toString(), '-->', up.toString());
-          const ui = new UI.Anchor();
-          assert ui.html(`#overlays div.o_${scope} ul.${nodeName(up)}`,
-                         <li><tt>{down.toString()}</tt><ul class={nodeName(down)}></ul></li>);
+          console.log(down.toString(), 'waiting for', up.toString());
+          during DisplayingNode(up) {
+          console.log(down.toString(), 'sees', up.toString());
+            const ui = new UI.Anchor();
+            assert ui.html(`#overlays div.o_${scope} ul.${nodeName(up)}`,
+                           <li><tt>{down.toString()}</tt><ul class={nodeName(down)}></ul></li>);
+            assert DisplayingNode(down);
+          }
         }
         during FromServer(addr, $item(AddressMap(_, _, _))) {
           const ui = new UI.Anchor();
