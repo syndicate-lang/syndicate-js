@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "debug": "^4.1.1",
-    "immutable": "^3.8.2",
-    "preserves": "0.0.16"
+    "immutable": "^4.0.0-rc.12",
+    "preserves": "0.1.0"
   }
 }
