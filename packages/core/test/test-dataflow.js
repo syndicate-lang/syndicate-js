@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-var expect = require('chai').expect;
+const assert = require('assert');
 var Immutable = require('immutable');
 
 var Dataflow = require('../src/dataflow.js');
@@ -37,11 +37,11 @@ function DerivedCell(graph, name, valueThunk) {
 }
 
 function expectSetsEqual(a, bArray) {
-  return expect(Immutable.is(a, Immutable.Set(bArray))).to.equal(true);
+  assert(Immutable.is(a, Immutable.Set(bArray)));
 }
 
 function checkDamagedNodes(g, expectedObjects) {
-  return expectSetsEqual(g.damagedNodes, expectedObjects);
+  expectSetsEqual(g.damagedNodes, expectedObjects);
 }
 
 describe('dataflow', () => {
@@ -55,7 +55,7 @@ describe('dataflow', () => {
       g.withSubject('s', () => { c.value; });
 
       c.value = 234;
-      expect(g.damagedNodes.size).to.equal(1);
+      assert.strictEqual(g.damagedNodes.size, 1);
 
       var subjects = Immutable.Set();
       g.repairDamage(function (subjectId) { subjects = subjects.add(subjectId); });
@@ -69,26 +69,26 @@ describe('dataflow', () => {
       var c = DerivedCell(g, 'c', () => 123);
       var d = DerivedCell(g, 'd', () => c.value * 2);
       it('should be properly initialized', () => {
-        expect(c.value).to.equal(123);
-        expect(d.value).to.equal(246);
+        assert.strictEqual(c.value, 123);
+        assert.strictEqual(d.value, 246);
       });
       it('should lead initially to damaged everything', () => {
-        expect(g.damagedNodes.size).to.equal(2);
+        assert.strictEqual(g.damagedNodes.size, 2);
       });
       it('should repair idempotently after initialization', () => {
         g.repairDamage(function (c) { c.refresh(); });
-        expect(c.value).to.equal(123);
-        expect(d.value).to.equal(246);
+        assert.strictEqual(c.value, 123);
+        assert.strictEqual(d.value, 246);
       });
       it('should be inconsistent after modification but before repair', () => {
         c.value = 124;
-        expect(c.value).to.equal(124);
-        expect(d.value).to.equal(246);
+        assert.strictEqual(c.value, 124);
+        assert.strictEqual(d.value, 246);
       });
       it('should repair itself properly', () => {
         g.repairDamage(function (c) { c.refresh(); });
-        expect(c.value).to.equal(124);
-        expect(d.value).to.equal(248);
+        assert.strictEqual(c.value, 124);
+        assert.strictEqual(d.value, 248);
       });
     });
 
@@ -111,7 +111,9 @@ describe('dataflow', () => {
 
       function expectValues(vs) {
         g.repairDamage(function (c) { c.refresh(); });
-        expect([xs.value.toJS(), sum.value, len.value, avg.value, scale.value, ans.value]).to.eql(vs);
+        assert.deepStrictEqual(
+          [xs.value.toJS(), sum.value, len.value, avg.value, scale.value, ans.value],
+          vs);
       }
 
       it('initially', () => {
@@ -157,52 +159,52 @@ describe('dataflow', () => {
     it('should make rootward props visible further out', () => {
       var ss = buildScopes();
       g.defineObservableProperty(ss.root, 'p', 123);
-      expect(ss.root.p).to.equal(123);
-      expect(ss.mid.p).to.equal(123);
-      expect(ss.outer.p).to.equal(123);
-      expect('p' in ss.root).to.equal(true);
-      expect('p' in ss.mid).to.equal(true);
-      expect('p' in ss.outer).to.equal(true);
+      assert.strictEqual(ss.root.p, 123);
+      assert.strictEqual(ss.mid.p, 123);
+      assert.strictEqual(ss.outer.p, 123);
+      assert('p' in ss.root);
+      assert('p' in ss.mid);
+      assert('p' in ss.outer);
     });
 
     it('should make changes at root visible at leaves', () => {
       var ss = buildScopes();
       g.defineObservableProperty(ss.root, 'p', 123);
-      expect(ss.outer.p).to.equal(123);
+      assert.strictEqual(ss.outer.p, 123);
       ss.root.p = 234;
-      expect(ss.root.p).to.equal(234);
-      expect(ss.outer.p).to.equal(234);
+      assert.strictEqual(ss.root.p, 234);
+      assert.strictEqual(ss.outer.p, 234);
     });
 
     it('should make changes at leaves visible at root', () => {
       var ss = buildScopes();
       g.defineObservableProperty(ss.root, 'p', 123);
-      expect(ss.outer.p).to.equal(123);
+      assert.strictEqual(ss.outer.p, 123);
       ss.outer.p = 234;
-      expect(ss.root.p).to.equal(234);
-      expect(ss.outer.p).to.equal(234);
+      assert.strictEqual(ss.root.p, 234);
+      assert.strictEqual(ss.outer.p, 234);
     });
 
     it('should hide definitions at leaves from roots', () => {
       var ss = buildScopes();
       g.defineObservableProperty(ss.outer, 'p', 123);
-      expect(ss.outer.p).to.equal(123);
-      expect(ss.mid.p).to.equal(undefined);
-      expect(ss.root.p).to.equal(undefined);
-      expect('p' in ss.root).to.equal(false);
-      expect('p' in ss.mid).to.equal(false);
-      expect('p' in ss.outer).to.equal(true);
+      assert.strictEqual(ss.outer.p, 123);
+      assert.strictEqual(ss.mid.p, undefined);
+      assert.strictEqual(ss.root.p, undefined);
+      assert(!('p' in ss.root));
+      assert(!('p' in ss.mid));
+      assert('p' in ss.outer);
     });
 
     it('should hide middle definitions from roots but show to leaves', () => {
       var ss = buildScopes();
       g.defineObservableProperty(ss.mid, 'p', 123);
-      expect(ss.outer.p).to.equal(123);
-      expect(ss.mid.p).to.equal(123);
-      expect(ss.root.p).to.equal(undefined);
-      expect('p' in ss.root).to.equal(false);
-      expect('p' in ss.mid).to.equal(true);
-      expect('p' in ss.outer).to.equal(true);
+      assert.strictEqual(ss.outer.p, 123);
+      assert.strictEqual(ss.mid.p, 123);
+      assert.strictEqual(ss.root.p, undefined);
+      assert(!('p' in ss.root));
+      assert('p' in ss.mid);
+      assert('p' in ss.outer);
     });
   });
 

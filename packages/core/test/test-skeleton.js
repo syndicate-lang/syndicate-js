@@ -17,11 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-const chai = require('chai');
-const expect = chai.expect;
-const assert = chai.assert;
-chai.use(require('chai-immutable'));
-
+const assert = require('assert');
 const Immutable = require('immutable');
 
 const Syndicate = require('../src/index.js');
@@ -50,6 +46,10 @@ function _analyzeAssertion(a) {
   return Skeleton.analyzeAssertion(Immutable.fromJS(a));
 }
 
+function assertImmutableEqual(a, b) {
+  assert(Immutable.is(Immutable.fromJS(a), Immutable.fromJS(b)));
+}
+
 describe('skeleton', () => {
 
   const A = Record.makeConstructor('A', ['x', 'y']);
@@ -58,20 +58,20 @@ describe('skeleton', () => {
 
   describe('pattern analysis', () => {
     it('should handle leaf captures', () => {
-      expect(Immutable.fromJS(_analyzeAssertion(A(B(_$), _$))))
-        .to.equal(Immutable.fromJS({assertion: Observe(A(B(_$), _$)),
-                                    skeleton: [A.constructorInfo, [B.constructorInfo, null], null],
-                                    constPaths: Immutable.fromJS([]),
-                                    constVals: Immutable.fromJS([]),
-                                    capturePaths: Immutable.fromJS([[0, 0], [1]])}));
+      assertImmutableEqual(_analyzeAssertion(A(B(_$), _$)),
+                           {assertion: Observe(A(B(_$), _$)),
+                            skeleton: [A.constructorInfo, [B.constructorInfo, null], null],
+                            constPaths: Immutable.fromJS([]),
+                            constVals: Immutable.fromJS([]),
+                            capturePaths: Immutable.fromJS([[0, 0], [1]])});
     });
     it('should handle atomic constants', () => {
-      expect(Immutable.fromJS(_analyzeAssertion(A(B("x"), _$))))
-        .to.equal(Immutable.fromJS({assertion: Observe(A(B("x"), _$)),
-                                    skeleton: [A.constructorInfo, [B.constructorInfo, null], null],
-                                    constPaths: Immutable.fromJS([[0, 0]]),
-                                    constVals: Immutable.fromJS(["x"]),
-                                    capturePaths: Immutable.fromJS([[1]])}));
+      assertImmutableEqual(_analyzeAssertion(A(B("x"), _$)),
+                           {assertion: Observe(A(B("x"), _$)),
+                            skeleton: [A.constructorInfo, [B.constructorInfo, null], null],
+                            constPaths: Immutable.fromJS([[0, 0]]),
+                            constVals: Immutable.fromJS(["x"]),
+                            capturePaths: Immutable.fromJS([[1]])});
     });
     it('should handle complex constants (1)', () => {
       // Marker: (***)
@@ -81,15 +81,15 @@ describe('skeleton', () => {
       // that situation without the static analysis half of the code.
       // TODO later.
       const complexPlaceholder = new Object();
-      const analysis = Immutable.fromJS(_analyzeAssertion(A(complexPlaceholder, C(_$))));
-      const expected = Immutable.fromJS({
+      const analysis = _analyzeAssertion(A(complexPlaceholder, C(_$)));
+      const expected = {
         assertion: Observe(A(complexPlaceholder, C(_$))),
         skeleton: [A.constructorInfo, null, [C.constructorInfo, null]],
         constPaths: Immutable.fromJS([[0]]),
         constVals: Immutable.fromJS([complexPlaceholder]),
         capturePaths: Immutable.fromJS([[1, 0]]),
-      });
-      expect(analysis).to.equal(expected);
+      };
+      assertImmutableEqual(analysis, expected);
     });
     it('should handle complex constants (2)', () => {
       // Marker: (***)
@@ -98,30 +98,30 @@ describe('skeleton', () => {
       // will end up being complex at runtime. We can't properly test
       // that situation without the static analysis half of the code.
       // TODO later.
-      expect(Immutable.fromJS(_analyzeAssertion(A(B(B("y")), Capture(C(__))))))
-        .to.equal(Immutable.fromJS({assertion: Observe(A(B(B("y")), Capture(C(__)))),
-                                    skeleton: [A.constructorInfo,
-                                               [B.constructorInfo, [B.constructorInfo, null]],
-                                               [C.constructorInfo, null]],
-                                    constPaths: Immutable.fromJS([[0, 0, 0]]),
-                                    constVals: Immutable.fromJS(["y"]),
-                                    capturePaths: Immutable.fromJS([[1]])}));
+      assertImmutableEqual(_analyzeAssertion(A(B(B("y")), Capture(C(__)))),
+                           {assertion: Observe(A(B(B("y")), Capture(C(__)))),
+                            skeleton: [A.constructorInfo,
+                                       [B.constructorInfo, [B.constructorInfo, null]],
+                                       [C.constructorInfo, null]],
+                            constPaths: Immutable.fromJS([[0, 0, 0]]),
+                            constVals: Immutable.fromJS(["y"]),
+                            capturePaths: Immutable.fromJS([[1]])});
     });
     it('should handle list patterns with discards', () => {
-      expect(Immutable.fromJS(_analyzeAssertion([__, __])))
-        .to.equal(Immutable.fromJS({assertion: Observe([__, __]),
-                                    skeleton: [2, null, null],
-                                    constPaths: Immutable.fromJS([]),
-                                    constVals: Immutable.fromJS([]),
-                                    capturePaths: Immutable.fromJS([])}));
+      assertImmutableEqual(_analyzeAssertion([__, __]),
+                           {assertion: Observe([__, __]),
+                            skeleton: [2, null, null],
+                            constPaths: Immutable.fromJS([]),
+                            constVals: Immutable.fromJS([]),
+                            capturePaths: Immutable.fromJS([])});
     });
     it('should handle list patterns with constants and captures', () => {
-      expect(Immutable.fromJS(_analyzeAssertion(["hi", _$, _$])))
-        .to.equal(Immutable.fromJS({assertion: Observe(["hi", _$, _$]),
-                                    skeleton: [3, null, null, null],
-                                    constPaths: Immutable.fromJS([[0]]),
-                                    constVals: Immutable.fromJS(["hi"]),
-                                    capturePaths: Immutable.fromJS([[1],[2]])}));
+      assertImmutableEqual(_analyzeAssertion(["hi", _$, _$]),
+                           {assertion: Observe(["hi", _$, _$]),
+                            skeleton: [3, null, null, null],
+                            constPaths: Immutable.fromJS([[0]]),
+                            constVals: Immutable.fromJS(["hi"]),
+                            capturePaths: Immutable.fromJS([[1],[2]])});
     });
   });
 
@@ -129,10 +129,11 @@ describe('skeleton', () => {
     let trace = skeletonTrace((i, traceHolder) => {
       i.addHandler(_analyzeAssertion(A(B(_$), _$)), eventCallback(traceHolder, "AB"));
       i.addHandler(_analyzeAssertion(A(B("x"), _$)), eventCallback(traceHolder, "ABx"));
-      let complexConstantPattern1 = {skeleton: [A.constructorInfo, null, [C.constructorInfo, null]],
-                                    constPaths: Immutable.fromJS([[0]]),
-                                    constVals: Immutable.fromJS([B("y")]),
-                                    capturePaths: Immutable.fromJS([[1, 0]])};
+      let complexConstantPattern1 =
+          {skeleton: [A.constructorInfo, null, [C.constructorInfo, null]],
+           constPaths: Immutable.fromJS([[0]]),
+           constVals: Immutable.fromJS([B("y")]),
+           capturePaths: Immutable.fromJS([[1, 0]])};
       // ^ See comment in 'should handle complex constants (1)' test above (marked (***)).
       i.addHandler(complexConstantPattern1, eventCallback(traceHolder, "AByC"));
       let complexConstantPattern2 = {skeleton: [A.constructorInfo,
@@ -151,15 +152,16 @@ describe('skeleton', () => {
 
     // trace.forEach((e) => { console.log(e) });
 
-    expect(trace)
-      .to.equal(Immutable.List([
-        Event("AB", Skeleton.EVENT_ADDED, ["x", C(1)]),
-        Event("ABx", Skeleton.EVENT_ADDED, [C(1)]),
-        Event("AB", Skeleton.EVENT_ADDED, ["y", C(2)]),
-        Event("AByC", Skeleton.EVENT_ADDED, [2]),
-        Event("AB", Skeleton.EVENT_ADDED, [B("y"), C(2)]),
-        Event("ABByC", Skeleton.EVENT_ADDED, [C(2)]),
-        Event("AB", Skeleton.EVENT_ADDED, ["z", C(3)])]));
+    it('should work', () => {
+      assertImmutableEqual(trace,
+                           [Event("AB", Skeleton.EVENT_ADDED, ["x", C(1)]),
+                            Event("ABx", Skeleton.EVENT_ADDED, [C(1)]),
+                            Event("AB", Skeleton.EVENT_ADDED, ["y", C(2)]),
+                            Event("AByC", Skeleton.EVENT_ADDED, [2]),
+                            Event("AB", Skeleton.EVENT_ADDED, [B("y"), C(2)]),
+                            Event("ABByC", Skeleton.EVENT_ADDED, [C(2)]),
+                            Event("AB", Skeleton.EVENT_ADDED, ["z", C(3)])]);
+    });
   });
 
   describe('simple detail-erasing trace', () => {
@@ -173,10 +175,9 @@ describe('skeleton', () => {
     });
 
     it('should have one add and one remove', () => {
-      expect(trace)
-        .to.equal(Immutable.List([
-          Event("2-EVENT", Skeleton.EVENT_ADDED, []),
-          Event("2-EVENT", Skeleton.EVENT_REMOVED, [])]));
+      assertImmutableEqual(trace,
+                           [Event("2-EVENT", Skeleton.EVENT_ADDED, []),
+                            Event("2-EVENT", Skeleton.EVENT_REMOVED, [])]);
     });
   });
 
@@ -188,9 +189,9 @@ describe('skeleton', () => {
     });
 
     it('should get two events', () => {
-      expect(trace).to.equal(Immutable.List([
-        Event("X", Skeleton.EVENT_ADDED, [123, 234]),
-        Event("X", Skeleton.EVENT_REMOVED, [123, 234])]));
+      assertImmutableEqual(trace,
+                           [Event("X", Skeleton.EVENT_ADDED, [123, 234]),
+                            Event("X", Skeleton.EVENT_REMOVED, [123, 234])]);
     });
   });
 
@@ -202,9 +203,9 @@ describe('skeleton', () => {
     });
 
     it('should get two events', () => {
-      expect(trace).to.equal(Immutable.List([
-        Event("X", Skeleton.EVENT_ADDED, [["hi", 123, 234]]),
-        Event("X", Skeleton.EVENT_REMOVED, [["hi", 123, 234]])]));
+      assertImmutableEqual(trace,
+                           [Event("X", Skeleton.EVENT_ADDED, [["hi", 123, 234]]),
+                            Event("X", Skeleton.EVENT_REMOVED, [["hi", 123, 234]])]);
     });
   });
 
@@ -219,8 +220,8 @@ describe('skeleton', () => {
     });
 
     it('should get one event', () => {
-      expect(trace).to.equal(Immutable.List([
-        Event("X", Skeleton.EVENT_ADDED, [123, 234])]));
+      assertImmutableEqual(trace,
+                           [Event("X", Skeleton.EVENT_ADDED, [123, 234])]);
     });
   });
 
@@ -247,91 +248,67 @@ describe('skeleton', () => {
     });
 
     it('should have 8 entries', () => {
-      expect(trace.size).to.equal(8);
+      assert.strictEqual(trace.size, 8);
     });
     it('should have a correct 3-EVENT subtrace', () => {
-      expect(trace.filter((e) => { return Event._label(e) === "3-EVENT"; }))
-        .to.equal(Immutable.List([
-          Event("3-EVENT", Skeleton.EVENT_ADDED, [123, 234]),
-          Event("3-EVENT", Skeleton.EVENT_ADDED, [999, 999]),
-          Event("3-EVENT", Skeleton.EVENT_MESSAGE, [303, 404]),
-          Event("3-EVENT", Skeleton.EVENT_REMOVED, [999, 999]),
-          Event("3-EVENT", Skeleton.EVENT_REMOVED, [123, 234])]));
+      assertImmutableEqual(trace.filter((e) => { return Event._label(e) === "3-EVENT"; }),
+                           [Event("3-EVENT", Skeleton.EVENT_ADDED, [123, 234]),
+                            Event("3-EVENT", Skeleton.EVENT_ADDED, [999, 999]),
+                            Event("3-EVENT", Skeleton.EVENT_MESSAGE, [303, 404]),
+                            Event("3-EVENT", Skeleton.EVENT_REMOVED, [999, 999]),
+                            Event("3-EVENT", Skeleton.EVENT_REMOVED, [123, 234])]);
     });
     it('should have a correct 2-EVENT subtrace', () => {
-      expect(trace.filter((e) => { return Event._label(e) === "2-EVENT"; }))
-        .to.equal(Immutable.List([
-          Event("2-EVENT", Skeleton.EVENT_ADDED, []),
-          Event("2-EVENT", Skeleton.EVENT_MESSAGE, []),
-          Event("2-EVENT", Skeleton.EVENT_REMOVED, [])]));
+      assertImmutableEqual(trace.filter((e) => { return Event._label(e) === "2-EVENT"; }),
+                           [Event("2-EVENT", Skeleton.EVENT_ADDED, []),
+                            Event("2-EVENT", Skeleton.EVENT_MESSAGE, []),
+                            Event("2-EVENT", Skeleton.EVENT_REMOVED, [])]);
     });
   });
 
+  function expectMatch(a, b, r) {
+    assert(Immutable.is(Skeleton.match(Immutable.fromJS(a), Immutable.fromJS(b)), r));
+  }
+
   describe('matching a single pattern against a value', () => {
     it('should accept matching simple records', () => {
-      expect(Skeleton.match(Immutable.fromJS(A(1, 2)),
-                            Immutable.fromJS(A(1, 2))))
-        .to.equal(Immutable.List());
+      expectMatch(A(1, 2), A(1, 2), Immutable.List());
     });
     it('should capture from matching simple records', () => {
-      expect(Skeleton.match(Immutable.fromJS(A(1, _$)),
-                            Immutable.fromJS(A(1, 2))))
-        .to.equal(Immutable.List([2]));
+      expectMatch(A(1, _$), A(1, 2), Immutable.List([2]));
     });
     it('should reject mismatching simple records', () => {
-      expect(Skeleton.match(Immutable.fromJS(A(1, 2)),
-                            Immutable.fromJS(A(1, "hi"))))
-        .to.equal(false);
+      expectMatch(A(1, 2), A(1, "hi"), false);
     });
     it('should accept matching simple lists', () => {
-      expect(Skeleton.match(Immutable.fromJS([1, 2, 3]),
-                            Immutable.fromJS([1, 2, 3])))
-        .to.equal(Immutable.List());
+      expectMatch([1, 2, 3], [1, 2, 3], Immutable.List());
     });
     it('should accept matching nested lists', () => {
-      expect(Skeleton.match(Immutable.fromJS([1, [2, 4], 3]),
-                            Immutable.fromJS([1, [2, 4], 3])))
-        .to.equal(Immutable.List());
+      expectMatch([1, [2, 4], 3], [1, [2, 4], 3], Immutable.List());
     });
     it('should capture matches from simple lists', () => {
-      expect(Skeleton.match(Immutable.fromJS([1, Capture(2), 3]),
-                            Immutable.fromJS([1, 2, 3])))
-        .to.equal(Immutable.List([2]));
+      expectMatch([1, Capture(2), 3], [1, 2, 3], Immutable.List([2]));
     });
     it('should capture discards from simple lists', () => {
-      expect(Skeleton.match(Immutable.fromJS([1, Capture(__), 3]),
-                            Immutable.fromJS([1, 2, 3])))
-        .to.equal(Immutable.List([2]));
+      expectMatch([1, Capture(__), 3], [1, 2, 3], Immutable.List([2]));
     });
     it('should capture discards from nested lists', () => {
-      expect(Skeleton.match(Immutable.fromJS([1, Capture(__), 3]),
-                            Immutable.fromJS([1, [2, 4], 3])))
-        .to.equal(Immutable.fromJS([[2, 4]]));
+      expectMatch([1, Capture(__), 3], [1, [2, 4], 3], Immutable.fromJS([[2, 4]]));
     });
     it('should capture nested discards from nested lists', () => {
-      expect(Skeleton.match(Immutable.fromJS([1, Capture([__, 4]), 3]),
-                            Immutable.fromJS([1, [2, 4], 3])))
-        .to.equal(Immutable.fromJS([[2, 4]]));
+      expectMatch([1, Capture([__, 4]), 3], [1, [2, 4], 3], Immutable.fromJS([[2, 4]]));
     });
     it('should reject nested mismatches from nested lists', () => {
-      expect(Skeleton.match(Immutable.fromJS([1, Capture([__, 5]), 3]),
-                            Immutable.fromJS([1, [2, 4], 3])))
-        .to.equal(false);
+      expectMatch([1, Capture([__, 5]), 3], [1, [2, 4], 3], false);
     });
     it('should reject mismatching captures from simple lists', () => {
-      expect(Skeleton.match(Immutable.fromJS([1, Capture(9), 3]),
-                            Immutable.fromJS([1, 2, 3])))
-        .to.equal(false);
+      expectMatch([1, Capture(9), 3], [1, 2, 3], false);
     });
     it('should reject simple lists varying in arity', () => {
-      expect(Skeleton.match(Immutable.fromJS([1, 2, 3, 4]),
-                            Immutable.fromJS([1, 2, 3])))
-        .to.equal(false);
+      expectMatch([1, 2, 3, 4], [1, 2, 3], false);
     });
     it('should reject simple lists varying in order', () => {
-      expect(Skeleton.match(Immutable.fromJS([1, 3, 2]),
-                            Immutable.fromJS([1, 2, 3])))
-        .to.equal(false);
+      expectMatch([1, 3, 2], [1, 2, 3], false);
     });
   });
 });

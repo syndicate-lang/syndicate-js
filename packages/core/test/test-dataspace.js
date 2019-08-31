@@ -17,10 +17,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-const chai = require('chai');
-const expect = chai.expect;
-chai.use(require('chai-immutable'));
-
 const Immutable = require('immutable');
 
 const Syndicate = require('../src/index.js');
