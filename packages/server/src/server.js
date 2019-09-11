@@ -6,7 +6,7 @@ const debugFactory = require('debug');
 
 import {
   Map, Bytes,
-  Encoder, Observe,
+  Observe,
   Dataspace, Skeleton, currentFacet, genUuid,
 } from "@syndicate-lang/core";
 
@@ -23,7 +23,7 @@ export function websocketServerFacet(reqId) {
   during P.POAReady(reqId) buf.drain((data) => {
     if (data instanceof Bytes) send P.FromPOA(reqId, W.makeDecoder(data).next());
   });
-  on message P.ToPOA(reqId, $resp) send Http.DataOut(reqId, new Encoder().push(resp).contents());
+  on message P.ToPOA(reqId, $resp) send Http.DataOut(reqId, W.makeEncoder().push(resp).contents());
   stop on message P.Disconnect(reqId);
   stop on retracted P.POAReady(reqId);
 }
@@ -38,7 +38,7 @@ export function streamServerFacet(id) {
     let v;
     while ((v = decoder.try_next())) send P.FromPOA(id, v);
   });
-  on message P.ToPOA(id, $resp) send S.Stream(id, S.Push(new Encoder().push(resp).contents(), false));
+  on message P.ToPOA(id, $resp) send S.Stream(id, S.Push(W.makeEncoder().push(resp).contents(), false));
   stop on message P.Disconnect(id);
   stop on retracted P.POAReady(id);
 }

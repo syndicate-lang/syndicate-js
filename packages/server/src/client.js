@@ -3,7 +3,7 @@
 const debugFactory = require('debug');
 
 import {
-  Decoder, Encoder, Bytes, Map,
+  Bytes, Map,
   Observe, Skeleton,
   genUuid, currentFacet,
 } from "@syndicate-lang/core";
@@ -16,7 +16,7 @@ const {
   Assert, Clear, Message,
   Add, Del, Msg, Err, End,
   Ping, Pong,
-  makeDecoder,
+  makeDecoder, makeEncoder,
   shouldDebugPrint,
 } = activate require("./protocol");
 const P = activate require("./internal_protocol");
@@ -158,7 +158,7 @@ spawn named "ServerClientFactory" {
           _genericClientSessionFacet.call(
             this,
             addr, scope,
-            (x) => { send WS.DataOut(wsId, new Encoder().push(x).contents()); },
+            (x) => { send WS.DataOut(wsId, makeEncoder().push(x).contents()); },
             () => {
               establishingFacet.stop(() => {
                 // TODO: abstract this into a flush() function somewhere
