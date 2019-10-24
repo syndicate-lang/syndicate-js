@@ -73,7 +73,7 @@ Ground.prototype._step = function () {
       this.start();
     } else {
       if (!this.backgroundTaskCount) {
-        this.stopHandlers.forEach((h) => h());
+        this.stopHandlers.forEach((h) => h(this));
         this.stopHandlers = [];
       }
     }
