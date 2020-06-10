@@ -1,7 +1,7 @@
 {
   "name": "@syndicate-lang/create",
   "description": "Create a new Syndicate/js package",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "bin": {
     "create": "./bin/run"
