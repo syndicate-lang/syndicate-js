@@ -14,12 +14,10 @@
   },
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-browser-ui",
   "devDependencies": {
-    "@babel/core": "^7.2.0",
-    "@babel/preset-env": "^7.2.0",
-    "@syndicate-lang/syntax": "^0.1.1"
+    "@syndicate-lang/syntax": "file:../syntax"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.3.0",
+    "@syndicate-lang/core": "file:../core",
     "immutable": "^4.0.0-rc.12"
   }
 }

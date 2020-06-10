@@ -13,18 +13,14 @@
   },
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/socks",
   "devDependencies": {
-    "@babel/core": "^7.2.0",
-    "@babel/plugin-syntax-jsx": "^7.2.0",
-    "@babel/plugin-transform-react-jsx": "^7.2.0",
-    "@babel/preset-env": "^7.2.0",
-    "@syndicate-lang/syntax": "^0.1.1"
+    "@syndicate-lang/syntax": "file:../syntax"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.3.0",
-    "@syndicate-lang/driver-mdns": "^0.3.0",
-    "@syndicate-lang/driver-streams-node": "^0.3.0",
-    "@syndicate-lang/driver-timer": "^0.3.0",
-    "@syndicate-lang/server": "^0.3.0",
+    "@syndicate-lang/core": "file:../core",
+    "@syndicate-lang/driver-mdns": "file:../driver-mdns",
+    "@syndicate-lang/driver-streams-node": "file:../driver-streams-node",
+    "@syndicate-lang/driver-timer": "file:../driver-timer",
+    "@syndicate-lang/server": "file:../server",
     "debug": "^4.1.1",
     "dockerode": "^2.5.8"
   },

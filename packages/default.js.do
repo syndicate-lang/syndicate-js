@@ -4,7 +4,7 @@ mkdir -p "$(dirname "$1")"
 cd "$(dirname "$1")"/..
 case "$1" in
     syntax/lib/babel_parser.js)
-        src=node_modules/@babel/parser/lib/index.js
+        src=../../node_modules/@babel/parser/lib/index.js
         [ -f "$src" ] || npm -i .
         redo-ifchange "$src" babel_parser_suffix.js
         cat "$src" babel_parser_suffix.js
@@ -12,7 +12,7 @@ case "$1" in
     syntax/lib/*)
         file=$(basename "$1")
         redo-ifchange "src/$file"
-        npx babel "src/$file"
+        ../../node_modules/.bin/babel "src/$file"
         ;;
     */lib/*)
         redo-ifchange ../syntax/all
@@ -66,7 +66,7 @@ case "$1" in
         done | xargs redo-ifchange
         configfile=$(basename "$1" .js).webpack.config.js
         redo-ifchange $configfile
-        for maybedep in $(npx webpack --config "$configfile" --json -o "$targettempfile" | jq -r '.modules[].identifier')
+        for maybedep in $(../../node_modules/.bin/webpack --config "$configfile" --json -o "$targettempfile" | jq -r '.modules[].identifier')
         do
             [ -f "$maybedep" ] && echo "$maybedep"
         done | xargs redo-ifchange

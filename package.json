@@ -2,6 +2,32 @@
   "name": "@syndicate-lang/root",
   "private": true,
   "devDependencies": {
-    "lerna": "^3.4.3"
+    "@babel/core": "^7.2.0",
+    "@babel/plugin-syntax-jsx": "^7.2.0",
+    "@babel/plugin-transform-react-jsx": "^7.2.0",
+    "@babel/preset-env": "^7.2.0",
+    "@syndicate-lang/syntax": "^0.1.1",
+    "lerna": "^3.4.3",
+    "mocha": "^5.2.0",
+    "nyc": "^14.1.1",
+    "webpack": "^4.27.1",
+    "webpack-cli": "^3.1.2"
+  },
+  "dependencies": {
+    "@syndicate-lang/core": "file:packages/core",
+    "@syndicate-lang/create": "file:packages/create",
+    "@syndicate-lang/driver-browser-ui": "file:packages/driver-browser-ui",
+    "@syndicate-lang/driver-http-node": "file:packages/driver-http-node",
+    "@syndicate-lang/driver-mdns": "file:packages/driver-mdns",
+    "@syndicate-lang/driver-streams-node": "file:packages/driver-streams-node",
+    "@syndicate-lang/driver-timer": "file:packages/driver-timer",
+    "@syndicate-lang/driver-udp-node": "file:packages/driver-udp-node",
+    "@syndicate-lang/driver-websocket": "file:packages/driver-websocket",
+    "@syndicate-lang/flappy-bird-demo": "file:packages/flappy-bird-demo",
+    "@syndicate-lang/server": "file:packages/server",
+    "@syndicate-lang/socks": "file:packages/socks",
+    "@syndicate-lang/syntax": "file:packages/syntax",
+    "@syndicate-lang/syntax-playground": "file:packages/syntax-playground",
+    "@syndicate-lang/syntax-server": "file:packages/syntax-server"
   }
 }

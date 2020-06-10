@@ -14,10 +14,6 @@
   },
   "main": "src/index.js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
-  "devDependencies": {
-    "mocha": "^5.2.0",
-    "nyc": "^14.1.1"
-  },
   "dependencies": {
     "debug": "^4.1.1",
     "immutable": "^4.0.0-rc.12",

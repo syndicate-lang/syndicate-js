@@ -7,24 +7,18 @@
   "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "devDependencies": {
-    "@babel/core": "^7.2.0",
-    "@babel/plugin-syntax-jsx": "^7.2.0",
-    "@babel/plugin-transform-react-jsx": "^7.2.0",
-    "@babel/preset-env": "^7.2.0",
-    "@syndicate-lang/syntax": "^0.1.1",
-    "webpack": "^4.27.1",
-    "webpack-cli": "^3.1.2"
+    "@syndicate-lang/syntax": "file:../syntax"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.3.0",
-    "@syndicate-lang/driver-browser-ui": "^0.3.0",
-    "@syndicate-lang/driver-http-node": "^0.3.0",
-    "@syndicate-lang/driver-mdns": "^0.3.0",
-    "@syndicate-lang/driver-streams-node": "^0.3.0",
-    "@syndicate-lang/driver-timer": "^0.3.0",
-    "@syndicate-lang/driver-udp-node": "^0.3.0",
-    "@syndicate-lang/driver-websocket": "^0.3.0",
-    "@syndicate-lang/server": "^0.3.0",
+    "@syndicate-lang/core": "file:../core",
+    "@syndicate-lang/driver-browser-ui": "file:../driver-browser-ui",
+    "@syndicate-lang/driver-http-node": "file:../driver-http-node",
+    "@syndicate-lang/driver-mdns": "file:../driver-mdns",
+    "@syndicate-lang/driver-streams-node": "file:../driver-streams-node",
+    "@syndicate-lang/driver-timer": "file:../driver-timer",
+    "@syndicate-lang/driver-udp-node": "file:../driver-udp-node",
+    "@syndicate-lang/driver-websocket": "file:../driver-websocket",
+    "@syndicate-lang/server": "file:../server",
     "debug": "^4.1.1",
     "dockerode": "^2.5.8"
   }

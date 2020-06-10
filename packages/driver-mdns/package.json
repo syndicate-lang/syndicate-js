@@ -14,13 +14,11 @@
   },
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/driver-mdns",
   "devDependencies": {
-    "@babel/core": "^7.2.0",
-    "@babel/preset-env": "^7.2.0",
-    "@syndicate-lang/syntax": "^0.1.1"
+    "@syndicate-lang/syntax": "file:../syntax"
   },
   "dependencies": {
-    "@syndicate-lang/core": "^0.3.0",
-    "@syndicate-lang/driver-streams-node": "^0.3.0",
-    "@syndicate-lang/driver-timer": "^0.3.0"
+    "@syndicate-lang/core": "file:../core",
+    "@syndicate-lang/driver-streams-node": "file:../driver-streams-node",
+    "@syndicate-lang/driver-timer": "file:../driver-timer"
   }
 }
