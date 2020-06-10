@@ -19,20 +19,12 @@ message type Err(detail, context);
 message type Ping();
 message type Pong();
 
-const _decode_placeholders =
-      (Map()
-       .set(0, Discard.constructorInfo.label)
-       .set(1, Capture.constructorInfo.label)
-       .set(2, Observe.constructorInfo.label));
-
-const _encode_placeholders = _decode_placeholders.mapEntries((e) => [e[1], e[0]]);
-
 function makeDecoder(initialBuffer) {
-  return new Decoder(initialBuffer, {placeholders: _decode_placeholders});
+  return new Decoder(initialBuffer);
 }
 
 function makeEncoder() {
-  return new Encoder({placeholders: _encode_placeholders});
+  return new Encoder();
 }
 
 function shouldDebugPrint(m) {
