@@ -1,7 +1,7 @@
 {
   "name": "@syndicate-lang/flappy-bird-demo",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/flappy-bird-demo",
   "license": "GPL-3.0+",
   "repository": "github:syndicate-lang/syndicate-js",
