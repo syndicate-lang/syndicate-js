@@ -1,7 +1,7 @@
 const {Command, flags} = require('@oclif/command')
 const path = require('path');
 const fs = require('fs');
-const unzip = require('unzip');
+const unzip = require('unzipper');
 
 class SyndicateLangCreateCommand extends Command {
   async run() {
