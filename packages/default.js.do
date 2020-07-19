@@ -36,7 +36,7 @@ case "$1" in
                 false
             fi
         else
-            npx syndicate-babel "src/$file"
+            ../../syndicate-babel "src/$file"
         fi
         ;;
     */dist/*)
