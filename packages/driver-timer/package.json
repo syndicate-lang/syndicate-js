@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/driver-timer",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Time and timer driver for Syndicate/js",
   "main": "lib/index.js",
   "repository": "github:syndicate-lang/syndicate-js",
