@@ -68,3 +68,5 @@ spawn named 'alerter' {
     alert("Hello!");
   }
 }
+
+require('@syndicate-lang/core').bootModule(module);

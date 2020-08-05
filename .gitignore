@@ -6,8 +6,6 @@ lib/
 node_modules/
 scratch/
 
-package-lock.json
-
 *.did
 .do_built
 .do_built.dir/

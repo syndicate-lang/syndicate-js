@@ -391,7 +391,7 @@ Dataspace.prototype._dotGraph = function () {
 
   pieces.push('\n}');
 
-  require('fs').writeFileSync('d.json', 'var dataspaceContents = ' + JSON.stringify({nodes, edges}, null, 2));
+  // require('fs').writeFileSync('d.json', 'var dataspaceContents = ' + JSON.stringify({nodes, edges}, null, 2));
 
   return pieces.join('');
 };

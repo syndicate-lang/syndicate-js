@@ -112,3 +112,5 @@ spawn {
     }
   }
 }
+
+require('@syndicate-lang/core').bootModule(module);

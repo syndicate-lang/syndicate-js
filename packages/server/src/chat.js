@@ -82,3 +82,5 @@ function randomName() {
   return names[Math.floor(Math.random() * names.length)] +
     '_' + Math.floor(Math.random() * 990 + 10);
 }
+
+require('@syndicate-lang/core').bootModule(module);

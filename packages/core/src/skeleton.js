@@ -378,7 +378,7 @@ Index.prototype.sendMessage = function(v, leafCallback) {
 
 Node.prototype._debugString = function (outerIndent) {
   const pieces = [];
-  const inspect = require('util').inspect;
+  const inspect = require('util').inspect || JSON.stringify;
   function line(indent, content) {
     pieces.push(indent);
     pieces.push(content);

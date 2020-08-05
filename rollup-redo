@@ -1,0 +1,106 @@
+#!/usr/bin/env -S node -r esm
+
+import * as rollup from 'rollup';
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
+import json from '@rollup/plugin-json';
+import * as path from 'path';
+
+function computeBasename(f) {
+  const m = /^(.*).dist.json$/.exec(f);
+  if (!m) throw new Error(`Config filename ${f} does not match pattern`);
+  return m[1];
+}
+
+const [_node, _rollup_redo, mode, configJsonFilename, targetFilename] = process.argv;
+
+const basename = computeBasename(configJsonFilename);
+const config = require(`${process.cwd()}/${configJsonFilename}`);
+const inputFile = ('input' in config)
+      ? path.resolve(process.cwd(), config.input)
+      : `${process.cwd()}/lib/${basename}.js`;
+
+async function build() {
+  const bundle = await rollup.rollup({
+    input: inputFile,
+    external: ['crypto'],
+    plugins: [
+      {
+        resolveId(toResolve, referencingModule) {
+          {
+            const m = /^@syndicate-lang\/(.*)$/.exec(toResolve);
+            if (m) {
+              if (mode === 'deps') {
+                console.log(`../${m[1]}/all`);
+              }
+            }
+          }
+          if (/^\0?util(\?commonjs.*)?$/.test(toResolve)) {
+            return '../core/src/util_stub.js';
+          }
+          if (/^\0?crypto(\?commonjs.*)?$/.test(toResolve)) {
+            return '../core/src/crypto_stub.js';
+          }
+          if (/^\0?worker_threads(\?commonjs.*)?$/.test(toResolve)) {
+            return '../core/src/worker_stub.js';
+          }
+          return null;
+        },
+      },
+      resolve({
+        browser: true,
+      }),
+      commonjs(),
+      json(),
+    ],
+    onwarn(w, defaultHandler) {
+      if (((w.code === 'UNRESOLVED_IMPORT') ||
+           (w.code === 'MISSING_GLOBAL_NAME')) &&
+          (w.source.startsWith('@syndicate-lang/')))
+      {
+        return;
+      }
+      defaultHandler(w);
+    },
+    treeshake: {
+      moduleSideEffects: "no-external",
+    },
+  });
+
+  switch (mode) {
+    case 'deps': {
+      const deps = {};
+      for (const m of bundle.cache.modules) {
+        deps[m.id] = m.dependencies;
+      }
+      const seen = {};
+      function visit(id) {
+        if (id in seen) return;
+        if (!id.startsWith('/')) return;
+        seen[id] = true;
+        console.log(id);
+        for (const dep of (deps[id] || [])) {
+          visit(dep);
+        }
+      }
+      visit(inputFile);
+    }
+
+    case 'generate': {
+      await bundle.write({
+        output: {
+          file: targetFilename,
+          format: config.format || 'es',
+          name: config.name || 'Syndicate_' + basename,
+        },
+      });
+      break;
+    }
+
+    default:
+      console.error('Unknown mode', mode);
+      break;
+  }
+}
+
+build().then(null, console.error);

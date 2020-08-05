@@ -144,12 +144,16 @@ function spawnMonitorAppServer(port) {
                                      '<!DOCTYPE html>' + UI.htmlToString(
                                          <html>
                                            <head><meta charset="utf-8"></meta></head>
-                                           <body><script src="dist/monitor.js"></script></body>
+                                           <body><script type="module" src="dist/monitor.js"></script></body>
                                          </html>));
     }
 
     function assertFileResponse(reqId, path) {
-      assert :snapshot Http.Response(reqId, 200, "OK", {}, fs.readFileSync(path));
+      let type = 'application/octet-stream';
+      if (path.endsWith('.js')) {
+        type = 'text/javascript';
+      }
+      assert :snapshot Http.Response(reqId, 200, "OK", {"Content-type": type}, fs.readFileSync(path));
     }
 
     during Http.Request($reqId, server, 'get', ['chat.html'], _, _)

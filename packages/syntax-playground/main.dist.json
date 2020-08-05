@@ -1,0 +1,4 @@
+{
+  "input": "lib/index.js",
+  "format": "iife"
+}

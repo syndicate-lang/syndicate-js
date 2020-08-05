@@ -37,9 +37,7 @@ const worker_threads = (function () {
   try {
     return require('worker_threads');
   } catch (_e) {
-    return {
-      __isDummyStub: true
-    };
+    return require('./worker_stub.js');
   }
 })();
 

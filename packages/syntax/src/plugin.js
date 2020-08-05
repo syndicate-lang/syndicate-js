@@ -345,7 +345,7 @@ export default declare((api, options) => {
                     };
                     DATASPACE._currentFacet = SAVEDGLOBALFACET;
                     SAVEDGLOBALFACET = null;
-                    if (require.main === module) {
+                    if ((typeof require === 'undefined' ? {main: void 0} : require).main === module) {
                       SYNDICATE.bootModule(module);
                     }`)({
                       DATASPACE: state.DataspaceID,

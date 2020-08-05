@@ -12,8 +12,6 @@
   "dependencies": {
     "@syndicate-lang/core": "file:../core",
     "@syndicate-lang/driver-browser-ui": "file:../driver-browser-ui",
-    "@syndicate-lang/driver-timer": "file:../driver-timer",
-    "webpack": "^4.27.1",
-    "webpack-cli": "^3.1.2"
+    "@syndicate-lang/driver-timer": "file:../driver-timer"
   }
 }

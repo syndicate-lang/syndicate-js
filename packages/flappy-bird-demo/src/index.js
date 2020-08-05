@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { $QuitDataspace, Inbound, Outbound, Dataspace, Double } from "@syndicate-lang/core";
+import { bootModule, $QuitDataspace, Inbound, Outbound, Dataspace, Double } from "@syndicate-lang/core";
 
 let UI = activate require("@syndicate-lang/driver-browser-ui");
 // @jsx UI.html
@@ -170,3 +170,9 @@ function spawnGame() {
     }
   }
 }
+
+// Running Syndicate programs in node.js doesn't require this -- it
+// automatically detects the "main" module -- but in the browser, when
+// using rollup, the mechanism doesn't work properly so we explicitly
+// activate *ourselves* here.
+bootModule(module);
