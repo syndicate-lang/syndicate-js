@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/socks",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "SOCKS5 gateway and service registration",
   "repository": "github:syndicate-lang/syndicate-js",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
