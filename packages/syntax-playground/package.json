@@ -1,7 +1,7 @@
 {
   "name": "@syndicate-lang/syntax-playground",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.3.2",
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/syntax-playground",
   "license": "GPL-3.0+",
   "repository": "github:syndicate-lang/syndicate-js",
