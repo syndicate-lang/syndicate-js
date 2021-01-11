@@ -9,3 +9,5 @@ scratch/
 *.did
 .do_built
 .do_built.dir/
+
+tsconfig.tsbuildinfo

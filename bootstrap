@@ -1,4 +1,0 @@
-#!/bin/sh
-[ -d node_modules/lerna ] || npm i .
-redo clean
-redo -j$(nproc) all

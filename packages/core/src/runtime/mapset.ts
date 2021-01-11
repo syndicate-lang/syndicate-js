@@ -1,7 +1,6 @@
-"use strict";
 //---------------------------------------------------------------------------
 // @syndicate-lang/core, an implementation of Syndicate dataspaces for JS.
-// Copyright (C) 2016-2018 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
+// Copyright (C) 2016-2021 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,31 +18,20 @@
 
 // Utilities for Maps of Sets
 
-if (require('preserves/src/singletonmodule.js')('syndicate-lang.org/syndicate-js',
-                                                require('../package.json').version,
-                                                'mapset.js',
-                                                module)) return;
+import { FlexSet, FlexMap, Canonicalizer } from 'preserves';
 
-var Immutable = require('immutable');
-
-function add(ms, key, val) {
-  return ms.set(key, (ms.get(key) || Immutable.Set()).add(val));
-}
-
-function remove(ms, key, val) {
-  var oldSet = ms.get(key);
-  if (oldSet) {
-    var newSet = oldSet.remove(val);
-    if (newSet.isEmpty()) {
-      ms = ms.remove(key);
-    } else {
-      ms = ms.set(key, newSet);
+export function add<K,V>(m: FlexMap<K, FlexSet<V>>, k: K, v: V, c: Canonicalizer<V>) {
+    let s = m.get(k);
+    if (!s) {
+        s = new FlexSet(c);
+        m.set(k, s);
     }
-  }
-  return ms;
+    s.add(v);
 }
 
-///////////////////////////////////////////////////////////////////////////
-
-module.exports.add = add;
-module.exports.remove = remove;
+export function del<K,V>(m: FlexMap<K, FlexSet<V>>, k: K, v: V) {
+    const s = m.get(k);
+    if (!s) return;
+    s.delete(v);
+    if (s.size === 0) m.delete(k);
+}

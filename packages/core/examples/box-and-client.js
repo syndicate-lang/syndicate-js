@@ -1,7 +1,7 @@
-"use strict";
+#!/usr/bin/env -S node --es-module-specifier-resolution=node
 //---------------------------------------------------------------------------
 // @syndicate-lang/core, an implementation of Syndicate dataspaces for JS.
-// Copyright (C) 2016-2018 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
+// Copyright (C) 2016-2021 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,14 +17,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-const Immutable = require('immutable');
-const Syndicate = require('../src/index.js');
-const Skeleton = Syndicate.Skeleton;
-const Dataspace = Syndicate.Dataspace;
-const Ground = Syndicate.Ground;
-const Record = Syndicate.Record;
-const __ = Syndicate.Discard._instance;
-const _$ = Syndicate.Capture(__);
+import { Dataspace, Skeleton, Ground, Record, Discard, Capture, Observe } from '../lib/index';
+const __ = Discard._instance;
+const _$ = Capture(__);
 
 const BoxState = Record.makeConstructor('BoxState', ['value']);
 const SetBox = Record.makeConstructor('SetBox', ['newValue']);
@@ -32,70 +27,58 @@ const SetBox = Record.makeConstructor('SetBox', ['newValue']);
 const N = 100000;
 
 console.time('box-and-client-' + N.toString());
-let _savedGlobalFacet = Dataspace._currentFacet;
-Dataspace._currentFacet = new Syndicate._Dataspace.ActionCollector();
 
-Dataspace.spawn('box', function () {
-  Dataspace.declareField(this, 'value', 0);
-  Dataspace.currentFacet().addEndpoint(() => {
-    return [BoxState(this.value), null];
-  });
-  Dataspace.currentFacet().addDataflow(() => {
-    if (this.value === N) {
-      Dataspace.currentFacet().stop(() => {
-        console.log('terminated box root facet');
-      });
-    }
-  });
-  Dataspace.currentFacet().addEndpoint(() => {
-    let handler = Skeleton.analyzeAssertion(SetBox(_$));
-    handler.callback = Dataspace.wrap((evt, vs) => {
-      if (evt === Skeleton.EVENT_MESSAGE) {
-        Dataspace.currentFacet().actor.scheduleScript(() => {
-          this.value = vs.get(0);
-          // console.log('box updated value', vs.get(0));
+new Ground(() => {
+    Dataspace.spawn('box', function () {
+        Dataspace.declareField(this, 'value', 0);
+        Dataspace.currentFacet.addEndpoint(() => {
+            return { assertion: BoxState(this.value), analysis: null };
         });
-      }
-    });
-    return [Syndicate.Observe(SetBox(_$)), handler];
-  });
-});
-
-Dataspace.spawn('client', () => {
-  Dataspace.currentFacet().addEndpoint(() => {
-    let handler = Skeleton.analyzeAssertion(BoxState(_$));
-    handler.callback = Dataspace.wrap((evt, vs) => {
-      if (evt === Skeleton.EVENT_ADDED) {
-        Dataspace.currentFacet().actor.scheduleScript(() => {
-          // console.log('client sending SetBox', vs.get(0) + 1);
-          Dataspace.send(SetBox(vs.get(0) + 1));
+        Dataspace.currentFacet.addDataflow(() => {
+            console.log('dataflow saw new value', this.value);
+            if (this.value === N) {
+                Dataspace.currentFacet.stop(() => {
+                    console.log('terminated box root facet');
+                });
+            }
         });
-      }
-    });
-    return [Syndicate.Observe(BoxState(_$)), handler];
-  });
-  Dataspace.currentFacet().addEndpoint(() => {
-    let handler = Skeleton.analyzeAssertion(BoxState(__));
-    handler.callback = Dataspace.wrap((evt, vs) => {
-      if (evt === Skeleton.EVENT_REMOVED) {
-        Dataspace.currentFacet().actor.scheduleScript(() => {
-          console.log('box gone');
+        Dataspace.currentFacet.addEndpoint(() => {
+            let analysis = Skeleton.analyzeAssertion(SetBox(_$));
+            analysis.callback = Dataspace.wrap((evt, vs) => {
+                if (evt === Skeleton.EventType.MESSAGE) {
+                    Dataspace.currentFacet.actor.scheduleScript(() => {
+                        this.value = vs[0];
+                        console.log('box updated value', vs[0]);
+                    });
+                }
+            });
+            return { assertion: Observe(SetBox(_$)), analysis };
         });
-      }
     });
-    return [Syndicate.Observe(BoxState(__)), handler];
-  });
-});
 
-module.exports[Dataspace.BootSteps] = {
-  module: module,
-  steps: Dataspace._currentFacet.actions
-};
-Dataspace._currentFacet = _savedGlobalFacet;
-_savedGlobalFacet = null;
-
-Ground.bootModule(module, (g) => {
-  g.addStopHandler(() => {
-    console.timeEnd('box-and-client-' + N.toString());
-  });
-});
+    Dataspace.spawn('client', function () {
+        Dataspace.currentFacet.addEndpoint(() => {
+            let analysis = Skeleton.analyzeAssertion(BoxState(_$));
+            analysis.callback = Dataspace.wrap((evt, vs) => {
+                if (evt === Skeleton.EventType.ADDED) {
+                    Dataspace.currentFacet.actor.scheduleScript(() => {
+                        console.log('client sending SetBox', vs[0] + 1);
+                        Dataspace.send(SetBox(vs[0] + 1));
+                    });
+                }
+            });
+            return { assertion: Observe(BoxState(_$)), analysis };
+        });
+        Dataspace.currentFacet.addEndpoint(() => {
+            let analysis = Skeleton.analyzeAssertion(BoxState(__));
+            analysis.callback = Dataspace.wrap((evt, _vs) => {
+                if (evt === Skeleton.EventType.REMOVED) {
+                    Dataspace.currentFacet.actor.scheduleScript(() => {
+                        console.log('box gone');
+                    });
+                }
+            });
+            return { assertion: Observe(BoxState(__)), analysis };
+        });
+    });
+}).addStopHandler(() => console.timeEnd('box-and-client-' + N.toString())).start();
