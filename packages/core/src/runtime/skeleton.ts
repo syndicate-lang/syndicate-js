@@ -17,7 +17,7 @@
 //---------------------------------------------------------------------------
 
 import { IdentitySet } from './idcoll.js';
-import { is, Value, Record, Set, Dictionary, _canonicalString } from 'preserves';
+import { is, Value, Record, Set, Dictionary, canonicalString } from 'preserves';
 
 import { Bag, ChangeDescription } from './bag.js';
 import { Discard, Capture, Observe } from './assertions.js';
@@ -282,7 +282,7 @@ class Handler {
 function classOf(v: any): string | null {
     if (Record.isRecord(v)) {
         const ci = v.getConstructorInfo();
-        return _canonicalString(ci.label) + '/' + ci.arity;
+        return canonicalString(ci.label) + '/' + ci.arity;
     } else if (Array.isArray(v)) {
         return '' + v.length;
     } else {
