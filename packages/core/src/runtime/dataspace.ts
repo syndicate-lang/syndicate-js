@@ -731,7 +731,7 @@ export class Endpoint {
     refresh() {
         let newSpec = this.updateFun.call(this.facet.fields);
         if (newSpec.assertion !== void 0) newSpec.assertion = fromJS(newSpec.assertion);
-        if (is(newSpec.assertion, this.spec.assertion)) {
+        if (!is(newSpec.assertion, this.spec.assertion)) {
             this._uninstall(true);
             this._install(newSpec);
         }
