@@ -32,10 +32,11 @@ new Ground(() => {
     Dataspace.spawn('box', function () {
         Dataspace.declareField(this, 'value', 0);
         Dataspace.currentFacet.addEndpoint(() => {
+            // console.log('recomputing published BoxState', this.value);
             return { assertion: BoxState(this.value), analysis: null };
         });
         Dataspace.currentFacet.addDataflow(() => {
-            console.log('dataflow saw new value', this.value);
+            // console.log('dataflow saw new value', this.value);
             if (this.value === N) {
                 Dataspace.currentFacet.stop(() => {
                     console.log('terminated box root facet');
@@ -48,7 +49,7 @@ new Ground(() => {
                 if (evt === Skeleton.EventType.MESSAGE) {
                     Dataspace.currentFacet.actor.scheduleScript(() => {
                         this.value = vs[0];
-                        console.log('box updated value', vs[0]);
+                        // console.log('box updated value', vs[0]);
                     });
                 }
             });
@@ -62,7 +63,7 @@ new Ground(() => {
             analysis.callback = Dataspace.wrap((evt, vs) => {
                 if (evt === Skeleton.EventType.ADDED) {
                     Dataspace.currentFacet.actor.scheduleScript(() => {
-                        console.log('client sending SetBox', vs[0] + 1);
+                        // console.log('client sending SetBox', vs[0] + 1);
                         Dataspace.send(SetBox(vs[0] + 1));
                     });
                 }
