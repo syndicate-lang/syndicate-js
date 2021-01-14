@@ -28,26 +28,26 @@ const N = 100000;
 
 console.time('box-and-client-' + N.toString());
 
-new Ground(groundRoot => {
-  groundRoot.spawn('box', function (boxRoot) {
-    boxRoot.actor.dataspace.declareField(this, 'value', 0);
-    boxRoot.addEndpoint(() => {
+export function boot(thisFacet) {
+  thisFacet.spawn('box', function (thisFacet) {
+    thisFacet.actor.dataspace.declareField(this, 'value', 0);
+    thisFacet.addEndpoint(() => {
       // console.log('recomputing published BoxState', this.value);
       return { assertion: BoxState(this.value), analysis: null };
     });
-    boxRoot.addDataflow(() => {
+    thisFacet.addDataflow(() => {
       // console.log('dataflow saw new value', this.value);
       if (this.value === N) {
-        boxRoot.stop(() => {
+        thisFacet.stop(() => {
           console.log('terminated box root facet');
         });
       }
     });
-    boxRoot.addEndpoint(() => {
+    thisFacet.addEndpoint(() => {
       let analysis = Skeleton.analyzeAssertion(SetBox(_$));
-      analysis.callback = boxRoot.wrap((facet, evt, vs) => {
+      analysis.callback = thisFacet.wrap((thisFacet, evt, vs) => {
         if (evt === Skeleton.EventType.MESSAGE) {
-          boxRoot.scheduleScript(() => {
+          thisFacet.scheduleScript(() => {
             this.value = vs[0];
             // console.log('box updated value', vs[0]);
           });
@@ -57,24 +57,24 @@ new Ground(groundRoot => {
     });
   });
 
-  groundRoot.spawn('client', function (clientRoot) {
-    clientRoot.addEndpoint(() => {
+  thisFacet.spawn('client', function (thisFacet) {
+    thisFacet.addEndpoint(() => {
       let analysis = Skeleton.analyzeAssertion(BoxState(_$));
-      analysis.callback = clientRoot.wrap((facet, evt, vs) => {
+      analysis.callback = thisFacet.wrap((thisFacet, evt, vs) => {
         if (evt === Skeleton.EventType.ADDED) {
-          clientRoot.scheduleScript(() => {
+          thisFacet.scheduleScript(() => {
             // console.log('client sending SetBox', vs[0] + 1);
-            clientRoot.send(SetBox(vs[0] + 1));
+            thisFacet.send(SetBox(vs[0] + 1));
           });
         }
       });
       return { assertion: Observe(BoxState(_$)), analysis };
     });
-    clientRoot.addEndpoint(() => {
+    thisFacet.addEndpoint(() => {
       let analysis = Skeleton.analyzeAssertion(BoxState(__));
-      analysis.callback = clientRoot.wrap((facet, evt, _vs) => {
+      analysis.callback = thisFacet.wrap((thisFacet, evt, _vs) => {
         if (evt === Skeleton.EventType.REMOVED) {
-          clientRoot.scheduleScript(() => {
+          thisFacet.scheduleScript(() => {
             console.log('box gone');
           });
         }
@@ -82,4 +82,9 @@ new Ground(groundRoot => {
       return { assertion: Observe(BoxState(__)), analysis };
     });
   });
-}).addStopHandler(() => console.timeEnd('box-and-client-' + N.toString())).start();
+
+  thisFacet.actor.dataspace.addStopHandler(() =>
+    console.timeEnd('box-and-client-' + N.toString()));
+}
+
+new Ground(boot).start();
