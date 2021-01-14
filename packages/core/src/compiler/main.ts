@@ -12,6 +12,7 @@ export function main(argv: string[]) {
     let tree = reader.readToEnd();
     let macro = new S.Templates();
 
+    let passNumber = 1;
     let expansionNeeded = true;
     function expand<T>(p: S.Pattern<T>, f: (t: T) => S.Items) {
         tree = S.replace(tree, p, t => {
@@ -20,6 +21,9 @@ export function main(argv: string[]) {
         });
     }
     while (expansionNeeded) {
+        if (passNumber >= 128) {
+            throw new Error(`Too many compiler passes (${passNumber})!`);
+        }
         expansionNeeded = false;
         expand(G.spawn,
                s => macro.template()`SPAWN[${s.name ?? []}][${S.joinItems(s.initialAssertions, ', ')}][[${s.bootProcBody}]]`);
