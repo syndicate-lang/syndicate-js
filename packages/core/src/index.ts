@@ -27,6 +27,9 @@ export * from './runtime/ground.js';
 export * from './runtime/relay.js';
 // export * as Worker from './runtime/worker.js';
 
+export * as Syntax from './syntax/index.js';
+export * as Compiler from './compiler/index.js';
+
 import { randomId } from './runtime/randomid.js';
 
 // These aren't so much "Universal" as they are "VM-wide-unique".

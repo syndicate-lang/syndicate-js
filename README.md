@@ -110,7 +110,7 @@ The output should be something like:
 ## Licence
 
 @syndicate-lang, an implementation of Syndicate for JS.  
-Copyright (C) 2016-2018 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
+Copyright (C) 2016-2021 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
