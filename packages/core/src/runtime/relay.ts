@@ -30,13 +30,13 @@ export const $QuitDataspace = new $Special("quit-dataspace");
 export class NestedDataspace extends Dataspace {
     readonly outerFacet: Facet;
 
-    constructor(outerFacet: Facet, bootProc: Script) {
+    constructor(outerFacet: Facet, bootProc: Script<void>) {
         super(bootProc);
         this.outerFacet = outerFacet;
     }
 
-    sendMessage(m: any, _sendingActor: Actor) {
-        super.sendMessage(m, _sendingActor);
+    deliverMessage(m: any, _sendingActor: Actor) {
+        super.deliverMessage(m, _sendingActor);
         if (m === $QuitDataspace) {
             this.outerFacet.stop();
         }
@@ -88,13 +88,13 @@ export class NestedDataspace extends Dataspace {
         if (Outbound.isClassOf(a)) {
             switch (net) {
                 case ChangeDescription.ABSENT_TO_PRESENT:
-                    this.outerFacet.actor.pushScript(() => {
+                    this.outerFacet.actor.scheduleTask(() => {
                         this.outerFacet.actor.adhocAssert(a.get(0));
                     });
                     this.outerFacet.actor.dataspace.start();
                     break;
                 case ChangeDescription.PRESENT_TO_ABSENT:
-                    this.outerFacet.actor.pushScript(() => {
+                    this.outerFacet.actor.scheduleTask(() => {
                         this.outerFacet.actor.adhocRetract(a.get(0));
                     });
                     this.outerFacet.actor.dataspace.start();
@@ -120,11 +120,11 @@ export class NestedDataspace extends Dataspace {
 
     start(): this {
         this.outerFacet.actor.dataspace.start();
-        this.outerFacet.actor.pushScript(() => {
-            Dataspace.withCurrentFacet(this.outerFacet, () => {
+        this.outerFacet.scheduleScript(outerFacet => {
+            outerFacet.invokeScript(() => {
                 if (this.outerFacet.isLive) {
-                    Dataspace.deferTurn(() => {
-                        const stillBusy = this.runScripts();
+                    this.outerFacet.deferTurn(() => {
+                        const stillBusy = this.runTasks();
                         if (stillBusy) this.start();
                     });
                 }
@@ -138,14 +138,12 @@ export class NestedDataspace extends Dataspace {
     }
 }
 
-export function inNestedDataspace(bootProc: Script): Script {
-    return () => {
-        const outerFacet = Dataspace.currentFacet;
+export function inNestedDataspace(bootProc: Script<void>): Script<void> {
+    return outerFacet => {
         outerFacet.addDataflow(function () {});
         // ^ eww! Dummy endpoint to keep the root facet of the relay alive.
-        const innerDs = new NestedDataspace(outerFacet, function () {
-            Dataspace.currentFacet.addStartScript(() => bootProc.call(this));
-        });
+        const innerDs = new NestedDataspace(outerFacet, innerFacet =>
+            innerFacet.addStartScript(f => bootProc.call(f.fields, f)));
         innerDs.start();
     };
 }

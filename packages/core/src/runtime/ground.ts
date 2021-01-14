@@ -35,8 +35,8 @@ export class Ground extends Dataspace {
     stopHandlers: Array<StopHandler<this>> = [];
     backgroundTaskCount = 0;
 
-    constructor(bootProc: Script) {
-        super(function () { Dataspace.currentFacet.addStartScript(bootProc); });
+    constructor(bootProc: Script<void>) {
+        super(function (rootFacet) { rootFacet.addStartScript(bootProc); });
         if (typeof window !== 'undefined') {
             window._ground = this;
         }
@@ -84,7 +84,7 @@ export class Ground extends Dataspace {
         try {
             let stillBusy = false;
             for (var fuel = this.startingFuel; fuel > 0; fuel--) {
-                stillBusy = this.runScripts();
+                stillBusy = this.runTasks();
                 if (!stillBusy) break;
             }
             if (stillBusy) {

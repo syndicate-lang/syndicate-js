@@ -144,7 +144,7 @@ export class Index {
         this.adjustAssertion(v, -1);
     }
 
-    sendMessage(v: Value, leafCallback: (l: Leaf, v: Value) => void = _nop) {
+    deliverMessage(v: Value, leafCallback: (l: Leaf, v: Value) => void = _nop) {
         this.root.modify(EventType.MESSAGE, v, _nop, leafCallback, (h, vs) =>
             h.callbacks.forEach(cb => cb(EventType.MESSAGE, vs)));
     }
