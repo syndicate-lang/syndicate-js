@@ -92,13 +92,13 @@ export class NestedDataspace extends Dataspace {
             switch (net) {
                 case ChangeDescription.ABSENT_TO_PRESENT:
                     this.outerFacet.actor.scheduleTask(() => {
-                        this.outerFacet.actor.adhocAssert(a.get(0));
+                        this.outerFacet.actor.adhocAssert(a[0]);
                     });
                     this.outerFacet.actor.dataspace.start();
                     break;
                 case ChangeDescription.PRESENT_TO_ABSENT:
                     this.outerFacet.actor.scheduleTask(() => {
-                        this.outerFacet.actor.adhocRetract(a.get(0));
+                        this.outerFacet.actor.adhocRetract(a[0]);
                     });
                     this.outerFacet.actor.dataspace.start();
                     break;
