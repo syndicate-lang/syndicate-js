@@ -12,15 +12,22 @@ export interface SourceMap {
     mappings: string;
 }
 
-export interface Mapping {
-    generatedStartColumn?: number; // zero-based
-    sourceIndex?: number;
-    sourceStartLine?: number; // zero-based (!!)
-    sourceStartColumn?: number; // zero-based
-    nameIndex?: number;
+export interface NoSourceMapping {
+    generatedStartColumn: number; // zero-based
+}
+export interface SourceMapping extends NoSourceMapping {
+    sourceIndex: number;
+    sourceStartLine: number; // zero-based (!!)
+    sourceStartColumn: number; // zero-based
+}
+export interface SourceNameMapping extends SourceMapping {
+    nameIndex: number;
 }
 
-function encodeMapping(entry: Mapping): Array<number> {
+export type NonEmptyMapping = NoSourceMapping | SourceMapping | SourceNameMapping;
+export type Mapping = {} | NonEmptyMapping;
+
+function encodeMapping(entry: NonEmptyMapping): Array<number> {
     const a = [entry.generatedStartColumn];
     if ('sourceIndex' in entry) {
         a.push(entry.sourceIndex);
@@ -33,11 +40,9 @@ function encodeMapping(entry: Mapping): Array<number> {
     return a;
 }
 
-function maybeDelta(newValue: number | undefined, oldValue: number | undefined) {
+function maybeDelta(newValue: number, oldValue: number | undefined): number {
     // console.log('maybeDelta', oldValue, newValue);
-    return (newValue === void 0) ? void 0
-        : (oldValue === void 0) ? newValue
-        : newValue - oldValue;
+    return (oldValue === void 0) ? newValue : newValue - oldValue;
 }
 
 export class CodeWriter {
@@ -45,8 +50,8 @@ export class CodeWriter {
     readonly pos: Pos;
     readonly sources: Array<string> = [];
     readonly chunks: Array<string> = [];
-    readonly mappings: Array<Array<Mapping>> = [];
-    previous: Mapping = {};
+    readonly mappings: Array<Array<NonEmptyMapping>> = [];
+    previous: Partial<SourceNameMapping> = {};
     previousPos: Pos | null = null;
 
     constructor(file: string | null) {
@@ -113,17 +118,21 @@ export class CodeWriter {
             return;
         }
 
-        const n: Mapping = {};
-        n.generatedStartColumn = maybeDelta(this.pos.column, this.previous.generatedStartColumn);
+        let n: NonEmptyMapping = {
+            generatedStartColumn: maybeDelta(this.pos.column, this.previous.generatedStartColumn),
+        };
         this.previous.generatedStartColumn = this.pos.column;
 
         if (p.name !== null) {
             const sourceIndex = this.sourceIndexFor(p.name);
-            n.sourceIndex = maybeDelta(sourceIndex, this.previous.sourceIndex);
+            n = {
+                ... n,
+                sourceIndex: maybeDelta(sourceIndex, this.previous.sourceIndex),
+                sourceStartColumn: maybeDelta(p.column, this.previous.sourceStartColumn),
+                sourceStartLine: maybeDelta(p.line - 1, this.previous.sourceStartLine),
+            };
             this.previous.sourceIndex = sourceIndex;
-            n.sourceStartColumn = maybeDelta(p.column, this.previous.sourceStartColumn);
             this.previous.sourceStartColumn = p.column;
-            n.sourceStartLine = maybeDelta(p.line - 1, this.previous.sourceStartLine);
             this.previous.sourceStartLine = p.line - 1;
         }
 

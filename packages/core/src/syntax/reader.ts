@@ -31,12 +31,12 @@ export class LaxReader implements IterableIterator<Item> {
 
         if (m !== null && !this.stack.some(g => g.start.text === m)) {
             if (this.stack.length > 0) {
-                this.stackTop().items.push(t);
+                this.stackTop()!.items.push(t);
                 return 'continue';
             }
         } else {
             while (this.stack.length > 0) {
-                const inner = this.stack.pop();
+                const inner = this.stack.pop()!;
                 if (inner.start.text === m) {
                     inner.end = t;
                 }
@@ -44,7 +44,7 @@ export class LaxReader implements IterableIterator<Item> {
                 if (this.stack.length === 0) {
                     return inner;
                 } else {
-                    const outer = this.stackTop();
+                    const outer = this.stackTop()!;
                     outer.items.push(inner);
                     if (inner.start.text === m) {
                         return 'continue';
@@ -56,35 +56,50 @@ export class LaxReader implements IterableIterator<Item> {
         return 'eof';
     }
 
-    shift(): Token {
-        return this.scanner.shift() ?? this.scanner.makeToken(this.scanner.mark(), TokenType.CLOSE, '');
+    peek(): Token {
+        return this.scanner.peek() ?? this.scanner.makeToken(this.scanner.mark(), TokenType.CLOSE, '');
+    }
+
+    drop() {
+        this.scanner.drop();
     }
 
     read(): Item | null {
         while (true) {
             let g = this.stackTop();
-            const t = this.shift();
+            const t = this.peek();
             switch (t.type) {
                 case TokenType.SPACE:
                 case TokenType.NEWLINE:
                 case TokenType.ATOM:
                 case TokenType.STRING:
-                    if (g === null) return t;
+                    if (g === null) {
+                        this.drop();
+                        return t;
+                    }
                     if (t.text === ';') {
                         while ('(['.indexOf(g.start.text) >= 0) {
                             this.stack.pop();
-                            this.stackTop().items.push(g);
-                            g = this.stackTop();
+                            const outer = this.stackTop();
+                            if (outer === null) {
+                                // do not drop the semicolon here
+                                return g;
+                            }
+                            outer.items.push(g);
+                            g = outer;
                         }
                     }
+                    this.drop();
                     g.items.push(t);
                     break;
 
                 case TokenType.OPEN:
+                    this.drop();
                     this.stack.push({ start: t, end: null, items: [] });
                     break;
 
                 case TokenType.CLOSE: {
+                    this.drop();
                     const i = this.popUntilMatch(t);
                     if (i === 'eof') return null;
                     if (i === 'continue') break;

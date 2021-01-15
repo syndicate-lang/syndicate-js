@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { Value } from 'preserves';
+import { Value, Record } from 'preserves';
 
 import { $Special } from './special.js';
 import { Dataspace, Facet, Actor, Endpoint, Script } from './dataspace.js';
@@ -43,44 +43,47 @@ export class NestedDataspace extends Dataspace {
     }
 
     endpointHook(facet: Facet, innerEp: Endpoint) {
-        const innerDs = this;
         super.endpointHook(facet, innerEp);
-        if (Observe.isClassOf(innerEp.spec.assertion) &&
-            Inbound.isClassOf(innerEp.spec.assertion[0]))
-        {
-            // We know that innerEp.spec.assertion is an Observe(Inbound(...)). Also, if
-            // innerEp.spec.analysis exists, it will be consonant with innerEp.spec.assertion.
-            // Beware of completely-constant patterns, which cause skeleton to be null!
-            this.hookEndpointLifecycle(innerEp, this.outerFacet.addEndpoint(() => {
-                const assertion = Observe(innerEp.spec.assertion[0][0]);
-                const h = innerEp.spec.analysis;
-                const innerCallback = h.callback;
-                const callback = (innerCallback === void 0) ? void 0 :
-                    function (evt: EventType, captures: Array<Value>) {
-                        innerCallback.call(this, evt, captures);
-                        innerDs.start();
-                    };
-                const analysis: Analysis | null = (h === null) ? null :
-                    (h.skeleton === void 0
-                        ? {
-                            skeleton: void 0,
-                            constPaths: h.constPaths,
-                            constVals: h.constVals.map((v) => v[0]),
-                            capturePaths: h.capturePaths.map((p) => p.slice(1)),
-                            assertion,
-                            callback
-                        }
-                        : {
-                            skeleton: h.skeleton[1],
-                            constPaths: h.constPaths.map((p) => p.slice(1)),
-                            constVals: h.constVals,
-                            capturePaths: h.capturePaths.map((p) => p.slice(1)),
-                            assertion,
-                            callback
-                        });
-                return { assertion, analysis };
-            }, false));
-        }
+
+        const innerAssertion = innerEp.spec.assertion;
+        if (!Observe.isClassOf(innerAssertion)) return;
+        const wrapper = innerAssertion[0];
+        if (!Inbound.isClassOf(wrapper)) return;
+
+        // We know that innerAssertion is an Observe(Inbound(...)). Also, if
+        // innerEp.spec.analysis exists, it will be consonant with innerAssertion. Beware of
+        // completely-constant patterns, which cause skeleton to be null!
+
+        const innerDs = this;
+        this.hookEndpointLifecycle(innerEp, this.outerFacet.addEndpoint(() => {
+            const assertion = Observe(wrapper[0]);
+            const h = innerEp.spec.analysis!;
+            const innerCallback = h.callback;
+            const callback = (innerCallback === void 0) ? void 0 :
+                function (evt: EventType, captures: Array<Value>) {
+                    innerCallback.call(null, evt, captures);
+                    innerDs.start();
+                };
+            const analysis: Analysis | null = (h === null) ? null :
+                (h.skeleton === null
+                    ? {
+                        skeleton: null,
+                        constPaths: h.constPaths,
+                        constVals: h.constVals.map(v => (v as Record)[0]),
+                        capturePaths: h.capturePaths.map(p => p.slice(1)),
+                        assertion,
+                        callback
+                    }
+                    : {
+                        skeleton: h.skeleton.members[0],
+                        constPaths: h.constPaths.map(p => p.slice(1)),
+                        constVals: h.constVals,
+                        capturePaths: h.capturePaths.map(p => p.slice(1)),
+                        assertion,
+                        callback
+                    });
+            return { assertion, analysis };
+        }, false));
     }
 
     adjustIndex(a: Value, count: number) {

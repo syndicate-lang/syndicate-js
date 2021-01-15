@@ -101,10 +101,11 @@ export class Graph<SubjectId, ObjectId> {
         }
     }
 
-    defineObservableProperty(obj: object,
-                             prop: string,
-                             value: any,
-                             options: PropertyOptions<ObjectId>)
+    defineObservableProperty<T, K extends keyof T>(
+        obj: T,
+        prop: K,
+        value: T[K],
+        options: PropertyOptions<ObjectId>)
     {
         const { objectId, noopGuard } = options;
         Object.defineProperty(obj, prop, {
@@ -125,9 +126,10 @@ export class Graph<SubjectId, ObjectId> {
         return objectId;
     }
 
-    static newScope(o: object): object {
-        function O() {}
-        O.prototype = o;
-        return new O();
+    static newScope<T, R extends T>(o: T): R {
+        const Scope: { new (): R, prototype: T } =
+            (function Scope () {}) as unknown as ({ new (): R, prototype: T });
+        Scope.prototype = o;
+        return new Scope();
     }
 }

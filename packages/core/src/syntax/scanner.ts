@@ -5,7 +5,7 @@ export abstract class Scanner implements IterableIterator<Token> {
     readonly pos: Pos;
     charBuffer: string | null = null;
     tokenBuffer: Token | null = null;
-    delimiters = ' \t\n\r\'"`,;()[]{}/';
+    delimiters = ' \t\n\r\'"`.,;()[]{}/';
 
     constructor(pos: Pos) {
         this.pos = pos;
@@ -55,19 +55,19 @@ export abstract class Scanner implements IterableIterator<Token> {
     }
 
     _collectSpace(buf = '', start = this.mark()): Token {
-        this._while(ch => this.isSpace(ch), ch => buf = buf + ch);
+        this._while(ch => ch !== null && this.isSpace(ch), ch => buf = buf + ch);
         return this.makeToken(start, TokenType.SPACE, buf);
     }
 
     _punct(type: TokenType): Token {
-        return this.makeToken(this.mark(), type, this.shiftChar());
+        return this.makeToken(this.mark(), type, this.shiftChar()!);
     }
 
     _str(forbidNewlines: boolean): Token {
         const start = this.mark();
-        const q = this.shiftChar();
+        const q = this.shiftChar()!;
         let buf = q;
-        let ch: string;
+        let ch: string | null;
         while (true) {
             ch = this.shiftChar();
             if (ch !== null) buf = buf + ch;
@@ -98,7 +98,7 @@ export abstract class Scanner implements IterableIterator<Token> {
     }
 
     _atom(start = this.mark(), buf = ''): Token {
-        let ch: string;
+        let ch: string | null;
         while (true) {
             ch = this.peekChar();
             if (ch === null || this.isDelimiter(ch)) {
@@ -111,7 +111,7 @@ export abstract class Scanner implements IterableIterator<Token> {
 
     _maybeComment(): Token {
         const start = this.mark();
-        let buf = this.shiftChar();
+        let buf = this.shiftChar()!;
         let ch = this.peekChar();
         if (ch === null) return this._collectSpace(buf, start);
         switch (ch) {
@@ -162,6 +162,7 @@ export abstract class Scanner implements IterableIterator<Token> {
             case '`':
                 return this._str(false);
 
+            case '.':
             case ',':
             case ';':
                 return this._punct(TokenType.ATOM);
@@ -170,7 +171,7 @@ export abstract class Scanner implements IterableIterator<Token> {
                 return this._maybeComment();
 
             default:
-                return this._atom(this.mark(), this.shiftChar());
+                return this._atom(this.mark(), this.shiftChar()!);
         }
     }
 

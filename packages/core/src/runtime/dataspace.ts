@@ -82,46 +82,11 @@ export abstract class Dataspace {
         this.pendingTurns = [new Turn(null, [new Spawn(null, bootProc, new Set())])];
     }
 
-    _inScript = true;
-
-    withNonScriptContext<T>(task: Task<T>): T {
-        let savedInScript = this._inScript;
-        this._inScript = false;
-        try {
-            return task();
-        } finally {
-            this._inScript = savedInScript;
-        }
-    }
-
     abstract start(): this;
     abstract ground(): Ground;
 
     backgroundTask(): () => void {
         return this.ground().backgroundTask();
-    }
-
-    referenceField(obj: DataflowObservableObject, prop: string) {
-        if (!(prop in obj)) {
-            this.dataflow.recordObservation([obj, prop]);
-        }
-        return obj[prop];
-    }
-
-    declareField(obj: DataflowObservableObject, prop: string, init: any) {
-        if (prop in obj) {
-            obj[prop] = init;
-        } else {
-            this.dataflow.defineObservableProperty(obj, prop, init, {
-                objectId: [obj, prop],
-                noopGuard: is
-            });
-        }
-    }
-
-    deleteField(obj: DataflowObservableObject, prop: string) {
-        this.dataflow.recordDamage([obj, prop]);
-        delete obj[prop];
     }
 
     runTasks() { // TODO: rename?
@@ -153,17 +118,15 @@ export abstract class Dataspace {
     }
 
     refreshAssertions() {
-        this.withNonScriptContext(() => {
-            this.dataflow.repairDamage((ep) => {
-                let facet = ep.facet;
-                if (facet.isLive) { // TODO: necessary test, or tautological?
-                    facet.invokeScript(() => ep.refresh());
-                }
-            });
+        this.dataflow.repairDamage((ep) => {
+            let facet = ep.facet;
+            if (facet.isLive) { // TODO: necessary test, or tautological?
+                facet.invokeScript(f => f.withNonScriptContext(() => ep.refresh()));
+            }
         });
     }
 
-    addActor(name: any, bootProc: Script<void>, initialAssertions: Set, parentActor: Actor | undefined) {
+    addActor(name: any, bootProc: Script<void>, initialAssertions: Set, parentActor: Actor | null) {
         let ac = new Actor(this, name, initialAssertions, parentActor?.id);
         // debug('Spawn', ac && ac.toString());
         this.applyPatch(ac, ac.adhocAssertions);
@@ -178,7 +141,7 @@ export abstract class Dataspace {
 
     applyPatch(ac: Actor, delta: Bag) {
         // if (!delta.isEmpty()) debug('applyPatch BEGIN', ac && ac.toString());
-        let removals = [];
+        let removals: Array<[number, Value]> = [];
         delta.forEach((count, a) => {
             if (count > 0) {
                 // debug('applyPatch +', a && a.toString());
@@ -195,7 +158,7 @@ export abstract class Dataspace {
         // if (!delta.isEmpty()) debug('applyPatch END');
     }
 
-    deliverMessage(m: Value, _sendingActor: Actor) {
+    deliverMessage(m: Value, _sendingActor: Actor | null) {
         // debug('deliverMessage', sendingActor && sendingActor.toString(), m.toString());
         this.index.deliverMessage(m);
         // this.index.deliverMessage(m, (leaf, _m) => {
@@ -208,11 +171,11 @@ export abstract class Dataspace {
     }
 
     subscribe(handler: Skeleton.Analysis) {
-        this.index.addHandler(handler, handler.callback);
+        this.index.addHandler(handler, handler.callback!);
     }
 
     unsubscribe(handler: Skeleton.Analysis) {
-        this.index.removeHandler(handler, handler.callback);
+        this.index.removeHandler(handler, handler.callback!);
     }
 
     endpointHook(_facet: Facet, _endpoint: Endpoint) {
@@ -269,7 +232,7 @@ export class Actor {
         let tasks = this.pendingTasks;
         for (let i = 0; i < Priority._count; i++) {
             let q = tasks[i];
-            if (q.length > 0) return q.shift();
+            if (q.length > 0) return q.shift()!;
         }
         return null;
     }
@@ -287,12 +250,12 @@ export class Actor {
         this.pendingTasks[priority].push(task);
     }
 
-    addFacet(parentFacet: Facet, bootProc: Script<void>, checkInScript: boolean = false) {
-        if (checkInScript && !this.dataspace._inScript) {
+    addFacet(parentFacet: Facet | null, bootProc: Script<void>, checkInScript: boolean = false) {
+        if (checkInScript && parentFacet && !parentFacet.inScript) {
             throw new Error("Cannot add facet outside script; are you missing a `react { ... }`?");
         }
         let f = new Facet(this, parentFacet);
-        f.invokeScript(f => this.dataspace.withNonScriptContext(() => bootProc.call(f.fields, f)));
+        f.invokeScript(f => f.withNonScriptContext(() => bootProc.call(f.fields, f)));
         this.scheduleTask(() => {
             if ((parentFacet && !parentFacet.isLive) || f.isInert()) {
                 f._terminate();
@@ -352,7 +315,7 @@ export class Actor {
 }
 
 abstract class Action {
-    abstract perform(ds: Dataspace, ac: Actor): void;
+    abstract perform(ds: Dataspace, ac: Actor | null): void;
 }
 
 class Patch extends Action {
@@ -363,8 +326,8 @@ class Patch extends Action {
         this.changes = changes;
     }
 
-    perform(ds: Dataspace, ac: Actor): void {
-        ds.applyPatch(ac, this.changes);
+    perform(ds: Dataspace, ac: Actor | null): void {
+        ds.applyPatch(ac!, this.changes);
     }
 
     adjust(a: Value, count: number) {
@@ -380,7 +343,7 @@ class Message extends Action {
         this.body = fromJS(body);
     }
 
-    perform(ds: Dataspace, ac: Actor): void {
+    perform(ds: Dataspace, ac: Actor | null): void {
         ds.deliverMessage(this.body, ac);
     }
 }
@@ -397,7 +360,7 @@ class Spawn extends Action {
         this.initialAssertions = initialAssertions;
     }
 
-    perform(ds: Dataspace, ac: Actor): void {
+    perform(ds: Dataspace, ac: Actor | null): void {
         ds.addActor(this.name, this.bootProc, this.initialAssertions, ac);
     }
 }
@@ -405,7 +368,8 @@ class Spawn extends Action {
 class Quit extends Action { // TODO: rename? Perhaps to Cleanup?
     // Pseudo-action - not for userland use.
 
-    perform(ds: Dataspace, ac: Actor): void {
+    perform(ds: Dataspace, ac: Actor | null): void {
+        if (ac === null) throw new Error("Internal error: Quit action with null actor");
         ds.applyPatch(ac, ac.cleanupChanges);
         ds.actors.delete(ac.id);
         // debug('Quit', ac && ac.toString());
@@ -420,9 +384,9 @@ class DeferredTurn extends Action {
         this.continuation = continuation;
     }
 
-    perform(_ds: Dataspace, ac: Actor): void {
+    perform(_ds: Dataspace, ac: Actor | null): void {
         // debug('DeferredTurn', ac && ac.toString());
-        ac.scheduleTask(this.continuation);
+        ac!.scheduleTask(this.continuation);
     }
 }
 
@@ -449,6 +413,7 @@ export class Facet {
     readonly stopScripts: Array<Script<void>> = [];
     readonly children = new IdentitySet<Facet>();
     readonly fields: any;
+    inScript = true;
 
     constructor(actor: Actor, parent: Facet | null) {
         this.id = actor.dataspace.nextId++;
@@ -465,6 +430,16 @@ export class Facet {
             this.fields = Dataflow.Graph.newScope({});
         }
         this.fields[DataflowObservableObjectId] = () => this.id;
+    }
+
+    withNonScriptContext<T>(task: Task<T>): T {
+        let savedInScript = this.inScript;
+        this.inScript = false;
+        try {
+            return task();
+        } finally {
+            this.inScript = savedInScript;
+        }
     }
 
     _abort(emitPatches: boolean) {
@@ -517,12 +492,17 @@ export class Facet {
         }, Priority.GC);
     }
 
+    // This alias exists because of the naive expansion done by the parser.
+    _stop(continuation?: Script<void>) {
+        this.stop(continuation);
+    }
+
     stop(continuation?: Script<void>) {
-        this.parent.invokeScript(() => {
+        this.parent!.invokeScript(() => {
             this.actor.scheduleTask(() => {
                 this._terminate();
                 if (continuation) {
-                    this.parent.scheduleScript(parent => continuation.call(this.fields, parent));
+                    this.parent!.scheduleScript(parent => continuation.call(this.fields, parent));
                     // ^ TODO: is this the correct scope to use??
                 }
             });
@@ -539,7 +519,7 @@ export class Facet {
         this.stopScripts.push(s);
     }
 
-    addEndpoint(updateFun: () => EndpointSpec, isDynamic: boolean = true): Endpoint {
+    addEndpoint(updateFun: Script<EndpointSpec>, isDynamic: boolean = true): Endpoint {
         const ep = new Endpoint(this, isDynamic, updateFun);
         this.actor.dataspace.endpointHook(this, ep);
         return ep;
@@ -582,7 +562,7 @@ export class Facet {
             this.scheduleScript(() => {
                 if (this.isLive) {
                     this.actor.dataspace.dataflow.withSubject(subjectId, () =>
-                        subjectFun.call(this.fields));
+                        subjectFun.call(this.fields, this));
                 }
             }, priority);
             return { assertion: void 0, analysis: null };
@@ -624,7 +604,7 @@ export class Facet {
     }
 
     wrap<T extends Array<any>, R>(fn: (f: Facet, ... args: T) => R): (... args: T) => R {
-        return (... actuals) => this.invokeScript(f => fn.call(f.fields, f, ... actuals), true);
+        return (... actuals) => this.invokeScript(f => fn.call(f.fields, f, ... actuals), true)!;
     }
 
     wrapExternal<T extends Array<any>>(fn: (f: Facet, ... args: T) => void): (... args: T) => void {
@@ -638,20 +618,30 @@ export class Facet {
     }
 
     ensureFacetSetup(what: string) {
-        if (this.actor.dataspace._inScript) {
+        if (this.inScript) {
             throw new Error(`Cannot ${what} outside facet setup; are you missing \`react { ... }\`?`);
         }
     }
 
     ensureNonFacetSetup(what: string, keyword: string) {
-        if (!this.actor.dataspace._inScript) {
+        if (!this.inScript) {
             throw new Error(`Cannot ${what} during facet setup; are you missing \`${keyword} { ... }\`?`);
         }
+    }
+
+    // This alias exists because of the naive expansion done by the parser.
+    _send(body: any) {
+        this.send(body);
     }
 
     send(body: any) {
         this.ensureNonFacetSetup('`send`', 'on start');
         this.enqueueScriptAction(new Message(body));
+    }
+
+    // This alias exists because of the naive expansion done by the parser.
+    _spawn(name: any, bootProc: Script<void>, initialAssertions?: Set) {
+        this.spawn(name, bootProc, initialAssertions);
     }
 
     spawn(name: any, bootProc: Script<void>, initialAssertions?: Set) {
@@ -666,6 +656,33 @@ export class Facet {
 
     scheduleScript(script: Script<void>, priority?: Priority) {
         this.actor.scheduleTask(this.wrap(script), priority);
+    }
+
+    declareField<T extends DataflowObservableObject, K extends keyof T & string>(obj: T, prop: K, init: T[K]) {
+        if (prop in obj) {
+            obj[prop] = init;
+        } else {
+            this.actor.dataspace.dataflow.defineObservableProperty(obj, prop, init, {
+                objectId: [obj, prop],
+                noopGuard: is
+            });
+        }
+    }
+
+    // referenceField(obj: DataflowObservableObject, prop: string) {
+    //     if (!(prop in obj)) {
+    //         this.actor.dataspace.dataflow.recordObservation([obj, prop]);
+    //     }
+    //     return obj[prop];
+    // }
+
+    // deleteField(obj: DataflowObservableObject, prop: string) {
+    //     this.actor.dataspace.dataflow.recordDamage([obj, prop]);
+    //     delete obj[prop];
+    // }
+
+    addChildFacet(bootProc: Script<void>) {
+        this.actor.addFacet(this, bootProc, true);
     }
 }
 
@@ -685,6 +702,7 @@ export class Endpoint {
         let initialSpec = ds.dataflow.withSubject(isDynamic ? this : undefined,
                                                   () => updateFun.call(facet.fields, facet));
         this._install(initialSpec);
+        this.spec = initialSpec; // keeps TypeScript's undefinedness-checker happy
         facet.endpoints.set(this.id, this);
     }
 

@@ -27,8 +27,12 @@ export function push<T>(item: T, rest: Stack<T>): NonEmptyStack<T> {
     return { item, rest };
 }
 
+export function isEmpty<T>(s: Stack<T>): s is null {
+    return s === null;
+}
+
 export function nonEmpty<T>(s: Stack<T>): s is NonEmptyStack<T> {
-    return s !== empty();
+    return s !== null;
 }
 
 export function rest<T>(s: Stack<T>): Stack<T> {
@@ -46,8 +50,9 @@ export function drop<T>(s: Stack<T>, n: number): Stack<T> {
 
 export function dropNonEmpty<T>(s: NonEmptyStack<T>, n: number): NonEmptyStack<T> {
     while (n--) {
-        s = s.rest;
-        if (!nonEmpty(s)) throw new Error("dropNonEmpty popped too far");
+        const next = s.rest;
+        if (!nonEmpty(next)) throw new Error("dropNonEmpty popped too far");
+        s = next;
     }
     return s;
 }

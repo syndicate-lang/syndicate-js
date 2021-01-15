@@ -7,7 +7,7 @@ export function vlqDecode(s: string): Array<number> {
     let shift_amount = 0;
     const buf = [];
     for (const ch of s) {
-        const sextet = inverse_alphabet.get(ch);
+        const sextet = inverse_alphabet.get(ch) ?? 0;
         acc |= (sextet & 0x1f) << shift_amount;
         shift_amount += 5;
         if (!(sextet & 0x20)) {

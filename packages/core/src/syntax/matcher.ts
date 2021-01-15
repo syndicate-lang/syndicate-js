@@ -1,6 +1,6 @@
 import { Token, TokenType, Items, Item, isGroup, isToken, isSpace, isTokenType } from './tokens.js';
 import { Pos } from './position.js';
-import { List, ArrayList, atEnd } from './list.js';
+import { List, ArrayList, atEnd, notAtEnd } from './list.js';
 
 //---------------------------------------------------------------------------
 // Patterns over Item
@@ -15,21 +15,24 @@ export const succeed: Pattern<void> = i => [void 0, i];
 export const discard: Pattern<void> = _i => [void 0, noItems];
 export const rest: Pattern<Items> = i => [i.toArray(), noItems];
 export const end: Pattern<void> = i => atEnd(i) ? [void 0, noItems] : null;
-export const pos: Pattern<Pos> = i => [isGroup(i.item) ? i.item.start.start : i.item.start, i];
+export const pos: Pattern<Pos> = i =>
+    notAtEnd(i)
+    ? [isGroup(i.item) ? i.item.start.start : i.item.start, i]
+    : null;
 
 export const newline: Pattern<Item> = i => {
-    while (!atEnd(i) && isTokenType(i.item, TokenType.SPACE)) i = i.next;
-    if (!isTokenType(i.item, TokenType.NEWLINE)) return null;
+    while (notAtEnd(i) && isTokenType(i.item, TokenType.SPACE)) i = i.next;
+    if (!notAtEnd(i) || !isTokenType(i.item, TokenType.NEWLINE)) return null;
     return [i.item, i.next];
 };
 
 export function skipSpace(i: List<Item>): List<Item> {
-    while (!atEnd(i) && isSpace(i.item)) i = i.next;
+    while (notAtEnd(i) && isSpace(i.item)) i = i.next;
     return i;
 }
 
 export function collectSpace(i: List<Item>, acc: Array<Item>): List<Item> {
-    while (!atEnd(i) && isSpace(i.item)) {
+    while (notAtEnd(i) && isSpace(i.item)) {
         acc.push(i.item);
         i = i.next;
     }
@@ -95,7 +98,7 @@ export function exec(thunk: (i: List<Item>) => void): Pattern<void> {
     };
 }
 
-export function map<T, R>(p: Pattern<T>, f: (T) => R): Pattern<R> {
+export function map<T, R>(p: Pattern<T>, f: (t: T) => R): Pattern<R> {
     return i => {
         const r = p(i);
         if (r === null) return null;
@@ -117,6 +120,7 @@ export interface TokenOptions extends ItemOptions {
 export function group<T>(opener: string, items: Pattern<T>, options: GroupOptions = {}): Pattern<T> {
     return i => {
         if (options.skipSpace ?? true) i = skipSpace(i);
+        if (!notAtEnd(i)) return null;
         if (!isGroup(i.item)) return null;
         if (i.item.start.text !== opener) return null;
         const r = items(new ArrayList(i.item.items));
@@ -129,6 +133,7 @@ export function group<T>(opener: string, items: Pattern<T>, options: GroupOption
 export function atom(text?: string | undefined, options: TokenOptions = {}): Pattern<Token> {
     return i => {
         if (options.skipSpace ?? true) i = skipSpace(i);
+        if (!notAtEnd(i)) return null;
         if (!isToken(i.item)) return null;
         if (i.item.type !== (options.tokenType ?? TokenType.ATOM)) return null;
         if (text !== void 0 && i.item.text !== text) return null;
@@ -139,7 +144,7 @@ export function atom(text?: string | undefined, options: TokenOptions = {}): Pat
 export function anything(options: ItemOptions = {}): Pattern<Item> {
     return i => {
         if (options.skipSpace ?? true) i = skipSpace(i);
-        if (atEnd(i)) return null;
+        if (!notAtEnd(i)) return null;
         return [i.item, i.next];
     };
 }
@@ -150,7 +155,7 @@ export function upTo(p: Pattern<any>): Pattern<Items> {
         while (true) {
             const r = p(i);
             if (r !== null) return [acc, i];
-            if (atEnd(i)) break;
+            if (!notAtEnd(i)) break;
             acc.push(i.item);
             i = i.next;
         }
@@ -202,7 +207,7 @@ export function replace<T>(items: Items,
     const walkItems = (items: Items): Items => {
         let i: List<Item> = new ArrayList(items);
         const acc: Items = [];
-        while (!atEnd(i = collectSpace(i, acc))) {
+        while (notAtEnd(i = collectSpace(i, acc))) {
             const r = p(i);
 
             if (r !== null) {

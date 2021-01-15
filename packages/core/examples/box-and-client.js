@@ -30,7 +30,7 @@ console.time('box-and-client-' + N.toString());
 
 export function boot(thisFacet) {
   thisFacet.spawn('box', function (thisFacet) {
-    thisFacet.actor.dataspace.declareField(this, 'value', 0);
+    thisFacet.declareField(this, 'value', 0);
     thisFacet.addEndpoint(() => {
       // console.log('recomputing published BoxState', this.value);
       return { assertion: BoxState(this.value), analysis: null };

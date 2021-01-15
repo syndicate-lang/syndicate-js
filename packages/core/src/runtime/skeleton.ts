@@ -17,7 +17,7 @@
 //---------------------------------------------------------------------------
 
 import { IdentitySet } from './idcoll.js';
-import { is, Value, Record, Set, Dictionary, canonicalString } from 'preserves';
+import { is, Value, Record, Set, Dictionary, canonicalString, preserves } from 'preserves';
 
 import { Bag, ChangeDescription } from './bag.js';
 import { Discard, Capture, Observe } from './assertions.js';
@@ -33,7 +33,8 @@ export enum EventType {
 export type HandlerCallback = (eventType: EventType, bindings: Array<Value>) => void;
 
 export type Shape = string;
-export type Skeleton = null | { shape: Shape, members: Skeleton[] };
+export type NonEmptySkeleton = { shape: Shape, members: Skeleton[] };
+export type Skeleton = null | NonEmptySkeleton;
 export type Path = Array<number>;
 export interface Analysis {
     skeleton: Skeleton;
@@ -58,10 +59,10 @@ export class Index {
             constValMap = new Dictionary();
             continuation.cachedAssertions.forEach((a) => {
                 const key = projectPaths(a, constPaths);
-                let leaf = constValMap.get(key);
+                let leaf = constValMap!.get(key);
                 if (!leaf) {
                     leaf = new Leaf();
-                    constValMap.set(key, leaf);
+                    constValMap!.set(key, leaf);
                 }
                 leaf.cachedAssertions.add(a);
             });
@@ -76,7 +77,7 @@ export class Index {
         if (!handler) {
             const cachedCaptures = new Bag();
             leaf.cachedAssertions.forEach((a) =>
-                cachedCaptures._items.update(projectPaths(a, capturePaths), n => n + 1, 0));
+                cachedCaptures._items.update(projectPaths(a, capturePaths), n => n! + 1, 0));
             handler = new Handler(cachedCaptures);
             leaf.handlerMap.set(capturePaths, handler);
         }
@@ -159,7 +160,7 @@ class Node {
     }
 
     extend(skeleton: Skeleton): Continuation {
-        const path = [];
+        const path: Path = [];
 
         function walkNode(node: Node,
                           popCount: number,
@@ -279,14 +280,14 @@ class Handler {
     }
 }
 
-function classOf(v: any): string | null {
+function classOf(v: any): string {
     if (Record.isRecord(v)) {
         const ci = v.getConstructorInfo();
         return canonicalString(ci.label) + '/' + ci.arity;
     } else if (Array.isArray(v)) {
         return '' + v.length;
     } else {
-        return null;
+        throw new Error(preserves`Cannot route based on ${v}`);
     }
 }
 
@@ -306,10 +307,10 @@ function projectPaths(v: Value, paths: Array<Path>) {
 }
 
 export function analyzeAssertion(a: Value): Analysis {
-    const constPaths = [];
-    const constVals = [];
-    const capturePaths = [];
-    const path = [];
+    const constPaths: Path[] = [];
+    const constVals: Value[] = [];
+    const capturePaths: Path[] = [];
+    const path: Path = [];
 
     function walk(a: Value): Skeleton {
         if (Capture.isClassOf(a)) {
@@ -328,7 +329,7 @@ export function analyzeAssertion(a: Value): Analysis {
             let aa = a as Array<Value>;
             // ^ We know this is safe because it's either Record or Array
             let arity = aa.length;
-            let result = { shape: cls, members: [] };
+            let result: NonEmptySkeleton = { shape: cls, members: [] };
             path.push(0);
             for (let i = 0; i < arity; i++) {
                 path[path.length - 1] = i;
@@ -349,7 +350,7 @@ export function analyzeAssertion(a: Value): Analysis {
 }
 
 export function match(p: Value, v: Value): Array<Value> | false {
-    const captures = [];
+    const captures: Array<Value> = [];
 
     function walk(p: Value, v: Value): boolean {
         if (Capture.isClassOf(p)) {
@@ -376,8 +377,8 @@ export function match(p: Value, v: Value): Array<Value> | false {
     return walk(p, v) ? captures : false;
 }
 
-export function isCompletelyConcrete(p: Value) {
-    function walk(p: Value) {
+export function isCompletelyConcrete(p: Value): boolean {
+    function walk(p: Value): boolean {
         if (Capture.isClassOf(p)) return false;
         if (Discard.isClassOf(p)) return false;
 
@@ -388,8 +389,8 @@ export function isCompletelyConcrete(p: Value) {
     return walk(p);
 }
 
-export function withoutCaptures(p: Value) {
-    function walk(p: Value) {
+export function withoutCaptures(p: Value): Value {
+    function walk(p: Value): Value {
         if (Capture.isClassOf(p)) return walk(p[0]);
         if (Discard.isClassOf(p)) return p;
 

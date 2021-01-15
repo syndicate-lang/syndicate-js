@@ -5,8 +5,12 @@ export interface List<T> extends Iterable<T> {
     toArray(): Array<T>;
 }
 
-export function atEnd<T>(xs: List<T>): boolean {
+export function atEnd<T>(xs: List<T>): xs is (List<T> & { item: null, next: null }) {
     return xs.item === null;
+}
+
+export function notAtEnd<T>(xs: List<T>): xs is (List<T> & { item: T, next: List<T> }) {
+    return xs.item !== null;
 }
 
 export class ArrayList<T> implements List<T> {
@@ -35,9 +39,13 @@ export class ArrayList<T> implements List<T> {
         let i: List<T> = this;
         return {
             next(): IteratorResult<T> {
-                const value = i.item;
-                if (!atEnd(i)) i = i.next;
-                return { done: atEnd(i), value };
+                if (notAtEnd(i)) {
+                    const value = i.item;
+                    i = i.next;
+                    return { done: false, value };
+                } else {
+                    return { done: true, value: null };
+                }
             }
         };
     }

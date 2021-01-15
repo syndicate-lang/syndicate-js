@@ -1,5 +1,5 @@
 import {
-    Item, Items,
+    Token, Items,
     Pattern,
 
     scope, bind, seq, alt, upTo, atom, group, exec,
@@ -11,7 +11,7 @@ import * as Matcher from '../syntax/matcher.js';
 
 export type Expr = Items;
 export type Statement = Items;
-export type Identifier = Item;
+export type Identifier = Token;
 
 export const block = (acc?: Items) =>
     (acc === void 0)
@@ -20,15 +20,6 @@ export const block = (acc?: Items) =>
 
 export const statementBoundary = alt(atom(';'), Matcher.newline, Matcher.end);
 export const exprBoundary = alt(atom(';'), atom(','), group('{', discard), Matcher.end);
-
-export interface SpawnStatement {
-    isDataspace: boolean;
-    name?: Expr;
-    initialAssertions: Expr[];
-    parentIds: Identifier[];
-    parentInits: Expr[];
-    bootProcBody: Statement;
-}
 
 export const identifier: Pattern<Identifier> = atom();
 
@@ -42,8 +33,34 @@ export function statement(acc: Items): Pattern<void> {
                                 map(statementBoundary, i => i ? acc.push(i) : void 0))));
 }
 
+export interface FacetAction {
+    implicitFacet: boolean;
+}
+
+export function facetAction<I extends FacetAction, T extends I>(
+    pattern: (scope: T) => Pattern<any>): Pattern<T>
+{
+    return i => {
+        const scope = Object.create(null);
+        scope.implicitFacet = true;
+        const p = seq(option(map(atom('.'), _ => scope.implicitFacet = false)), pattern(scope));
+        const r = p(i);
+        if (r === null) return null;
+        return [scope, r[1]];
+    };
+}
+
+export interface SpawnStatement extends FacetAction {
+    isDataspace: boolean;
+    name?: Expr;
+    initialAssertions: Expr[];
+    parentIds: Identifier[];
+    parentInits: Expr[];
+    bootProcBody: Statement;
+}
+
 export const spawn: Pattern<SpawnStatement> & { headerExpr: Pattern<Expr> } =
-    Object.assign(scope((o: SpawnStatement) => {
+    Object.assign(facetAction((o: SpawnStatement) => {
         o.isDataspace = false;
         o.initialAssertions = [];
         o.parentIds = [];
@@ -69,38 +86,50 @@ export const spawn: Pattern<SpawnStatement> & { headerExpr: Pattern<Expr> } =
         headerExpr: expr(atom(':asserting'), atom(':let')),
     });
 
-export interface FieldDeclarationStatement {
+export interface FieldDeclarationStatement extends FacetAction {
     member: Expr;
     expr?: Expr;
 }
 
+// Principal: Dataspace, but only for implementation reasons, so really Facet
 export const fieldDeclarationStatement: Pattern<FieldDeclarationStatement> =
-    scope(o => seq(atom('field'),
-                   bind(o, 'member', expr(atom('='))),
-                   option(seq(atom('='), bind(o, 'expr', expr())))));
+    facetAction(o => seq(atom('field'),
+                         bind(o, 'member', expr(atom('='))),
+                         option(seq(atom('='), bind(o, 'expr', expr()))),
+                         statementBoundary));
 
-export interface AssertionEndpointStatement {
+export interface AssertionEndpointStatement extends FacetAction {
     isDynamic: boolean,
     template: Expr,
     test?: Expr,
 }
 
+// Principal: Facet
 export const assertionEndpointStatement: Pattern<AssertionEndpointStatement> =
-    scope(o => {
+    facetAction(o => {
         o.isDynamic = true;
         return seq(atom('assert'),
                    option(map(atom(':snapshot'), _ => o.isDynamic = false)),
                    bind(o, 'template', expr(seq(atom('when'), group('(', discard)))),
-                   option(seq(atom('when'), group('(', bind(o, 'test', expr())))));
+                   option(seq(atom('when'), group('(', bind(o, 'test', expr())))),
+                   statementBoundary);
     });
 
-export const dataflowStatement: Pattern<Statement> =
-    value(o => {
-        o.value = [];
-        return seq(atom('dataflow'), statement(o.value));
-    });
+export interface StatementFacetAction extends FacetAction {
+    body: Statement;
+}
 
-export interface EventHandlerEndpointStatement {
+export function statementFacetAction(kw: Pattern<any>): Pattern<StatementFacetAction> {
+    return facetAction(o => {
+        o.body = [];
+        return seq(kw, statement(o.body));
+    });
+}
+
+// Principal: Facet
+export const dataflowStatement = statementFacetAction(atom('dataflow'));
+
+export interface EventHandlerEndpointStatement extends FacetAction {
     terminal: boolean;
     triggerType: 'dataflow' | 'start' | 'stop' | 'asserted' | 'retracted' | 'message';
     isDynamic: boolean;
@@ -108,8 +137,9 @@ export interface EventHandlerEndpointStatement {
     body: Statement;
 }
 
+// Principal: Facet
 export const eventHandlerEndpointStatement: Pattern<EventHandlerEndpointStatement> =
-    scope(o => {
+    facetAction(o => {
         o.terminal = false;
         o.isDynamic = true;
         o.body = [];
@@ -125,8 +155,9 @@ export const eventHandlerEndpointStatement: Pattern<EventHandlerEndpointStatemen
                                         atom('message')),
                                     e => e.text)),
                            option(map(atom(':snapshot'), _ => o.isDynamic = false)),
-                           bind(o, 'pattern', expr()),
-                           option(statement(o.body)))));
+                           bind(o, 'pattern', expr(atom('=>'))),
+                           alt(seq(atom('=>'), statement(o.body)),
+                               statementBoundary))));
     });
 
 export interface TypeDefinitionStatement {
@@ -136,6 +167,7 @@ export interface TypeDefinitionStatement {
     wireName?: Expr;
 }
 
+// Principal: none
 export const typeDefinitionStatement: Pattern<TypeDefinitionStatement> =
     scope(o => seq(bind(o, 'expectedUse', map(alt(atom('message'), atom('assertion')), e => e.text)),
                    atom('type'),
@@ -145,24 +177,39 @@ export const typeDefinitionStatement: Pattern<TypeDefinitionStatement> =
                               bind(o, 'wireName', withoutSpace(upTo(statementBoundary))))),
                    statementBoundary));
 
-export const messageSendStatement: Pattern<Expr> =
-    value(o => seq(atom('send'), bind(o, 'value', withoutSpace(upTo(statementBoundary))), statementBoundary));
+export interface MessageSendStatement extends FacetAction {
+    expr: Expr;
+}
 
-export interface DuringStatement {
+// Principal: Facet
+export const messageSendStatement: Pattern<MessageSendStatement> =
+    facetAction(o => seq(atom('send'),
+                         bind(o, 'expr', withoutSpace(upTo(statementBoundary))),
+                         statementBoundary));
+
+export interface DuringStatement extends FacetAction {
     pattern: Expr;
     body: Statement;
 }
 
+// Principal: Facet
 export const duringStatement: Pattern<DuringStatement> =
-    scope(o => {
+    facetAction(o => {
         o.body = [];
         return seq(atom('during'),
                    bind(o, 'pattern', expr()),
                    statement(o.body));
     });
 
-export const reactStatement: Pattern<Statement> =
+// Principal: Facet
+export const reactStatement = statementFacetAction(atom('react'));
+
+// Principal: none
+export const bootStatement: Pattern<Statement> =
     value(o => {
         o.value = [];
-        return seq(atom('react'), statement(o.value));
+        return seq(atom('boot'), statement(o.value));
     });
+
+// Principal: Facet
+export const stopStatement = statementFacetAction(atom('stop'));

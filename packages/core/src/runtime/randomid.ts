@@ -38,6 +38,6 @@ export function randomId(byteCount: number, hexOutput: boolean = false): string 
     if (hexOutput) {
         return Bytes.from(buf).toHex();
     } else {
-        return _btoa(String.fromCharCode.apply(null, buf)).replace(/=/g,'');
+        return _btoa(String.fromCharCode.apply(null, buf as unknown as number[])).replace(/=/g,'');
     }
 }
