@@ -87,16 +87,22 @@ export const spawn: Pattern<SpawnStatement> & { headerExpr: Pattern<Expr> } =
     });
 
 export interface FieldDeclarationStatement extends FacetAction {
-    member: Expr;
-    expr?: Expr;
+    target: Expr;
+    property: { name: Identifier } | { expr: Expr };
+    init?: Expr;
 }
 
 // Principal: Dataspace, but only for implementation reasons, so really Facet
 export const fieldDeclarationStatement: Pattern<FieldDeclarationStatement> =
-    facetAction(o => seq(atom('field'),
-                         bind(o, 'member', expr(atom('='))),
-                         option(seq(atom('='), bind(o, 'expr', expr()))),
-                         statementBoundary));
+    facetAction(o => {
+        const prop = alt(seq(atom('.'), map(identifier, name => o.property = {name})),
+                         seq(group('[', map(expr(), expr => o.property = {expr}))));
+        return seq(atom('field'),
+                   bind(o, 'target', expr(seq(prop, alt(atom('='), statementBoundary)))),
+                   prop,
+                   option(seq(atom('='), bind(o, 'init', expr()))),
+                   statementBoundary);
+    });
 
 export interface AssertionEndpointStatement extends FacetAction {
     isDynamic: boolean,

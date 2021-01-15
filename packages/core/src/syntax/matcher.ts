@@ -11,7 +11,8 @@ export type Pattern<T> = (i: List<Item>) => PatternResult<T>;
 export const noItems = new ArrayList<Item>([]);
 
 export const fail: Pattern<never> = _i => null;
-export const succeed: Pattern<void> = i => [void 0, i];
+export function succeed<T>(t: T): Pattern<T> { return i => [t, i]; }
+
 export const discard: Pattern<void> = _i => [void 0, noItems];
 export const rest: Pattern<Items> = i => [i.toArray(), noItems];
 export const end: Pattern<void> = i => atEnd(i) ? [void 0, noItems] : null;

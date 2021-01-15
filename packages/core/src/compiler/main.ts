@@ -51,29 +51,13 @@ export function main(argv: string[]) {
         expandFacetAction(
             G.fieldDeclarationStatement,
             s => {
-                function isArrayProp(): [S.Substitution, S.Substitution] | null {
-                    if (s.member.length === 0) return null;
-                    const x = s.member[s.member.length - 1];
-                    if (!S.isGroup(x)) return null;
-                    if (x.start.text !== '[') return null;
-                    return [s.member.slice(0, s.member.length - 1), x.items];
-                }
-                function isSimpleProp(): [S.Substitution, S.Substitution] | null {
-                    if (s.member.length < 2) return null;
-                    const r = S.value<G.Identifier>(o => S.seq(S.atom('.'), S.bind(o, 'value', G.identifier)))(
-                        new ArrayList(s.member, s.member.length - 2));
-                    if (r === null) return null;
-                    const id = r[0];
-                    return [s.member.slice(0, s.member.length - 2),
-                            [ { start: id.start,
-                                end: id.end,
-                                type: S.TokenType.STRING,
-                                text: JSON.stringify(id.text) } ]];
-                }
-                const [obj, prop] = isArrayProp()
-                    ?? isSimpleProp()
-                    ?? ["__SYNDICATE__.INVALID_PROPERTY_SYNTAX", "''"];
-                return macro.template()`declareField(${obj}, ${prop}, ${s.expr ?? 'void 0'});`;
+                const prop = ('name' in s.property)
+                    ? [ { start: s.property.name.start,
+                          end: s.property.name.end,
+                          type: S.TokenType.STRING,
+                          text: JSON.stringify(s.property.name.text) } ]
+                    : s.property.expr;
+                return macro.template()`declareField(${s.target}, ${prop}, ${s.init ?? 'void 0'});`;
             });
         expandFacetAction(
             G.assertionEndpointStatement,
