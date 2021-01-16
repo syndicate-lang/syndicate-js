@@ -60,11 +60,11 @@ export function boot(thisFacet) {
   thisFacet.spawn('client', function (thisFacet) {
     thisFacet.addEndpoint(() => {
       let analysis = Skeleton.analyzeAssertion(BoxState(_$));
-      analysis.callback = thisFacet.wrap((thisFacet, evt, vs) => {
+      analysis.callback = thisFacet.wrap((thisFacet, evt, [v]) => {
         if (evt === Skeleton.EventType.ADDED) {
           thisFacet.scheduleScript(() => {
-            // console.log('client sending SetBox', vs[0] + 1);
-            thisFacet.send(SetBox(vs[0] + 1));
+            // console.log('client sending SetBox', v + 1);
+            thisFacet.send(SetBox(v + 1));
           });
         }
       });

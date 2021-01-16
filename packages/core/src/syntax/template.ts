@@ -1,7 +1,6 @@
 import { Items, TokenType } from './tokens.js';
 import { Pos, startPos } from './position.js';
-import { StringScanner } from './scanner.js';
-import { LaxReader } from './reader.js';
+import { laxRead } from './reader.js';
 import * as M from './matcher.js';
 
 const substPat = M.scope((o: { pos: Pos }) =>
@@ -11,7 +10,7 @@ const substPat = M.scope((o: { pos: Pos }) =>
 export type Substitution = Items | string;
 
 function toItems(s: Substitution, pos: Pos): Items {
-    return typeof s === 'string' ? [{ type: TokenType.ATOM, text: s, start: pos, end: pos }] : s;
+    return typeof s === 'string' ? laxRead(s) : s;
 }
 
 export class Templates {
@@ -32,10 +31,10 @@ export class Templates {
                 }
                 this.sources[start.name] = source;
             }
-            const reader = new LaxReader(new StringScanner(start, source));
-            reader.scanner.addDelimiters('$');
             let i = 0;
-            return M.replace(reader.readToEnd(), substPat, sub => toItems(vars[i++], sub.pos));
+            return M.replace(laxRead(source, { start, extraDelimiters: '$' }),
+                             substPat,
+                             sub => toItems(vars[i++], sub.pos));
         };
     }
 
@@ -53,6 +52,12 @@ export function joinItems(itemss: Items[], separator0: Substitution): Items {
     }
     return acc;
 }
+
+export function commaJoin(itemss: Items[]): Items {
+    return joinItems(itemss, ', ');
+}
+
+export const anonymousTemplate = (new Templates()).template();
 
 // const lib = new Templates();
 // const t = (o: {xs: Items}) => lib.template('testTemplate')`YOYOYOYO ${o.xs}><`;

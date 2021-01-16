@@ -1,5 +1,6 @@
 import { TokenType, Token, Group, Item, Items } from './tokens.js';
-import { Scanner } from './scanner.js';
+import { Pos, startPos } from './position.js';
+import { Scanner, StringScanner } from './scanner.js';
 
 function matchingParen(c: string): string | null {
     switch (c) {
@@ -121,4 +122,18 @@ export class LaxReader implements IterableIterator<Item> {
             return { done: false, value: i };
         }
     }
+}
+
+export interface LaxReadOptions {
+    start?: Pos,
+    name?: string,
+    extraDelimiters?: string,
+}
+
+export function laxRead(source: string, options: LaxReadOptions = {}): Items {
+    const start = options.start ?? startPos(options.name ?? null);
+    const scanner = new StringScanner(start, source);
+    if (options.extraDelimiters) scanner.addDelimiters(options.extraDelimiters);
+    const reader = new LaxReader(scanner);
+    return reader.readToEnd();
 }

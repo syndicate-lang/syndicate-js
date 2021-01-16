@@ -21,6 +21,7 @@ export * from 'preserves';
 export * from './runtime/randomid.js';
 export * from './runtime/assertions.js';
 export * from './runtime/bag.js';
+export * as API from './runtime/api.js';
 export * as Skeleton from './runtime/skeleton.js';
 export * from './runtime/dataspace.js';
 export * from './runtime/ground.js';

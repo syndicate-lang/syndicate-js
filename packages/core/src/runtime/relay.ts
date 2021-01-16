@@ -71,7 +71,6 @@ export class NestedDataspace extends Dataspace {
                         constPaths: h.constPaths,
                         constVals: h.constVals.map(v => (v as Record)[0]),
                         capturePaths: h.capturePaths.map(p => p.slice(1)),
-                        assertion,
                         callback
                     }
                     : {
@@ -79,7 +78,6 @@ export class NestedDataspace extends Dataspace {
                         constPaths: h.constPaths.map(p => p.slice(1)),
                         constVals: h.constVals,
                         capturePaths: h.capturePaths.map(p => p.slice(1)),
-                        assertion,
                         callback
                     });
             return { assertion, analysis };

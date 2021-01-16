@@ -17,12 +17,14 @@
 //---------------------------------------------------------------------------
 
 import { IdentitySet } from './idcoll.js';
-import { is, Value, Record, Set, Dictionary, canonicalString, preserves } from 'preserves';
+import { is, Value, Record, Set, Dictionary, canonicalString, preserves, RecordConstructorInfo } from 'preserves';
 
 import { Bag, ChangeDescription } from './bag.js';
 import { Discard, Capture, Observe } from './assertions.js';
 
 import * as Stack from './stack.js';
+
+import { Path, NonEmptySkeleton, Skeleton } from './api.js';
 
 export enum EventType {
     ADDED = +1,
@@ -33,15 +35,12 @@ export enum EventType {
 export type HandlerCallback = (eventType: EventType, bindings: Array<Value>) => void;
 
 export type Shape = string;
-export type NonEmptySkeleton = { shape: Shape, members: Skeleton[] };
-export type Skeleton = null | NonEmptySkeleton;
-export type Path = Array<number>;
+
 export interface Analysis {
-    skeleton: Skeleton;
+    skeleton: Skeleton<Shape>;
     constPaths: Array<Path>;
     constVals: Array<Value>;
     capturePaths: Array<Path>;
-    assertion: Value;
     callback?: HandlerCallback;
 }
 
@@ -159,13 +158,13 @@ class Node {
         this.continuation = continuation;
     }
 
-    extend(skeleton: Skeleton): Continuation {
+    extend(skeleton: Skeleton<Shape>): Continuation {
         const path: Path = [];
 
         function walkNode(node: Node,
                           popCount: number,
                           index: number,
-                          skeleton: Skeleton): [number, Node]
+                          skeleton: Skeleton<Shape>): [number, Node]
         {
             if (skeleton === null) {
                 return [popCount, node];
@@ -280,10 +279,13 @@ class Handler {
     }
 }
 
-function classOf(v: any): string {
+export function constructorInfoSignature(ci: RecordConstructorInfo): string {
+    return canonicalString(ci.label) + '/' + ci.arity;
+}
+
+function classOf(v: any): Shape {
     if (Record.isRecord(v)) {
-        const ci = v.getConstructorInfo();
-        return canonicalString(ci.label) + '/' + ci.arity;
+        return constructorInfoSignature(v.getConstructorInfo());
     } else if (Array.isArray(v)) {
         return '' + v.length;
     } else {
@@ -312,7 +314,7 @@ export function analyzeAssertion(a: Value): Analysis {
     const capturePaths: Path[] = [];
     const path: Path = [];
 
-    function walk(a: Value): Skeleton {
+    function walk(a: Value): Skeleton<Shape> {
         if (Capture.isClassOf(a)) {
             // NB. isUnrestricted relies on the specific order that
             // capturePaths is computed here.
@@ -329,7 +331,7 @@ export function analyzeAssertion(a: Value): Analysis {
             let aa = a as Array<Value>;
             // ^ We know this is safe because it's either Record or Array
             let arity = aa.length;
-            let result: NonEmptySkeleton = { shape: cls, members: [] };
+            let result: NonEmptySkeleton<Shape> = { shape: cls, members: [] };
             path.push(0);
             for (let i = 0; i < arity; i++) {
                 path[path.length - 1] = i;
@@ -346,7 +348,7 @@ export function analyzeAssertion(a: Value): Analysis {
 
     let skeleton = walk(a);
 
-    return { skeleton, constPaths, constVals, capturePaths, assertion: Observe(a) };
+    return { skeleton, constPaths, constVals, capturePaths };
 }
 
 export function match(p: Value, v: Value): Array<Value> | false {

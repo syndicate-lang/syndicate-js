@@ -24,18 +24,18 @@ const stdin = genUuid('stdin');
 const stdout = genUuid('stdout');
 spawn named 'stdioServer' {
   during Observe(S.Stream(stdin, S.Readable()))
-    spawn S.readableStreamBehaviour(stdin, process.stdin);
+    => spawn S.readableStreamBehaviour(stdin, process.stdin);
   during Observe(S.Stream(stdout, S.Writable()))
-    spawn S.writableStreamBehaviour(stdout, process.stdout);
+    => spawn S.writableStreamBehaviour(stdout, process.stdout);
 }
 
 spawn named 'chatclient' {
   const id = genUuid('tcpconn');
   assert S.Stream(id, S.Outgoing(S.TcpAddress('localhost', 5999)));
-  stop on message S.Stream(id, S.Rejected($err)) {
+  stop on message S.Stream(id, S.Rejected($err)) => {
     console.error('Connection rejected', err);
   }
-  stop on message S.Stream(id, S.Accepted()) {
+  stop on message S.Stream(id, S.Accepted()) => {
     react {
       stop on retracted S.Stream(id, S.Duplex());
       stop on retracted S.Stream(stdin, S.Readable());
@@ -44,10 +44,10 @@ spawn named 'chatclient' {
       assert S.Stream(stdin, S.BackPressure(id));
       assert S.Stream(id, S.BackPressure(stdout));
 
-      on message S.Stream(stdin, S.Line($line)) {
+      on message S.Stream(stdin, S.Line($line)) => {
         send S.Stream(id, S.Push(line.fromUtf8() + '\n', false));
       }
-      on message S.Stream(id, S.Line($line)) {
+      on message S.Stream(id, S.Line($line)) => {
         send S.Stream(stdout, S.Push(line.fromUtf8() + '\n', false));
       }
     }

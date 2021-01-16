@@ -1,8 +1,17 @@
 import fs from 'fs';
 import * as S from '../syntax/index.js';
-import { ArrayList, Substitution } from '../syntax/index.js';
+import { Substitution } from '../syntax/index.js';
 import * as G from './grammar.js';
 import { BootProc } from './internals.js';
+
+export function stripShebang(items: S.Items): S.Items {
+    if ((items.length > 0) &&
+        S.isToken(items[0]) &&
+        items[0].text.startsWith('#!')) {
+        while (items.length > 0 && !S.isTokenType(items[0], S.TokenType.NEWLINE)) items.shift();
+    }
+    return items;
+}
 
 export function main(argv: string[]) {
     let [ inputFilename ] = argv.slice(2);
@@ -11,12 +20,12 @@ export function main(argv: string[]) {
 
     const scanner = new S.StringScanner(S.startPos(inputFilename), source);
     const reader = new S.LaxReader(scanner);
-    let tree = reader.readToEnd();
+    let tree = stripShebang(reader.readToEnd());
     let macro = new S.Templates();
 
     tree = macro.template()`import * as __SYNDICATE__ from '@syndicate/core';\n${tree}`;
 
-    let passNumber = 1;
+    let passNumber = 0;
     let expansionNeeded = true;
     function expand<T>(p: S.Pattern<T>, f: (t: T) => S.Items) {
         tree = S.replace(tree, p, t => {
@@ -33,10 +42,22 @@ export function main(argv: string[]) {
         expand(p, t => macro.template()`${receiverFor(t)}${f(t)}`);
     }
 
+    function terminalWrap(isTerminal: boolean, body: G.Statement): G.Statement {
+        if (isTerminal) {
+            return macro.template()`thisFacet._stop(function (thisFacet) {${body}})`
+        } else {
+            return body;
+        }
+    }
+
     while (expansionNeeded) {
-        if (passNumber >= 128) {
+        if (++passNumber >= 128) {
             throw new Error(`Too many compiler passes (${passNumber})!`);
         }
+
+        // console.log(`\n\n\n======================================== PASS ${passNumber}\n`);
+        // console.log(S.itemText(tree, { color: true, missing: '\x1b[41m□\x1b[0m' }));
+
         expansionNeeded = false;
         expandFacetAction(
             G.spawn,
@@ -44,7 +65,7 @@ export function main(argv: string[]) {
                 let proc = macro.template()`function (thisFacet) {${s.bootProcBody}}`;
                 if (s.isDataspace) proc = macro.template()`__SYNDICATE__.inNestedDataspace(${proc})`;
                 let assertions = (s.initialAssertions.length > 0)
-                    ? macro.template()`, new __SYNDICATE__.Set([${S.joinItems(s.initialAssertions, ', ')}])`
+                    ? macro.template()`, new __SYNDICATE__.Set([${S.commaJoin(s.initialAssertions)}])`
                     : ``;
                 return macro.template()`_spawn(${s.name ?? 'null'}, ${proc}${assertions});`;
             });
@@ -61,18 +82,76 @@ export function main(argv: string[]) {
             });
         expandFacetAction(
             G.assertionEndpointStatement,
-            s => macro.template()`addEndpoint(thisFacet => (${s.test ?? 'true'}) && (${s.template}), ${''+s.isDynamic});`);
+            s => {
+                if (s.test == void 0) {
+                    return macro.template()`addEndpoint(thisFacet => ({ assertion: ${s.template}, analysis: null }));`;
+                } else {
+                    return macro.template()`addEndpoint(thisFacet => (${s.test ?? 'true'})
+                                              ? ({ assertion: ${s.template}, analysis: null })
+                                              : ({ assertion: void 0, analysis: null }), ${''+s.isDynamic});`;
+                }
+            });
         expandFacetAction(
             G.dataflowStatement,
             s => macro.template()`addDataflow(function (thisFacet) {${s.body}});`);
         expandFacetAction(
             G.eventHandlerEndpointStatement,
             s => {
-                return macro.template()`EVENTHANDLER[${`${s.terminal}/${s.isDynamic}`}][${s.triggerType}][${s.pattern ?? []}][${s.body}]`;
+                switch (s.triggerType) {
+                    case 'dataflow':
+                        return macro.template()`withSelfDo(function (thisFacet) { dataflow { if (${s.predicate}) { ${terminalWrap(s.terminal, s.body)} } } });`;
+
+                    case 'start':
+                    case 'stop': {
+                        const m = s.triggerType === 'start' ? 'addStartScript' : 'addStopScript';
+                        return macro.template()`${m}(function (thisFacet) {${s.body}});`;
+                    }
+
+                    case 'asserted':
+                    case 'retracted':
+                    case 'message': {
+                        const sa = G.compilePattern(s.pattern);
+                        const expectedEvt = ({
+                            'asserted': 'ADDED',
+                            'retracted': 'REMOVED',
+                            'message': 'MESSAGE',
+                        })[s.triggerType];
+                        return macro.template()`addEndpoint(thisFacet => ({
+  assertion: __SYNDICATE__.Observe(${sa.assertion}),
+  analysis: {
+    skeleton: ${sa.skeleton},
+    constPaths: ${JSON.stringify(sa.constPaths)},
+    constVals: [${S.commaJoin(sa.constVals)}],
+    capturePaths: ${JSON.stringify(sa.capturePaths)},
+    callback: thisFacet.wrap((thisFacet, __Evt, [${S.commaJoin(sa.captureIds.map(i=>[i]))}]) => {
+      if (__Evt === __SYNDICATE__.Skeleton.EventType.${expectedEvt}) {
+        thisFacet.scheduleScript(() => {${terminalWrap(s.terminal, s.body)}});
+      }
+    })
+  }
+}), ${'' + s.isDynamic});`;
+                    }
+                }
             });
         expandFacetAction(
             G.duringStatement,
-            s => macro.template()`DURING[${s.pattern}][${s.body}]`);
+            s => {
+                // TODO: spawn during
+                const sa = G.compilePattern(s.pattern);
+                return macro.template()`withSelfDo(function (thisFacet) {
+  const _Facets = new __SYNDICATE__.Dictionary();
+  on asserted ${G.patternText(s.pattern)} => react {
+    _Facets.set([${S.commaJoin(sa.captureIds.map(t=>[t]))}], thisFacet);
+    dataflow void 0; // TODO: horrible hack to keep the facet alive if no other endpoints
+    ${s.body}
+  }
+  on retracted ${G.patternText(s.pattern)} => {
+    const _Key = [${S.commaJoin(sa.captureIds.map(t=>[t]))}];
+    _Facets.get(_Key)._stop();
+    _Facets.delete(_Key);
+  }
+});`;
+            });
         expand(
             G.typeDefinitionStatement,
             s => {
@@ -94,7 +173,8 @@ export function main(argv: string[]) {
             s => macro.template()`_stop(function (thisFacet) {${s.body}});`);
     }
 
-    console.log(S.itemText(tree, { color: true, missing: '\x1b[41m□\x1b[0m' }));
+    // console.log(`\n\n\n======================================== FINAL OUTPUT\n`);
+    console.log(S.itemText(tree));
 
     const cw = new S.CodeWriter(inputFilename);
     cw.emit(tree);

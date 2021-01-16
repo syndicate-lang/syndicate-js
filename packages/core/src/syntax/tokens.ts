@@ -60,12 +60,25 @@ export type ItemTextOptions = {
     color?: boolean,
 };
 
-export function itemText(i: Items, options: ItemTextOptions = {}): string {
-    const walkItems = (i: Items): string => i.map(walk).join('');
-    const walk = (i: Item): string => {
+export function foldItems<T>(i: Items,
+                             fToken: (t: Token) => T,
+                             fGroup: (start: Token, end: Token | null, t: T, k: (t: Token) => T) => T,
+                             fItems: (ts: T[]) => T): T
+{
+    const walk = (i: Item): T => {
         if (isGroup(i)) {
-            return walk(i.start) + walkItems(i.items) + (i.end ? walk(i.end) : options.missing ?? '');
+            return fGroup(i.start, i.end, fItems(i.items.map(walk)), walk);
         } else {
+            return fToken(i);
+        }
+    };
+    return fItems(i.map(walk));
+}
+
+export function itemText(items: Items, options: ItemTextOptions = {}): string {
+    return foldItems(
+        items,
+        i => {
             if (options.color ?? false) {
                 switch (i.type) {
                     case TokenType.SPACE:
@@ -79,7 +92,7 @@ export function itemText(i: Items, options: ItemTextOptions = {}): string {
             } else {
                 return i.text;
             }
-        }
-    };
-    return walkItems(i);
+        },
+        (start, end, inner, k) => k(start) + inner + (end ? k(end) : options.missing ?? ''),
+        strs => strs.join(''));
 }

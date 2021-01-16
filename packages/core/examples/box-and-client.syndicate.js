@@ -28,13 +28,7 @@ boot {
   spawn named 'box' {
     field this.value = 0;
     assert BoxState(this.value);
-    dataflow {
-      if (this.value === N) {
-        stop {
-          console.log('terminated box root facet');
-        }
-      }
-    }
+    stop on (this.value === N) console.log('terminated box root facet');
     on message SetBox($v) => this.value = v;
   }
 
@@ -46,3 +40,5 @@ boot {
   thisFacet.actor.dataspace.addStopHandler(() =>
     console.timeEnd('box-and-client-' + N.toString()));
 }
+
+new __SYNDICATE__.Ground(__SYNDICATE__bootProc).start();

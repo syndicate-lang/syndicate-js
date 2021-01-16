@@ -8,6 +8,13 @@ import { List, ArrayList, atEnd, notAtEnd } from './list.js';
 export type PatternResult<T> = [T, List<Item>] | null;
 export type Pattern<T> = (i: List<Item>) => PatternResult<T>;
 
+export function match<T,F>(p: Pattern<T>, items: Items, failure: F): T | F {
+    const r = p(new ArrayList(items));
+    if (r === null) return failure;
+    if (notAtEnd(r[1])) return failure;
+    return r[0];
+}
+
 export const noItems = new ArrayList<Item>([]);
 
 export const fail: Pattern<never> = _i => null;
@@ -15,7 +22,7 @@ export function succeed<T>(t: T): Pattern<T> { return i => [t, i]; }
 
 export const discard: Pattern<void> = _i => [void 0, noItems];
 export const rest: Pattern<Items> = i => [i.toArray(), noItems];
-export const end: Pattern<void> = i => atEnd(i) ? [void 0, noItems] : null;
+export const end: Pattern<void> = i => atEnd(skipSpace(i)) ? [void 0, noItems] : null;
 export const pos: Pattern<Pos> = i =>
     notAtEnd(i)
     ? [isGroup(i.item) ? i.item.start.start : i.item.start, i]
@@ -55,7 +62,7 @@ export function seq(... patterns: Pattern<any>[]): Pattern<void> {
     };
 }
 
-export function alt(... alts: Pattern<any>[]): Pattern<any> {
+export function alt<T>(... alts: Pattern<T>[]): Pattern<T> {
     return i => {
         for (const a of alts) {
             const r = a(i);
@@ -65,7 +72,7 @@ export function alt(... alts: Pattern<any>[]): Pattern<any> {
     };
 }
 
-export function scope<I, T extends I, R>(pf: (scope: T) => Pattern<R>): Pattern<T> {
+export function scope<T>(pf: (scope: T) => Pattern<any>): Pattern<T> {
     return i => {
         const scope = Object.create(null);
         const r = pf(scope)(i);
@@ -107,8 +114,17 @@ export function map<T, R>(p: Pattern<T>, f: (t: T) => R): Pattern<R> {
     };
 }
 
+export function mapm<T, R>(p: Pattern<T>, f: (t: T) => Pattern<R>): Pattern<R> {
+    return i => {
+        const r = p(i);
+        if (r === null) return null;
+        return f(r[0])(r[1]);
+    };
+}
+
 export interface ItemOptions {
     skipSpace?: boolean, // default: true
+    advance?: boolean, // default: true
 }
 
 export interface GroupOptions extends ItemOptions {
@@ -127,18 +143,22 @@ export function group<T>(opener: string, items: Pattern<T>, options: GroupOption
         const r = items(new ArrayList(i.item.items));
         if (r === null) return null;
         if (!atEnd(r[1])) return null;
-        return [r[0], i.next];
+        return [r[0], (options.advance ?? true) ? i.next : i];
     };
 }
 
-export function atom(text?: string | undefined, options: TokenOptions = {}): Pattern<Token> {
+export function atomString<T extends string>(text: T, options: TokenOptions = {}): Pattern<T> {
+    return map(atom(text, options), t => text);
+}
+
+export function atom(text?: string, options: TokenOptions = {}): Pattern<Token> {
     return i => {
         if (options.skipSpace ?? true) i = skipSpace(i);
         if (!notAtEnd(i)) return null;
         if (!isToken(i.item)) return null;
         if (i.item.type !== (options.tokenType ?? TokenType.ATOM)) return null;
         if (text !== void 0 && i.item.text !== text) return null;
-        return [i.item, i.next];
+        return [i.item, (options.advance ?? true) ? i.next : i];
     }
 }
 
@@ -146,7 +166,7 @@ export function anything(options: ItemOptions = {}): Pattern<Item> {
     return i => {
         if (options.skipSpace ?? true) i = skipSpace(i);
         if (!notAtEnd(i)) return null;
-        return [i.item, i.next];
+        return [i.item, (options.advance ?? true) ? i.next : i];
     };
 }
 
@@ -161,6 +181,29 @@ export function upTo(p: Pattern<any>): Pattern<Items> {
             i = i.next;
         }
         return null;
+    };
+}
+
+export function separatedBy<T>(itemPattern: Pattern<T>, separator: Pattern<any>): Pattern<T[]> {
+    return i => {
+        const acc: T[] = [];
+        if (end(i) !== null) return [acc, noItems];
+        while (true) {
+            {
+                const r = itemPattern(i);
+                if (r === null) return null;
+                acc.push(r[0]);
+                i = r[1];
+            }
+            {
+                const r = separator(i);
+                if (r === null) {
+                    if (end(i) !== null) return [acc, noItems];
+                    return null;
+                }
+                i = r[1];
+            }
+        }
     };
 }
 

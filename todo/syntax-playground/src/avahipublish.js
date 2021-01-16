@@ -10,6 +10,7 @@ spawn named 'test' {
 
   during M.Discovered(M.Service($name, '_syndicate+testing._tcp'),
                       $host, $port, _, $addr, "IPv4", $ifName)
+    =>
   {
     on start { this.count++; console.log('+', name, host, port, addr, ifName); }
     on stop  { this.count--; console.log('-', name, host, port, addr, ifName); }

@@ -8,7 +8,7 @@ export abstract class Scanner implements IterableIterator<Token> {
     delimiters = ' \t\n\r\'"`.,;()[]{}/';
 
     constructor(pos: Pos) {
-        this.pos = pos;
+        this.pos = { ... pos };
     }
 
     [Symbol.iterator](): IterableIterator<Token> {

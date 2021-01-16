@@ -89,7 +89,7 @@ export abstract class Dataspace {
         return this.ground().backgroundTask();
     }
 
-    runTasks() { // TODO: rename?
+    runTasks(): boolean { // TODO: rename?
         this.runPendingTasks();
         this.performPendingActions();
         return this.runnable.length > 0 || this.pendingTurns.length > 0;
@@ -683,6 +683,10 @@ export class Facet {
 
     addChildFacet(bootProc: Script<void>) {
         this.actor.addFacet(this, bootProc, true);
+    }
+
+    withSelfDo(t: Script<void>) {
+        t(this);
     }
 }
 

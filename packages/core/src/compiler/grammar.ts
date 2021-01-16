@@ -1,13 +1,15 @@
 import {
-    Token, Items,
+    TokenType, Token, Items,
     Pattern,
+    foldItems, match, anonymousTemplate as template, commaJoin,
+    startPos,
 
-    scope, bind, seq, alt, upTo, atom, group, exec,
-    repeat, option, withoutSpace, map, rest, discard,
-    value,
-
+    scope, bind, seq, alt, upTo, atom, atomString, group, exec,
+    repeat, option, withoutSpace, map, mapm, rest, discard,
+    value, succeed, fail, separatedBy, anything,
 } from '../syntax/index.js';
 import * as Matcher from '../syntax/matcher.js';
+import { Path, Skeleton } from '../runtime/api.js';
 
 export type Expr = Items;
 export type Statement = Items;
@@ -18,8 +20,8 @@ export const block = (acc?: Items) =>
     ? group('{', discard)
     : group('{', map(rest, items => acc.push(... items)));
 
-export const statementBoundary = alt(atom(';'), Matcher.newline, Matcher.end);
-export const exprBoundary = alt(atom(';'), atom(','), group('{', discard), Matcher.end);
+export const statementBoundary = alt<any>(atom(';'), Matcher.newline, Matcher.end);
+export const exprBoundary = alt<any>(atom(';'), atom(','), group('{', discard), Matcher.end);
 
 export const identifier: Pattern<Identifier> = atom();
 
@@ -28,9 +30,9 @@ export function expr(... extraStops: Pattern<any>[]): Pattern<Expr> {
 }
 
 export function statement(acc: Items): Pattern<void> {
-    return alt(group('{', map(rest, items => acc.push(... items))),
-               withoutSpace(seq(map(upTo(statementBoundary), items => acc.push(... items)),
-                                map(statementBoundary, i => i ? acc.push(i) : void 0))));
+    return alt<any>(group('{', map(rest, items => acc.push(... items))),
+                    withoutSpace(seq(map(upTo(statementBoundary), items => acc.push(... items)),
+                                     map(statementBoundary, i => i ? acc.push(i) : void 0))));
 }
 
 export interface FacetAction {
@@ -135,13 +137,27 @@ export function statementFacetAction(kw: Pattern<any>): Pattern<StatementFacetAc
 // Principal: Facet
 export const dataflowStatement = statementFacetAction(atom('dataflow'));
 
-export interface EventHandlerEndpointStatement extends FacetAction {
+export interface GenericEventEndpointStatement extends StatementFacetAction {
     terminal: boolean;
-    triggerType: 'dataflow' | 'start' | 'stop' | 'asserted' | 'retracted' | 'message';
     isDynamic: boolean;
-    pattern?: Expr;
-    body: Statement;
 }
+
+export interface DataflowEndpointStatement extends GenericEventEndpointStatement {
+    triggerType: 'dataflow';
+    predicate: Expr;
+}
+
+export interface PseudoEventEndpointStatement extends GenericEventEndpointStatement {
+    triggerType: 'start' | 'stop';
+}
+
+export interface AssertionEventEndpointStatement extends GenericEventEndpointStatement {
+    triggerType: 'asserted' | 'retracted' | 'message';
+    pattern: ValuePattern;
+}
+
+export type EventHandlerEndpointStatement =
+    DataflowEndpointStatement | PseudoEventEndpointStatement | AssertionEventEndpointStatement;
 
 // Principal: Facet
 export const eventHandlerEndpointStatement: Pattern<EventHandlerEndpointStatement> =
@@ -151,19 +167,23 @@ export const eventHandlerEndpointStatement: Pattern<EventHandlerEndpointStatemen
         o.body = [];
         return seq(option(map(atom('stop'), _ => o.terminal = true)),
                    atom('on'),
-                   alt(map(group('(', bind(o, 'pattern', expr())), _ => o.triggerType = 'dataflow'),
-                       seq(bind(o, 'triggerType',
-                                map(alt(atom('start'), atom('stop')), e => e.text)),
-                           option(statement(o.body))),
-                       seq(bind(o, 'triggerType',
-                                map(alt(atom('asserted'),
-                                        atom('retracted'),
-                                        atom('message')),
-                                    e => e.text)),
-                           option(map(atom(':snapshot'), _ => o.isDynamic = false)),
-                           bind(o, 'pattern', expr(atom('=>'))),
-                           alt(seq(atom('=>'), statement(o.body)),
-                               statementBoundary))));
+                   alt<any>(seq(map(group('(', bind(o as DataflowEndpointStatement, 'predicate',
+                                                    expr())),
+                                    _ => o.triggerType = 'dataflow'),
+                                option(statement(o.body))),
+                            mapm(seq(bind(o, 'triggerType',
+                                          alt(atomString('start'), atomString('stop'))),
+                                     option(statement(o.body))),
+                                 v => o.terminal ? fail : succeed(v)),
+                            seq(bind(o, 'triggerType',
+                                     alt(atomString('asserted'),
+                                         atomString('retracted'),
+                                         atomString('message'))),
+                                option(map(atom(':snapshot'), _ => o.isDynamic = false)),
+                                bind(o as AssertionEventEndpointStatement, 'pattern',
+                                     valuePattern(atom('=>'))),
+                                alt<any>(seq(atom('=>'), statement(o.body)),
+                                         statementBoundary))));
     });
 
 export interface TypeDefinitionStatement {
@@ -175,7 +195,7 @@ export interface TypeDefinitionStatement {
 
 // Principal: none
 export const typeDefinitionStatement: Pattern<TypeDefinitionStatement> =
-    scope(o => seq(bind(o, 'expectedUse', map(alt(atom('message'), atom('assertion')), e => e.text)),
+    scope(o => seq(bind(o, 'expectedUse', alt(atomString('message'), atomString('assertion'))),
                    atom('type'),
                    bind(o, 'label', identifier),
                    group('(', bind(o, 'fields', repeat(identifier, { separator: atom(',') }))),
@@ -194,7 +214,7 @@ export const messageSendStatement: Pattern<MessageSendStatement> =
                          statementBoundary));
 
 export interface DuringStatement extends FacetAction {
-    pattern: Expr;
+    pattern: ValuePattern;
     body: Statement;
 }
 
@@ -203,8 +223,9 @@ export const duringStatement: Pattern<DuringStatement> =
     facetAction(o => {
         o.body = [];
         return seq(atom('during'),
-                   bind(o, 'pattern', expr()),
-                   statement(o.body));
+                   bind(o, 'pattern', valuePattern(atom('=>'))),
+                   alt(seq(atom('=>'), statement(o.body)),
+                       statementBoundary));
     });
 
 // Principal: Facet
@@ -219,3 +240,230 @@ export const bootStatement: Pattern<Statement> =
 
 // Principal: Facet
 export const stopStatement = statementFacetAction(atom('stop'));
+
+//---------------------------------------------------------------------------
+// Syntax of patterns over Value, used in endpoints
+
+export interface PCapture {
+    type: 'PCapture',
+    binder: Identifier,
+    inner: ValuePattern,
+}
+
+export interface PDiscard {
+    type: 'PDiscard',
+}
+
+export interface PConstructor {
+    type: 'PConstructor',
+    ctor: Expr,
+    arguments: ValuePattern[],
+}
+
+export interface PConstant {
+    type: 'PConstant',
+    value: Expr,
+}
+
+export interface PArray {
+    type: 'PArray',
+    elements: ValuePattern[],
+}
+
+export type ValuePattern = PCapture | PDiscard | PConstructor | PConstant | PArray;
+
+const pCaptureId: Pattern<Identifier> =
+    mapm(identifier, i => i.text.startsWith('$')
+        ? succeed({ ... i, text: i.text.slice(1) })
+        : fail);
+
+const pDiscard: Pattern<void> = mapm(identifier, i => i.text === '_' ? succeed(void 0) : fail);
+
+function hasCapturesOrDiscards(e: Expr): boolean {
+    return foldItems(e,
+                     t => match(alt<any>(pCaptureId, pDiscard), [t], null) !== null,
+                     (_s, _e, b, _k) => b,
+                     bs => bs.some(b => b));
+}
+
+// $id - capture of discard
+// _ - discard
+//
+// expr(pat, ...) - record ctor
+// $id(pat) - nested capture
+// [pat, ...] - array pat
+//
+// expr(expr, ...) - constant
+// [expr, ...] - constant
+// other - constant
+
+interface RawCall {
+    items: Items;
+    callee: Expr;
+    arguments: Expr[];
+}
+
+function pRawCall(... extraStops: Pattern<any>[]): Pattern<RawCall> {
+    return scope((o: RawCall) => seq(bind(o, 'callee',
+                                          expr(seq(group('(', discard),
+                                                   alt(exprBoundary, ... extraStops)))),
+                                     seq(map(anything({ advance: false }),
+                                             g => o.items = [... o.callee, g]),
+                                         group('(', bind(o, 'arguments',
+                                                         separatedBy(expr(), atom(',')))))));
+}
+
+function isConstant(o: RawCall) {
+    return (!(hasCapturesOrDiscards(o.callee) || o.arguments.some(hasCapturesOrDiscards)));
+}
+
+export function valuePattern(... extraStops: Pattern<any>[]): Pattern<ValuePattern> {
+    return alt<ValuePattern>(
+        scope<PCapture>(o => {
+            o.type = 'PCapture';
+            o.inner = { type: 'PDiscard' };
+            return bind(o, 'binder', pCaptureId);
+        }),
+        scope(o => map(pDiscard, _ => o.type = 'PDiscard')),
+        mapm<RawCall, ValuePattern>(
+            pRawCall(... extraStops),
+            o => {
+                if (isConstant(o)) {
+                    return succeed({ type: 'PConstant', value: o.items });
+                } else if (hasCapturesOrDiscards(o.callee)) {
+                    const r = match(pCaptureId, o.callee, null);
+                    if (r !== null && o.arguments.length === 1)
+                    {
+                        const argPat = match(valuePattern(), o.arguments[0], null);
+                        if (argPat === null) return fail;
+                        return succeed({
+                            type: 'PCapture',
+                            inner: argPat,
+                            binder: r
+                        });
+                    } else {
+                        return fail;
+                    }
+                } else {
+                    const argPats = o.arguments.map(a => match(valuePattern(), a, null));
+                    if (argPats.some(p => p === null)) return fail;
+                    return succeed({
+                        type: 'PConstructor',
+                        ctor: o.callee,
+                        arguments: argPats as ValuePattern[]
+                    });
+                }
+            }),
+        map(expr(), e => ({ type: 'PConstant', value: e }))
+    );
+}
+
+export function patternText(p: ValuePattern): Items {
+    switch (p.type) {
+        case 'PDiscard': return template`_`;
+        case 'PConstant': return p.value;
+        case 'PCapture':
+            {
+                const binder = { ... p.binder, text: '$' + p.binder.text };
+                if (p.inner.type === 'PDiscard') {
+                    return [binder];
+                } else {
+                    return template`${[binder]}(${patternText(p.inner)})`;
+                }
+            }
+        case 'PArray': return template`[${commaJoin(p.elements.map(patternText))}]`;
+        case 'PConstructor': return template`${p.ctor}(${commaJoin(p.arguments.map(patternText))})`;
+    }
+}
+
+export interface StaticAnalysis {
+    skeleton: Expr;
+    constPaths: Path[];
+    constVals: Expr[];
+    capturePaths: Path[];
+    captureIds: Identifier[];
+    assertion: Expr;
+}
+
+const eDiscard: Expr = template`(__SYNDICATE__.Discard._instance)`;
+const eCapture = (e: Expr): Expr => template`(__SYNDICATE__.Capture(${e}))`;
+
+export function compilePattern(pattern: ValuePattern): StaticAnalysis {
+    const constPaths: Path[] = [];
+    const constVals: Expr[] = [];
+    const capturePaths: Path[] = [];
+    const captureIds: Identifier[] = [];
+
+    const currentPath: Path = [];
+
+    function walk(pattern: ValuePattern): [Skeleton<Expr>, Expr] {
+        switch (pattern.type) {
+            case 'PDiscard':
+                return [null, eDiscard];
+            case 'PCapture': {
+                capturePaths.push(currentPath.slice());
+                captureIds.push(pattern.binder);
+                const [s, a] = walk(pattern.inner);
+                return [s, eCapture(a)];
+            }
+            case 'PConstant':
+                constVals.push(pattern.value);
+                return [null, pattern.value];
+            case 'PConstructor': {
+                const skel: Skeleton<Expr> = {
+                    shape: template`__SYNDICATE__.Skeleton.constructorInfoSignature((${pattern.ctor}).constructorInfo)`,
+                    members: [],
+                };
+                const assertionArgs: Expr[] = [];
+                pattern.arguments.forEach((argPat, i) => {
+                    currentPath.push(i);
+                    const [s, a] = walk(argPat);
+                    skel.members.push(s);
+                    assertionArgs.push(a);
+                    currentPath.pop();
+                });
+                return [skel, template`(${pattern.ctor}(${commaJoin(assertionArgs)}))`];
+            }
+            case 'PArray': {
+                const skel: Skeleton<Expr> = {
+                    shape: [ {
+                        start: startPos(null),
+                        end: startPos(null),
+                        type: TokenType.STRING,
+                        text: JSON.stringify(pattern.elements.length.toString()),
+                    } ],
+                    members: []
+                };
+                const elements: Expr[] = [];
+                pattern.elements.forEach((elemPat, i) => {
+                    currentPath.push(i);
+                    const [s, a] = walk(elemPat);
+                    skel.members.push(s);
+                    elements.push(a);
+                    currentPath.pop();
+                });
+                return [skel, template`[${commaJoin(elements)}]`];
+            }
+        }
+    }
+
+    const [skeletonStructure, assertion] = walk(pattern);
+    const skeleton = renderSkeleton(skeletonStructure);
+
+    return {
+        skeleton,
+        constPaths,
+        constVals,
+        capturePaths,
+        captureIds,
+        assertion,
+    };
+}
+
+function renderSkeleton(skel: Skeleton<Expr>): Expr {
+    if (skel === null) {
+        return template`null`;
+    } else {
+        return template`({shape:${skel.shape}, members: [${commaJoin(skel.members.map(renderSkeleton))}]})`;
+    }
+}

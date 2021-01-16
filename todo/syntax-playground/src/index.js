@@ -44,9 +44,9 @@ spawn named 'view' {
     return <td>{text}</td>;
   }
 
-  on message SetSortColumn($c) { this.orderColumn = c; }
+  on message SetSortColumn($c) => this.orderColumn = c;
 
-  during Person($id, $firstName, $lastName, $address, $age) {
+  during Person($id, $firstName, $lastName, $address, $age) => {
     assert ui.context(id)
       .html('table#the-table tbody',
             <tr>{[id, firstName, lastName, address, age].map(cell)}</tr>,
@@ -55,7 +55,7 @@ spawn named 'view' {
 }
 
 spawn named 'controller' {
-  on message UI.GlobalEvent('table#the-table th', 'click', $e) {
+  on message UI.GlobalEvent('table#the-table th', 'click', $e) => {
     send SetSortColumn(JSON.parse(e.target.dataset.column));
   }
 }
@@ -64,7 +64,7 @@ spawn named 'alerter' {
   let ui = new UI.Anchor();
   assert ui.html('#extra', <button>Click me</button>);
 
-  on message UI.UIEvent(ui.fragmentId, '.', 'click', $e) {
+  on message UI.UIEvent(ui.fragmentId, '.', 'click', $e) => {
     alert("Hello!");
   }
 }
