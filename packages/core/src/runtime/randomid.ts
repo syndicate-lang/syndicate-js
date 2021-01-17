@@ -27,17 +27,22 @@ export function _btoa(s: string): string {
     }
 }
 
-export function randomId(byteCount: number, hexOutput: boolean = false): string {
-    let buf: Uint8Array;
-    if (node_crypto.randomBytes !== void 0) {
-        buf = node_crypto.randomBytes(byteCount);
-    } else {
-        buf = new Uint8Array(byteCount);
-        crypto.getRandomValues(buf);
-    }
+function _finish(hexOutput: boolean, buf: Uint8Array): string {
     if (hexOutput) {
         return Bytes.from(buf).toHex();
     } else {
         return _btoa(String.fromCharCode.apply(null, buf as unknown as number[])).replace(/=/g,'');
     }
 }
+
+export const randomId =
+    (typeof crypto !== 'undefined' && 'getRandomValues' in crypto)
+    ? ((byteCount: number, hexOutput: boolean = false): string => {
+        const buf = new Uint8Array(byteCount);
+        crypto.getRandomValues(buf);
+        return _finish(hexOutput, buf);
+    })
+    : ((byteCount: number, hexOutput: boolean = false): string => {
+        let buf = node_crypto.randomBytes(byteCount);
+        return _finish(hexOutput, buf);
+    });

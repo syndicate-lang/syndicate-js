@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --es-module-specifier-resolution=node
+#!/usr/bin/env node
 //---------------------------------------------------------------------------
 // @syndicate-lang/core, an implementation of Syndicate dataspaces for JS.
 // Copyright (C) 2016-2021 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { Dataspace, Skeleton, Ground, Record, Discard, Capture, Observe } from '../lib/index';
+const { Dataspace, Skeleton, Ground, Record, Discard, Capture, Observe } = require('../dist/syndicate.js');
 const __ = Discard._instance;
 const _$ = Capture(__);
 
@@ -28,7 +28,7 @@ const N = 100000;
 
 console.time('box-and-client-' + N.toString());
 
-export function boot(thisFacet) {
+function boot(thisFacet) {
   thisFacet.spawn('box', function (thisFacet) {
     thisFacet.declareField(this, 'value', 0);
     thisFacet.addEndpoint(() => {
@@ -86,5 +86,7 @@ export function boot(thisFacet) {
   thisFacet.actor.dataspace.addStopHandler(() =>
     console.timeEnd('box-and-client-' + N.toString()));
 }
+
+module.exports.boot = boot;
 
 new Ground(boot).start();

@@ -11,12 +11,12 @@
   "scripts": {
     "prepare": "npm run compile && npm run rollup",
     "compile": "../../node_modules/.bin/tsc --incremental",
-    "rollup": "../../node_modules/.bin/rollup -c syndicate.dist.js && node ./dist-link.js",
+    "rollup": "../../node_modules/.bin/rollup -c",
     "test": "../../node_modules/.bin/jest",
     "cover": "../../node_modules/.bin/nyc --reporter=html ../../node_modules/.bin/jest"
   },
-  "type": "module",
-  "main": "lib/index.js",
+  "main": "dist/syndicate.js",
+  "module": "lib/index.js",
   "types": "lib/index.d.ts",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "dependencies": {

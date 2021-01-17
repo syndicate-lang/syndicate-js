@@ -1,4 +1,4 @@
-import fs from 'fs';
+import * as fs from 'fs';
 import * as S from '../syntax/index.js';
 import { Substitution } from '../syntax/index.js';
 import * as G from './grammar.js';
