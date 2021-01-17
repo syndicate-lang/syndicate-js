@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as S from '../syntax/index.js';
 import { Substitution } from '../syntax/index.js';
 import * as G from './grammar.js';
@@ -13,17 +12,41 @@ export function stripShebang(items: S.Items): S.Items {
     return items;
 }
 
-export function main(argv: string[]) {
-    let [ inputFilename ] = argv.slice(2);
-    inputFilename = inputFilename ?? '/dev/stdin';
-    const source = fs.readFileSync(inputFilename, 'utf-8');
+export interface CompileOptions {
+    source: string,
+    name?: string,
+    runtime?: string,
+    module?: 'es6' | 'require' | 'global',
+    global?: string,
+}
+
+export interface CompilerOutput {
+    text: string,
+    map: S.SourceMap,
+}
+
+export function compile(options: CompileOptions): CompilerOutput {
+    const inputFilename = options.name ?? '/dev/stdin';
+    const source = options.source;
+    const moduleType = options.module ?? 'es6';
 
     const scanner = new S.StringScanner(S.startPos(inputFilename), source);
     const reader = new S.LaxReader(scanner);
     let tree = stripShebang(reader.readToEnd());
     let macro = new S.Templates();
 
-    tree = macro.template()`import * as __SYNDICATE__ from '@syndicate/core';\n${tree}`;
+    const runtime = options.runtime ?? '@syndicate/core';
+    switch (moduleType) {
+        case 'es6':
+            tree = macro.template()`import * as __SYNDICATE__ from ${JSON.stringify(runtime)};\n${tree}`;
+            break;
+        case 'require':
+            tree = macro.template()`const __SYNDICATE__ = require(${JSON.stringify(runtime)});\n${tree}`;
+            break;
+        case 'global':
+            tree = macro.template()`const __SYNDICATE__ = ${runtime};\n${tree}`;
+            break;
+    }
 
     let passNumber = 0;
     let expansionNeeded = true;
@@ -167,19 +190,29 @@ export function main(argv: string[]) {
             s => macro.template()`addChildFacet(function (thisFacet) {${s.body}});`);
         expand(
             G.bootStatement,
-            s => macro.template()`export function ${BootProc}(thisFacet) {${s}}`);
+            s => {
+                switch (moduleType) {
+                    case 'es6':
+                        return macro.template()`export function ${BootProc}(thisFacet) {${s}}`;
+                    case 'global':
+                        return macro.template()`module.exports.${BootProc} = function (thisFacet) {${s}};`;
+                    case 'require':
+                        return macro.template()`function ${BootProc}(thisFacet) {${s}}`;
+                }
+            });
         expandFacetAction(
             G.stopStatement,
             s => macro.template()`_stop(function (thisFacet) {${s.body}});`);
     }
 
     // console.log(`\n\n\n======================================== FINAL OUTPUT\n`);
-    console.log(S.itemText(tree));
+    // console.log(S.itemText(tree));
 
     const cw = new S.CodeWriter(inputFilename);
     cw.emit(tree);
-    fs.writeFileSync('/tmp/adhoc.syndicate', cw.text);
-    const mm = cw.map;
-    mm.sourcesContent = [source];
-    fs.writeFileSync('/tmp/adhoc.syndicate.map', JSON.stringify(mm));
+
+    return {
+        text: cw.text,
+        map: cw.map,
+    };
 }

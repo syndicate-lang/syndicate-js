@@ -20,7 +20,8 @@
   "types": "lib/index.d.ts",
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "dependencies": {
-    "preserves": "0.4.0"
+    "preserves": "0.4.0",
+    "yargs": "^16.2.0"
   },
   "bin": {
     "syndicatec": "./bin/syndicatec.js"
