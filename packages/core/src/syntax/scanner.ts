@@ -203,13 +203,15 @@ export abstract class Scanner implements IterableIterator<Token> {
 
 export class StringScanner extends Scanner {
     readonly input: string;
+    readonly startPos: number;
 
     constructor(pos: Pos, input: string) {
         super(pos);
         this.input = input;
+        this.startPos = this.pos.pos;
     }
 
     _peekChar(): string | null {
-        return this.input[this.pos.pos] ?? null;
+        return this.input[this.pos.pos - this.startPos] ?? null;
     }
 }
