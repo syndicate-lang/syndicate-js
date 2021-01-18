@@ -1,4 +1,4 @@
-import { Items, TokenType } from './tokens.js';
+import { Items } from './tokens.js';
 import { Pos, startPos } from './position.js';
 import { laxRead } from './reader.js';
 import * as M from './matcher.js';

@@ -20,7 +20,7 @@ import { IdentitySet } from './idcoll.js';
 import { is, Value, Record, Set, Dictionary, canonicalString, preserves, RecordConstructorInfo } from 'preserves';
 
 import { Bag, ChangeDescription } from './bag.js';
-import { Discard, Capture, Observe } from './assertions.js';
+import { Discard, Capture } from './assertions.js';
 
 import * as Stack from './stack.js';
 

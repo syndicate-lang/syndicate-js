@@ -148,7 +148,7 @@ export function group<T>(opener: string, items: Pattern<T>, options: GroupOption
 }
 
 export function atomString<T extends string>(text: T, options: TokenOptions = {}): Pattern<T> {
-    return map(atom(text, options), t => text);
+    return map(atom(text, options), _t => text);
 }
 
 export function atom(text?: string, options: TokenOptions = {}): Pattern<Token> {
