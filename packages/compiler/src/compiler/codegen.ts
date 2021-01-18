@@ -177,9 +177,9 @@ export function expand(tree: Items, moduleType: ModuleType): Items {
         switch (moduleType) {
             case 'es6':
                 return t`export function ${BootProc}(thisFacet) {${walk(s)}}`;
-            case 'global':
-                return t`module.exports.${BootProc} = function (thisFacet) {${walk(s)}};`;
             case 'require':
+                return t`module.exports.${BootProc} = function (thisFacet) {${walk(s)}};`;
+            case 'global':
                 return t`function ${BootProc}(thisFacet) {${walk(s)}}`;
         }
     });
@@ -219,7 +219,7 @@ export function compile(options: CompileOptions): CompilerOutput {
         }
     }
 
-    tree = macro.template(fixPos(end))`${tree}\nif ((typeof require === 'undefined' ? {main: void 0} : require).main === module) __SYNDICATE__.bootModule(${BootProc});`;
+    tree = macro.template(fixPos(end))`${tree}\nif (typeof module !== 'undefined' && ((typeof require === 'undefined' ? {main: void 0} : require).main === module)) __SYNDICATE__.bootModule(${BootProc});`;
 
     const cw = new CodeWriter(inputFilename);
     cw.emit(expand(tree, moduleType));
