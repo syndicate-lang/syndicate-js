@@ -16,23 +16,27 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-export * from 'preserves';
+assertion type BoxState(value);
+message type SetBox(newValue);
 
-export * from './runtime/randomid.js';
-export * from './runtime/assertions.js';
-export * from './runtime/bag.js';
-export * as API from './runtime/api.js';
-export * as Skeleton from './runtime/skeleton.js';
-export * from './runtime/dataspace.js';
-export * from './runtime/ground.js';
-export * from './runtime/relay.js';
-// export * as Worker from './runtime/worker.js';
+const N = 100000;
 
-import { randomId } from './runtime/randomid.js';
+console.time('box-and-client-' + N.toString());
 
-// These aren't so much "Universal" as they are "VM-wide-unique".
-let uuidIndex = 0;
-let uuidInstance = randomId(8);
-export function genUuid(prefix: string = '__@syndicate'): string {
-    return `${prefix}_${uuidInstance}_${uuidIndex++}`;
+boot {
+  spawn named 'box' {
+    field this.value = 0;
+    assert BoxState(this.value);
+    stop on (this.value === N)
+      console.log('terminated box root facet');
+    on message SetBox($v) => this.value = v;
+  }
+
+  spawn named 'client' {
+    on asserted BoxState($v) => send message SetBox(v + 1);
+    on retracted BoxState(_) => console.log('box gone');
+  }
+
+  thisFacet.actor.dataspace.addStopHandler(() =>
+    console.timeEnd('box-and-client-' + N.toString()));
 }

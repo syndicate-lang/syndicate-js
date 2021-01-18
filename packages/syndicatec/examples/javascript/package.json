@@ -1,0 +1,19 @@
+{
+  "name": "@syndicate-lang/syndicatec-javascript-example",
+  "version": "0.0.0",
+  "description": "Simple syndicatec example",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "npm run compile",
+    "compile": "npx syndicatec -o index.js --module require index.syndicate.js",
+    "clean": "rm -f index.js"
+  },
+  "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
+  "license": "GPL-3.0+",
+  "dependencies": {
+    "@syndicate-lang/core": "file:../../../core"
+  },
+  "devDependencies": {
+    "@syndicate-lang/syndicatec": "file:../.."
+  }
+}

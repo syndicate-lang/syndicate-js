@@ -1,5 +1,8 @@
-import { Token, TokenType, Items, Item, isGroup, isToken, isSpace, isTokenType } from './tokens.js';
-import { Pos } from './position.js';
+import {
+    Token, TokenType, Items, Item,
+    isGroup, isToken, isSpace, isTokenType,
+} from './tokens.js';
+import { Pos, startPos } from './position.js';
 import { List, ArrayList, atEnd, notAtEnd } from './list.js';
 
 //---------------------------------------------------------------------------
@@ -23,10 +26,7 @@ export function succeed<T>(t: T): Pattern<T> { return i => [t, i]; }
 export const discard: Pattern<void> = _i => [void 0, noItems];
 export const rest: Pattern<Items> = i => [i.toArray(), noItems];
 export const end: Pattern<void> = i => atEnd(skipSpace(i)) ? [void 0, noItems] : null;
-export const pos: Pattern<Pos> = i =>
-    notAtEnd(i)
-    ? [isGroup(i.item) ? i.item.start.start : i.item.start, i]
-    : null;
+export const pos: Pattern<Pos> = i => notAtEnd(i) ? [i.item.start, i] : null;
 
 export const newline: Pattern<Item> = i => {
     while (notAtEnd(i) && isTokenType(i.item, TokenType.SPACE)) i = i.next;
@@ -51,7 +51,12 @@ export function withoutSpace<T>(p: Pattern<T>): Pattern<T> {
     return i => p(skipSpace(i));
 }
 
-export function seq(... patterns: Pattern<any>[]): Pattern<void> {
+export function not(p: Pattern<any>, v?: undefined): Pattern<undefined>;
+export function not<T>(p: Pattern<any>, v: T): Pattern<T> {
+    return i => p(i) === null ? [v, i] : null;
+}
+
+export function seq(... patterns: Pattern<any>[]): Pattern<any> {
     return i => {
         for (const p of patterns) {
             const r = p(i);
@@ -139,7 +144,7 @@ export function group<T>(opener: string, items: Pattern<T>, options: GroupOption
         if (options.skipSpace ?? true) i = skipSpace(i);
         if (!notAtEnd(i)) return null;
         if (!isGroup(i.item)) return null;
-        if (i.item.start.text !== opener) return null;
+        if (i.item.open.text !== opener) return null;
         const r = items(new ArrayList(i.item.items));
         if (r === null) return null;
         if (!atEnd(r[1])) return null;
@@ -244,28 +249,32 @@ export function option<T>(p: Pattern<T>): Pattern<T[]> {
 //---------------------------------------------------------------------------
 // Search-and-replace over Item
 
-export function replace<T>(items: Items,
-                           p: Pattern<T>,
-                           f: (t: T) => Items): Items
+export function replace<T>(
+    items: Items,
+    p: Pattern<T>,
+    f: (t: T, start: Pos, end: Pos) => Items,
+    end: Pos = items.length > 0 ? items[items.length - 1].end : startPos(null)) : Items
 {
-    const walkItems = (items: Items): Items => {
+    const walkItems = (items: Items, end: Pos): Items => {
         let i: List<Item> = new ArrayList(items);
         const acc: Items = [];
         while (notAtEnd(i = collectSpace(i, acc))) {
             const r = p(i);
 
             if (r !== null) {
-                acc.push(... f(r[0]));
+                acc.push(... f(r[0],
+                               notAtEnd(i) ? i.item.start : end,
+                               notAtEnd(r[1]) ? r[1].item.start : end));
                 i = r[1];
             } else if (isToken(i.item)) {
                 acc.push(i.item);
                 i = i.next;
             } else {
-                acc.push({ ... i.item, items: walkItems(i.item.items) });
+                acc.push({ ... i.item, items: walkItems(i.item.items, i.item.end) });
                 i = i.next;
             }
         }
         return acc;
     };
-    return walkItems(items);
+    return walkItems(items, end);
 }

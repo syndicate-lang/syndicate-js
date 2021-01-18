@@ -1,4 +1,4 @@
-import { TokenType, Token } from './tokens.js';
+import { TokenType, Token, Item, GroupInProgress } from './tokens.js';
 import { Pos, advancePos } from './position.js';
 
 export abstract class Scanner implements IterableIterator<Token> {
@@ -16,6 +16,7 @@ export abstract class Scanner implements IterableIterator<Token> {
     }
 
     abstract _peekChar(): string | null;
+    abstract _dropChar(): void;
 
     peekChar(): string | null {
         if (this.charBuffer !== null) return this.charBuffer;
@@ -26,6 +27,7 @@ export abstract class Scanner implements IterableIterator<Token> {
     dropChar() {
         if (this.charBuffer === null) this.peekChar();
         if (this.charBuffer !== null) {
+            this._dropChar();
             advancePos(this.pos, this.charBuffer);
             this.charBuffer = null;
         }
@@ -39,6 +41,10 @@ export abstract class Scanner implements IterableIterator<Token> {
 
     makeToken(start: Pos, type: TokenType, text: string): Token {
         return { type, start, end: this.mark(), text };
+    }
+
+    makeGroupInProgress(open: Token, items: Array<Item> = []): GroupInProgress {
+        return { start: open.start, open, close: null, items };
     }
 
     mark(): Pos {
@@ -203,15 +209,19 @@ export abstract class Scanner implements IterableIterator<Token> {
 
 export class StringScanner extends Scanner {
     readonly input: string;
-    readonly startPos: number;
+    index: number;
 
     constructor(pos: Pos, input: string) {
         super(pos);
         this.input = input;
-        this.startPos = this.pos.pos;
+        this.index = 0;
     }
 
     _peekChar(): string | null {
-        return this.input[this.pos.pos - this.startPos] ?? null;
+        return this.input[this.index] ?? null;
+    }
+
+    _dropChar(): void {
+        this.index++;
     }
 }

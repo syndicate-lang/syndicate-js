@@ -162,9 +162,9 @@ export class CodeWriter {
         if (Array.isArray(i)) {
             i.forEach(j => this.emit(j));
         } else if (isGroup(i)) {
-            this.emit(i.start);
+            this.emit(i.open);
             this.emit(i.items);
-            if (i.end) this.emit(i.end);
+            if (i.close) this.emit(i.close);
         } else if (i === null) {
             // Do nothing.
         } else {

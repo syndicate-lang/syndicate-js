@@ -26,8 +26,6 @@ declare global {
     }
 }
 
-const _resolved = Promise.resolve();
-
 export class Ground extends Dataspace {
     stepScheduled = false;
     stepping = false;
@@ -42,16 +40,17 @@ export class Ground extends Dataspace {
         }
     }
 
-    static async laterCall(thunk: () => void): Promise<void> {
-        await _resolved;
-        if ('stackTraceLimit' in Error) {
-            (Error as any).stackTraceLimit = 100;
-        }
-        try {
-            thunk();
-        } catch (e) {
-            console.error("SYNDICATE/JS INTERNAL ERROR", e);
-        }
+    static laterCall(thunk: () => void): void {
+        queueMicrotask(() => {
+            if ('stackTraceLimit' in Error) {
+                (Error as any).stackTraceLimit = 100;
+            }
+            try {
+                thunk();
+            } catch (e) {
+                console.error("SYNDICATE/JS INTERNAL ERROR", e);
+            }
+        });
     }
 
     backgroundTask(): () => void {
@@ -119,3 +118,11 @@ export class Ground extends Dataspace {
   //   if (k) k(g);
   // }
 
+export function bootModule(bootProc: Script<void>): void {
+    const g = new Ground(bootProc);
+    if (typeof document !== 'undefined') {
+        document.addEventListener('DOMContentLoaded', () => g.start());
+    } else {
+        g.start();
+    }
+}

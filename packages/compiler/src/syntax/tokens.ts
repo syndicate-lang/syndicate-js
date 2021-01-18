@@ -1,4 +1,4 @@
-import { Pos, startPos } from './position.js';
+import { Pos } from './position.js';
 
 export enum TokenType {
     SPACE,
@@ -9,34 +9,33 @@ export enum TokenType {
     CLOSE,
 }
 
-export interface Token {
-    type: TokenType;
+export interface TokenBase {
     start: Pos;
     end: Pos;
+}
+
+export interface Token extends TokenBase {
+    type: TokenType;
     text: string;
 }
 
-export interface Group {
-    start: Token;
-    end: Token | null;
+export interface Group extends TokenBase {
+    open: Token;
+    close: Token | null;
     items: Items;
 }
 
 export type Item = Token | Group;
 export type Items = Array<Item>;
 
-export function makeToken(text: string, name?: string | null, type: TokenType = TokenType.ATOM): Token {
-    const p = startPos(name ?? null);
-    return {
-        start: p,
-        end: p,
-        type,
-        text
-    };
+export type GroupInProgress = Omit<Group, 'end'>;
+
+export function finishGroup(g: GroupInProgress, end: Pos): Group {
+    return { ... g, end };
 }
 
-export function makeGroup(start: Token, items: Array<Items>, end?: Token) {
-    return { start, end: end ?? null, items };
+export function makeGroup(open: Token, items: Array<Item>, close: Token): Group {
+    return { start: open.start, open, end: close.end, close, items };
 }
 
 export function isSpace(i: Item): i is Token {
@@ -62,12 +61,12 @@ export type ItemTextOptions = {
 
 export function foldItems<T>(i: Items,
                              fToken: (t: Token) => T,
-                             fGroup: (start: Token, end: Token | null, t: T, k: (t: Token) => T) => T,
+                             fGroup: (g: Group, t: T, k: (t: Token) => T) => T,
                              fItems: (ts: T[]) => T): T
 {
     const walk = (i: Item): T => {
         if (isGroup(i)) {
-            return fGroup(i.start, i.end, fItems(i.items.map(walk)), walk);
+            return fGroup(i, fItems(i.items.map(walk)), walk);
         } else {
             return fToken(i);
         }
@@ -93,6 +92,6 @@ export function itemText(items: Items, options: ItemTextOptions = {}): string {
                 return i.text;
             }
         },
-        (start, end, inner, k) => k(start) + inner + (end ? k(end) : options.missing ?? ''),
+        (g, inner, k) => k(g.open) + inner + (g.close ? k(g.close) : options.missing ?? ''),
         strs => strs.join(''));
 }

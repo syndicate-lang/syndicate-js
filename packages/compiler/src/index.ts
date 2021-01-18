@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------
-// @syndicate-lang/core, an implementation of Syndicate dataspaces for JS.
+// @syndicate-lang/compiler, an implementation of Syndicate dataspaces for JS.
 // Copyright (C) 2016-2021 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -16,23 +16,5 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-export * from 'preserves';
-
-export * from './runtime/randomid.js';
-export * from './runtime/assertions.js';
-export * from './runtime/bag.js';
-export * as API from './runtime/api.js';
-export * as Skeleton from './runtime/skeleton.js';
-export * from './runtime/dataspace.js';
-export * from './runtime/ground.js';
-export * from './runtime/relay.js';
-// export * as Worker from './runtime/worker.js';
-
-import { randomId } from './runtime/randomid.js';
-
-// These aren't so much "Universal" as they are "VM-wide-unique".
-let uuidIndex = 0;
-let uuidInstance = randomId(8);
-export function genUuid(prefix: string = '__@syndicate'): string {
-    return `${prefix}_${uuidInstance}_${uuidIndex++}`;
-}
+export * as Syntax from './syntax/index.js';
+export * from './compiler/index.js';

@@ -13,10 +13,18 @@ function toItems(s: Substitution, pos: Pos): Items {
     return typeof s === 'string' ? laxRead(s, { start: pos }) : s;
 }
 
+export type TemplateFunction = (consts: TemplateStringsArray, ... vars: Substitution[]) => Items;
+
 export class Templates {
     readonly sources: { [name: string]: string } = {};
+    readonly defaultPos: Pos;
+    recordSources = false;
 
-    template(start0: Pos | string = startPos(null)): (consts: TemplateStringsArray, ... vars: Substitution[]) => Items {
+    constructor(defaultPos: Pos = startPos(null)) {
+        this.defaultPos = defaultPos;
+    }
+
+    template(start0: Pos | string = this.defaultPos): TemplateFunction {
         const start = (typeof start0 === 'string') ? startPos(start0) : start0;
         return (consts, ... vars) => {
             const sourcePieces = [consts[0]];
@@ -25,11 +33,13 @@ export class Templates {
                 sourcePieces.push(consts[i]);
             }
             const source = sourcePieces.join('');
-            if (start.name !== null) {
-                if (start.name in this.sources && this.sources[start.name] !== source) {
-                    throw new Error(`Duplicate template name: ${start.name}`);
+            if (this.recordSources) {
+                if (start.name !== null) {
+                    if (start.name in this.sources && this.sources[start.name] !== source) {
+                        throw new Error(`Duplicate template name: ${start.name}`);
+                    }
+                    this.sources[start.name] = source;
                 }
-                this.sources[start.name] = source;
             }
             let i = 0;
             return M.replace(laxRead(source, { start, extraDelimiters: '$' }),

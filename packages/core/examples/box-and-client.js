@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-const { Dataspace, Skeleton, Ground, Record, Discard, Capture, Observe } = require('../dist/syndicate.js');
+const { bootModule, Dataspace, Skeleton, Ground, Record, Discard, Capture, Observe } = require('../dist/syndicate.js');
 const __ = Discard._instance;
 const _$ = Capture(__);
 
@@ -87,6 +87,4 @@ function boot(thisFacet) {
     console.timeEnd('box-and-client-' + N.toString()));
 }
 
-module.exports.boot = boot;
-
-new Ground(boot).start();
+bootModule(boot);

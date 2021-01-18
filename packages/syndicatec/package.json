@@ -1,0 +1,27 @@
+{
+  "name": "@syndicate-lang/syndicatec",
+  "version": "0.0.1",
+  "description": "Syndicate/JS compiler command-line tool",
+  "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/syndicatec",
+  "license": "GPL-3.0+",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": "github:syndicate-lang/syndicate-js",
+  "scripts": {
+    "prepare": "npm run compile",
+    "compile": "../../node_modules/.bin/tsc"
+  },
+  "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
+  "dependencies": {
+    "@syndicate-lang/compiler": "file:../compiler",
+    "@syndicate-lang/core": "file:../core",
+    "yargs": "^16.2.0"
+  },
+  "bin": {
+    "syndicatec": "./bin/syndicatec.js"
+  },
+  "devDependencies": {
+    "@types/yargs": "^15.0.12"
+  }
+}

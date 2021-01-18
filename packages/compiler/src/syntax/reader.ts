@@ -1,4 +1,4 @@
-import { TokenType, Token, Group, Item, Items } from './tokens.js';
+import { TokenType, Token, Group, GroupInProgress, Item, Items, finishGroup } from './tokens.js';
 import { Pos, startPos } from './position.js';
 import { Scanner, StringScanner } from './scanner.js';
 
@@ -13,7 +13,7 @@ function matchingParen(c: string): string | null {
 
 export class LaxReader implements IterableIterator<Item> {
     readonly scanner: Scanner;
-    readonly stack: Array<Group> = [];
+    readonly stack: Array<GroupInProgress> = [];
 
     constructor(scanner: Scanner) {
         this.scanner = scanner;
@@ -23,23 +23,23 @@ export class LaxReader implements IterableIterator<Item> {
         return this;
     }
 
-    stackTop(): Group | null {
+    stackTop(): GroupInProgress | null {
         return this.stack[this.stack.length - 1] ?? null;
     }
 
     popUntilMatch(t: Token): Group | 'continue' | 'eof' {
         const m = matchingParen(t.text);
 
-        if (m !== null && !this.stack.some(g => g.start.text === m)) {
+        if (m !== null && !this.stack.some(g => g.open.text === m)) {
             if (this.stack.length > 0) {
                 this.stackTop()!.items.push(t);
                 return 'continue';
             }
         } else {
             while (this.stack.length > 0) {
-                const inner = this.stack.pop()!;
-                if (inner.start.text === m) {
-                    inner.end = t;
+                const inner = finishGroup(this.stack.pop()!, t.end);
+                if (inner.open.text === m) {
+                    inner.close = t;
                 }
 
                 if (this.stack.length === 0) {
@@ -47,7 +47,7 @@ export class LaxReader implements IterableIterator<Item> {
                 } else {
                     const outer = this.stackTop()!;
                     outer.items.push(inner);
-                    if (inner.start.text === m) {
+                    if (inner.open.text === m) {
                         return 'continue';
                     }
                 }
@@ -79,14 +79,14 @@ export class LaxReader implements IterableIterator<Item> {
                         return t;
                     }
                     if (t.text === ';') {
-                        while ('(['.indexOf(g.start.text) >= 0) {
+                        while ('(['.indexOf(g.open.text) >= 0) {
                             this.stack.pop();
                             const outer = this.stackTop();
                             if (outer === null) {
                                 // do not drop the semicolon here
-                                return g;
+                                return finishGroup(g, t.start);
                             }
-                            outer.items.push(g);
+                            outer.items.push(finishGroup(g, t.start));
                             g = outer;
                         }
                     }
@@ -96,7 +96,7 @@ export class LaxReader implements IterableIterator<Item> {
 
                 case TokenType.OPEN:
                     this.drop();
-                    this.stack.push({ start: t, end: null, items: [] });
+                    this.stack.push(this.scanner.makeGroupInProgress(t));
                     break;
 
                 case TokenType.CLOSE: {

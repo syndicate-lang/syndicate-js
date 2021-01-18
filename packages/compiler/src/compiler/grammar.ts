@@ -6,21 +6,18 @@ import {
 
     scope, bind, seq, alt, upTo, atom, atomString, group, exec,
     repeat, option, withoutSpace, map, mapm, rest, discard,
-    value, succeed, fail, separatedBy, anything,
+    value, succeed, fail, separatedBy, anything, not,
 } from '../syntax/index.js';
 import * as Matcher from '../syntax/matcher.js';
-import { Path, Skeleton } from '../runtime/api.js';
+import { Path, Skeleton } from './internals.js';
 
 export type Expr = Items;
 export type Statement = Items;
 export type Identifier = Token;
 
-export const block = (acc?: Items) =>
-    (acc === void 0)
-    ? group('{', discard)
-    : group('{', map(rest, items => acc.push(... items)));
+export const block = (acc: Items) => group('{', map(rest, items => acc.push(... items)));
 
-export const statementBoundary = alt<any>(atom(';'), Matcher.newline, Matcher.end);
+export const statementBoundary = alt<any>(atom(';'), Matcher.newline);
 export const exprBoundary = alt<any>(atom(';'), atom(','), group('{', discard), Matcher.end);
 
 export const identifier: Pattern<Identifier> = atom();
@@ -29,8 +26,8 @@ export function expr(... extraStops: Pattern<any>[]): Pattern<Expr> {
     return withoutSpace(upTo(alt(exprBoundary, ... extraStops)));
 }
 
-export function statement(acc: Items): Pattern<void> {
-    return alt<any>(group('{', map(rest, items => acc.push(... items))),
+export function statement(acc: Items): Pattern<any> {
+    return alt<any>(block(acc),
                     withoutSpace(seq(map(upTo(statementBoundary), items => acc.push(... items)),
                                      map(statementBoundary, i => i ? acc.push(i) : void 0))));
 }
@@ -83,7 +80,7 @@ export const spawn: Pattern<SpawnStatement> & { headerExpr: Pattern<Expr> } =
                                       o.parentIds.push(l.id);
                                       o.parentInits.push(l.init);
                                   }))),
-                   statement(o.bootProcBody));
+                   block(o.bootProcBody));
     }), {
         headerExpr: expr(atom(':asserting'), atom(':let')),
     });
@@ -127,15 +124,15 @@ export interface StatementFacetAction extends FacetAction {
     body: Statement;
 }
 
-export function statementFacetAction(kw: Pattern<any>): Pattern<StatementFacetAction> {
+export function blockFacetAction(kw: Pattern<any>): Pattern<StatementFacetAction> {
     return facetAction(o => {
         o.body = [];
-        return seq(kw, statement(o.body));
+        return seq(kw, block(o.body));
     });
 }
 
 // Principal: Facet
-export const dataflowStatement = statementFacetAction(atom('dataflow'));
+export const dataflowStatement = blockFacetAction(atom('dataflow'));
 
 export interface GenericEventEndpointStatement extends StatementFacetAction {
     terminal: boolean;
@@ -159,6 +156,12 @@ export interface AssertionEventEndpointStatement extends GenericEventEndpointSta
 export type EventHandlerEndpointStatement =
     DataflowEndpointStatement | PseudoEventEndpointStatement | AssertionEventEndpointStatement;
 
+export function mandatoryIfNotTerminal(o: GenericEventEndpointStatement, p: Pattern<any>): Pattern<any> {
+    return i => {
+        return (o.terminal) ? option(p)(i) : p(i);
+    };
+}
+
 // Principal: Facet
 export const eventHandlerEndpointStatement: Pattern<EventHandlerEndpointStatement> =
     facetAction(o => {
@@ -170,7 +173,7 @@ export const eventHandlerEndpointStatement: Pattern<EventHandlerEndpointStatemen
                    alt<any>(seq(map(group('(', bind(o as DataflowEndpointStatement, 'predicate',
                                                     expr())),
                                     _ => o.triggerType = 'dataflow'),
-                                option(statement(o.body))),
+                                mandatoryIfNotTerminal(o, statement(o.body))),
                             mapm(seq(bind(o, 'triggerType',
                                           alt(atomString('start'), atomString('stop'))),
                                      option(statement(o.body))),
@@ -182,8 +185,7 @@ export const eventHandlerEndpointStatement: Pattern<EventHandlerEndpointStatemen
                                 option(map(atom(':snapshot'), _ => o.isDynamic = false)),
                                 bind(o as AssertionEventEndpointStatement, 'pattern',
                                      valuePattern(atom('=>'))),
-                                alt<any>(seq(atom('=>'), statement(o.body)),
-                                         statementBoundary))));
+                                mandatoryIfNotTerminal(o, seq(atom('=>'), statement(o.body))))));
     });
 
 export interface TypeDefinitionStatement {
@@ -210,6 +212,8 @@ export interface MessageSendStatement extends FacetAction {
 // Principal: Facet
 export const messageSendStatement: Pattern<MessageSendStatement> =
     facetAction(o => seq(atom('send'),
+                         atom('message'),
+                         not(statementBoundary),
                          bind(o, 'expr', withoutSpace(upTo(statementBoundary))),
                          statementBoundary));
 
@@ -224,22 +228,21 @@ export const duringStatement: Pattern<DuringStatement> =
         o.body = [];
         return seq(atom('during'),
                    bind(o, 'pattern', valuePattern(atom('=>'))),
-                   alt(seq(atom('=>'), statement(o.body)),
-                       statementBoundary));
+                   seq(atom('=>'), statement(o.body)));
     });
 
 // Principal: Facet
-export const reactStatement = statementFacetAction(atom('react'));
+export const reactStatement = blockFacetAction(atom('react'));
 
 // Principal: none
 export const bootStatement: Pattern<Statement> =
     value(o => {
         o.value = [];
-        return seq(atom('boot'), statement(o.value));
+        return seq(atom('boot'), block(o.value));
     });
 
 // Principal: Facet
-export const stopStatement = statementFacetAction(atom('stop'));
+export const stopStatement = blockFacetAction(atom('stop'));
 
 //---------------------------------------------------------------------------
 // Syntax of patterns over Value, used in endpoints
@@ -282,7 +285,7 @@ const pDiscard: Pattern<void> = mapm(identifier, i => i.text === '_' ? succeed(v
 function hasCapturesOrDiscards(e: Expr): boolean {
     return foldItems(e,
                      t => match(alt<any>(pCaptureId, pDiscard), [t], null) !== null,
-                     (_s, _e, b, _k) => b,
+                     (_g, b, _k) => b,
                      bs => bs.some(b => b));
 }
 
