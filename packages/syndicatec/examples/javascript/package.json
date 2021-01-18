@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "prepare": "npm run compile",
-    "compile": "npx syndicatec -o index.js --module require index.syndicate.js",
+    "compile": "npx syndicatec -o index.js --module global --runtime Syndicate index.syndicate.js",
     "clean": "rm -f index.js"
   },
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",

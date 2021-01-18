@@ -11,6 +11,7 @@ function umd(insertion, extra) {
     file: distfile(insertion),
     format: 'umd',
     name: 'SyndicateCompiler',
+    sourcemap: true,
     ... (extra || {})
   };
 }
@@ -19,6 +20,7 @@ function es6(insertion, extra) {
   return {
     file: distfile('.es6' + insertion),
     format: 'es',
+    sourcemap: true,
     ... (extra || {})
   };
 }

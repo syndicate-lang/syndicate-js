@@ -11,6 +11,7 @@ function umd(insertion, extra) {
     file: distfile(insertion),
     format: 'umd',
     name: 'Syndicate',
+    sourcemap: true,
     globals: {
       'crypto': 'crypto',
     },
@@ -22,6 +23,7 @@ function es6(insertion, extra) {
   return {
     file: distfile('.es6' + insertion),
     format: 'es',
+    sourcemap: true,
     ... (extra || {})
   };
 }

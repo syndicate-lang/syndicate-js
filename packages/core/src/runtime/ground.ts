@@ -118,11 +118,12 @@ export class Ground extends Dataspace {
   //   if (k) k(g);
   // }
 
-export function bootModule(bootProc: Script<void>): void {
+export function bootModule(bootProc: Script<void>): Ground {
     const g = new Ground(bootProc);
     if (typeof document !== 'undefined') {
         document.addEventListener('DOMContentLoaded', () => g.start());
     } else {
         g.start();
     }
+    return g;
 }
