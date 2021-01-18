@@ -10,7 +10,7 @@ const substPat = M.scope((o: { pos: Pos }) =>
 export type Substitution = Items | string;
 
 function toItems(s: Substitution, pos: Pos): Items {
-    return typeof s === 'string' ? laxRead(s) : s;
+    return typeof s === 'string' ? laxRead(s, { start: pos }) : s;
 }
 
 export class Templates {
