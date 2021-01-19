@@ -13,3 +13,5 @@ scratch/
 tsconfig.tsbuildinfo
 
 deps.mk
+
+package-lock.json
