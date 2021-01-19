@@ -11,3 +11,5 @@ scratch/
 .do_built.dir/
 
 tsconfig.tsbuildinfo
+
+deps.mk
