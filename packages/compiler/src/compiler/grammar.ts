@@ -6,7 +6,7 @@ import {
 
     scope, bind, seq, alt, upTo, atom, atomString, group, exec,
     repeat, option, withoutSpace, map, mapm, rest, discard,
-    value, succeed, fail, separatedBy, anything, not,
+    value, succeed, fail, separatedBy, anything, not, follows,
 } from '../syntax/index.js';
 import * as Matcher from '../syntax/matcher.js';
 import { Path, Skeleton } from './internals.js';
@@ -243,6 +243,21 @@ export const bootStatement: Pattern<Statement> =
 
 // Principal: Facet
 export const stopStatement = blockFacetAction(atom('stop'));
+
+export interface ActivationImport {
+    activationKeyword: Identifier;
+    target: { type: 'import', moduleName: Token } | { type: 'expr', moduleExpr: Expr };
+}
+
+// Principal: none
+export const activationImport: Pattern<ActivationImport> =
+    scope(o => seq(bind(o, 'activationKeyword', atom('activate')),
+                   follows(alt<any>(seq(atom('import'),
+                                        upTo(seq(
+                                            map(atom(void 0, { tokenType: TokenType.STRING }),
+                                                n => o.target = { type: 'import', moduleName: n }),
+                                            statementBoundary))),
+                                    map(expr(), e => o.target = { type: 'expr', moduleExpr: e })))));
 
 //---------------------------------------------------------------------------
 // Syntax of patterns over Value, used in endpoints

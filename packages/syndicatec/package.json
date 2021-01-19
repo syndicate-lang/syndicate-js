@@ -16,6 +16,7 @@
   "dependencies": {
     "@syndicate-lang/compiler": "file:../compiler",
     "@syndicate-lang/core": "file:../core",
+    "glob": "^7.1.6",
     "yargs": "^16.2.0"
   },
   "bin": {

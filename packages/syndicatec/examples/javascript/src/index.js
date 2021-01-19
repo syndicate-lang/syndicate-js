@@ -16,27 +16,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-assertion type BoxState(value);
-message type SetBox(newValue);
-
-const N = 100000;
+import { N } from './protocol.js';
+activate import './box.js';
+activate import './client.js';
 
 console.time('box-and-client-' + N.toString());
-
 boot {
-  spawn named 'box' {
-    field this.value = 0;
-    assert BoxState(this.value);
-    stop on (this.value === N)
-      console.log('terminated box root facet');
-    on message SetBox($v) => this.value = v;
-  }
-
-  spawn named 'client' {
-    on asserted BoxState($v) => send message SetBox(v + 1);
-    on retracted BoxState(_) => console.log('box gone');
-  }
-
   thisFacet.actor.dataspace.addStopHandler(() =>
     console.timeEnd('box-and-client-' + N.toString()));
 }

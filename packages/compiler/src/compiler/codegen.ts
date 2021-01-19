@@ -1,8 +1,8 @@
 import {
-    isToken, isTokenType, replace, commaJoin, startPos, fixPos,
+    isToken, isTokenType, replace, commaJoin, startPos, fixPos, joinItems,
 
     Items, Pattern, Templates, Substitution, TokenType,
-    SourceMap, StringScanner, LaxReader, CodeWriter, TemplateFunction,
+    SourceMap, StringScanner, LaxReader, CodeWriter, TemplateFunction, Token,
 } from '../syntax/index.js';
 import {
     FacetAction, Statement,
@@ -21,6 +21,9 @@ import {
     reactStatement,
     bootStatement,
     stopStatement,
+    Identifier,
+    activationImport,
+    ActivationImport,
 } from './grammar.js';
 import {
     BootProc,
@@ -54,7 +57,18 @@ function receiverFor(s: FacetAction): Substitution {
     return (s.implicitFacet) ? 'thisFacet.' : '.';
 }
 
-export function expand(tree: Items, moduleType: ModuleType): Items {
+export interface ActivationRecord {
+    activation: ActivationImport;
+    activationScriptId: Identifier;
+}
+
+export interface ExpansionContext {
+    moduleType: ModuleType;
+    activationRecords: Array<ActivationRecord>;
+    hasBootProc: boolean;
+}
+
+export function expand(tree: Items, ctx: ExpansionContext): Items {
     const macro = new Templates();
 
     function terminalWrap(t: TemplateFunction, isTerminal: boolean, body: Statement): Statement {
@@ -73,7 +87,7 @@ export function expand(tree: Items, moduleType: ModuleType): Items {
         x(p, (v, t) => t`${receiverFor(v)}${f(v, t)}`);
     }
 
-    const walk = (tree: Items): Items => expand(tree, moduleType);
+    const walk = (tree: Items): Items => expand(tree, ctx);
     const maybeWalk = (tree?: Items) : Items | undefined => (tree === void 0) ? tree : walk(tree);
 
     xf(duringStatement, (s, t) => {
@@ -173,14 +187,29 @@ export function expand(tree: Items, moduleType: ModuleType): Items {
 
     xf(reactStatement, (s, t) => t`addChildFacet(function (thisFacet) {${walk(s.body)}});`);
 
+    x(activationImport, (s, t) => {
+        const activationScriptId: Token = {
+            start: s.activationKeyword.start,
+            end: s.activationKeyword.end,
+            text: `__SYNDICATE__activationScript${'' + ctx.activationRecords.length}`,
+            type: TokenType.ATOM
+        };
+        ctx.activationRecords.push({ activation: s, activationScriptId });
+        return [];
+    }),
+
     x(bootStatement, (s, t) => {
-        switch (moduleType) {
+        ctx.hasBootProc = true;
+        const activationStatements = ctx.activationRecords.map(({ activationScriptId: id }) =>
+            t`thisFacet.activate(${[id]}); `);
+        const body = t`${joinItems(activationStatements)}${walk(s)}`;
+        switch (ctx.moduleType) {
             case 'es6':
-                return t`export function ${BootProc}(thisFacet) {${walk(s)}}`;
+                return t`export function ${BootProc}(thisFacet) {${body}}`;
             case 'require':
-                return t`module.exports.${BootProc} = function (thisFacet) {${walk(s)}};`;
+                return t`module.exports.${BootProc} = function (thisFacet) {${body}};`;
             case 'global':
-                return t`function ${BootProc}(thisFacet) {${walk(s)}}`;
+                return t`function ${BootProc}(thisFacet) {${body}}`;
         }
     });
 
@@ -195,34 +224,67 @@ export function compile(options: CompileOptions): CompilerOutput {
     const moduleType = options.module ?? 'es6';
 
     const start = startPos(inputFilename);
-
     const scanner = new StringScanner(start, source);
     const reader = new LaxReader(scanner);
     let tree = stripShebang(reader.readToEnd());
+    const end = tree.length > 0 ? tree[tree.length - 1].end : start;
+
     let macro = new Templates();
 
-    const end = tree.length > 0 ? tree[tree.length - 1].end : start;
+    const ctx: ExpansionContext = {
+        moduleType,
+        activationRecords: [],
+        hasBootProc: false,
+    }
+
+    tree = expand(tree, ctx);
+
+    const ts = macro.template(fixPos(start));
+    const te = macro.template(fixPos(end));
+
+    if (ctx.hasBootProc) {
+        let bp;
+        switch (moduleType) {
+            case 'es6':
+            case 'global':
+                bp = BootProc;
+                break;
+            case 'require':
+                bp = te`module.exports.${BootProc}`;
+                break;
+        }
+        tree = te`${tree}\nif (typeof module !== 'undefined' && ((typeof require === 'undefined' ? {main: void 0} : require).main === module)) __SYNDICATE__.bootModule(${bp});`;
+    }
+
+    const activationImports = ctx.activationRecords.map(r => {
+        const a = r.activation;
+        const t = macro.template(a.activationKeyword.start);
+        switch (a.target.type) {
+            case 'import':
+                return t`import { ${BootProc} as ${[r.activationScriptId]} } from ${[a.target.moduleName]};\n`;
+            case 'expr':
+                return t`const ${[r.activationScriptId]} = (${a.target.moduleExpr}).${BootProc};\n`;
+        }
+    });
+    tree = ts`${joinItems(activationImports)}${tree}`;
 
     {
         const runtime = options.runtime ?? '@syndicate-lang/core';
-        const t = macro.template(fixPos(start));
         switch (moduleType) {
             case 'es6':
-                tree = t`import * as __SYNDICATE__ from ${JSON.stringify(runtime)};\n${tree}`;
+                tree = ts`import * as __SYNDICATE__ from ${JSON.stringify(runtime)};\n${tree}`;
                 break;
             case 'require':
-                tree = t`const __SYNDICATE__ = require(${JSON.stringify(runtime)});\n${tree}`;
+                tree = ts`const __SYNDICATE__ = require(${JSON.stringify(runtime)});\n${tree}`;
                 break;
             case 'global':
-                tree = t`const __SYNDICATE__ = ${runtime};\n${tree}`;
+                tree = ts`const __SYNDICATE__ = ${runtime};\n${tree}`;
                 break;
         }
     }
 
-    tree = macro.template(fixPos(end))`${tree}\nif (typeof module !== 'undefined' && ((typeof require === 'undefined' ? {main: void 0} : require).main === module)) __SYNDICATE__.bootModule(${BootProc});`;
-
     const cw = new CodeWriter(inputFilename);
-    cw.emit(expand(tree, moduleType));
+    cw.emit(tree);
 
     return {
         text: cw.text,

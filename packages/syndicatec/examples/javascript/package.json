@@ -4,9 +4,10 @@
   "description": "Simple syndicatec example",
   "main": "index.js",
   "scripts": {
-    "prepare": "npm run compile",
-    "compile": "npx syndicatec -o index.js --module global --runtime Syndicate index.syndicate.js",
-    "clean": "rm -f index.js"
+    "prepare": "npm run compile && npm run rollup",
+    "compile": "npx syndicatec -d lib -b src 'src/**/*.js'",
+    "rollup": "npx rollup -c",
+    "clean": "rm -rf lib/ index.js index.js.map"
   },
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "license": "GPL-3.0+",
@@ -14,6 +15,8 @@
     "@syndicate-lang/core": "file:../../../core"
   },
   "devDependencies": {
-    "@syndicate-lang/syndicatec": "file:../.."
+    "@syndicate-lang/syndicatec": "file:../..",
+    "rollup": "^2.37.0",
+    "rollup-plugin-sourcemaps": "^0.6.3"
   }
 }

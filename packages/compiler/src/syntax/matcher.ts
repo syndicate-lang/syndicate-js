@@ -56,6 +56,14 @@ export function not<T>(p: Pattern<any>, v: T): Pattern<T> {
     return i => p(i) === null ? [v, i] : null;
 }
 
+export function follows(p: Pattern<any>): Pattern<undefined> {
+    return i => {
+        const r = p(i);
+        if (r === null) return null;
+        return [r[0], i];
+    };
+}
+
 export function seq(... patterns: Pattern<any>[]): Pattern<any> {
     return i => {
         for (const p of patterns) {

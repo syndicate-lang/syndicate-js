@@ -68,6 +68,8 @@ export function _canonicalizeDataflowDependent(i: DataflowDependent): string {
     return '' + i.id;
 }
 
+export type ActivationScript = Script<void>;
+
 export abstract class Dataspace {
     nextId: ActorId = 0;
     index = new Skeleton.Index();
@@ -77,6 +79,7 @@ export abstract class Dataspace {
     runnable: Array<Actor> = [];
     pendingTurns: Array<Turn>;
     actors: IdentityMap<number, Actor> = new IdentityMap();
+    activations: IdentitySet<ActivationScript> = new IdentitySet();
 
     constructor(bootProc: Script<void>) {
         this.pendingTurns = [new Turn(null, [new Spawn(null, bootProc, new Set())])];
@@ -390,6 +393,23 @@ class DeferredTurn extends Action {
     }
 }
 
+class Activation extends Action {
+    readonly script: ActivationScript;
+    readonly name: any;
+
+    constructor(script: ActivationScript, name: any) {
+        super();
+        this.script = script;
+        this.name = name;
+    }
+
+    perform(ds: Dataspace, ac: Actor | null): void {
+        if (ds.activations.has(this.script)) return;
+        ds.activations.add(this.script);
+        ds.addActor(this.name, rootFacet => rootFacet.addStartScript(this.script), new Set(), ac);
+    }
+}
+
 export class Turn {
     readonly actor: Actor | null;
     readonly actions: Array<Action>;
@@ -623,9 +643,9 @@ export class Facet {
         }
     }
 
-    ensureNonFacetSetup(what: string, keyword: string) {
+    ensureNonFacetSetup(what: string) {
         if (!this.inScript) {
-            throw new Error(`Cannot ${what} during facet setup; are you missing \`${keyword} { ... }\`?`);
+            throw new Error(`Cannot ${what} during facet setup; are you missing \`on start { ... }\`?`);
         }
     }
 
@@ -635,7 +655,7 @@ export class Facet {
     }
 
     send(body: any) {
-        this.ensureNonFacetSetup('`send`', 'on start');
+        this.ensureNonFacetSetup('`send`');
         this.enqueueScriptAction(new Message(body));
     }
 
@@ -645,13 +665,18 @@ export class Facet {
     }
 
     spawn(name: any, bootProc: Script<void>, initialAssertions?: Set) {
-        this.ensureNonFacetSetup('`spawn`', 'on start');
+        this.ensureNonFacetSetup('`spawn`');
         this.enqueueScriptAction(new Spawn(name, bootProc, initialAssertions));
     }
 
     deferTurn(continuation: Script<void>) {
-        this.ensureNonFacetSetup('`deferTurn`', 'on start');
+        this.ensureNonFacetSetup('`deferTurn`');
         this.enqueueScriptAction(new DeferredTurn(this.wrap(continuation)));
+    }
+
+    activate(script: ActivationScript, name?: any) {
+        this.ensureNonFacetSetup('`activate`');
+        this.enqueueScriptAction(new Activation(script, name ?? null));
     }
 
     scheduleScript(script: Script<void>, priority?: Priority) {

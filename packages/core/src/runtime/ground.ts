@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { Dataspace, Script } from './dataspace.js';
+import { ActivationScript, Dataspace } from './dataspace.js';
 
 export type StopHandler<D extends Dataspace> = (ds: D) => void;
 
@@ -33,7 +33,7 @@ export class Ground extends Dataspace {
     stopHandlers: Array<StopHandler<this>> = [];
     backgroundTaskCount = 0;
 
-    constructor(bootProc: Script<void>) {
+    constructor(bootProc: ActivationScript) {
         super(function (rootFacet) { rootFacet.addStartScript(bootProc); });
         if (typeof window !== 'undefined') {
             window._ground = this;
@@ -118,12 +118,14 @@ export class Ground extends Dataspace {
   //   if (k) k(g);
   // }
 
-export function bootModule(bootProc: Script<void>): Ground {
+export function bootModule(bootProc: ActivationScript): Ground {
     const g = new Ground(bootProc);
-    if (typeof document !== 'undefined') {
-        document.addEventListener('DOMContentLoaded', () => g.start());
-    } else {
-        g.start();
-    }
+    Ground.laterCall(() => {
+        if (typeof document !== 'undefined') {
+            document.addEventListener('DOMContentLoaded', () => g.start());
+        } else {
+            g.start();
+        }
+    });
     return g;
 }

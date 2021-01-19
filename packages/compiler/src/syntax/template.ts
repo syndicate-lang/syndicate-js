@@ -53,7 +53,7 @@ export class Templates {
     }
 }
 
-export function joinItems(itemss: Items[], separator0: Substitution): Items {
+export function joinItems(itemss: Items[], separator0: Substitution = ''): Items {
     if (itemss.length === 0) return [];
     const separator = toItems(separator0, startPos(null));
     const acc = itemss[0];
