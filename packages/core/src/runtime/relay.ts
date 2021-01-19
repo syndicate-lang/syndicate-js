@@ -28,9 +28,9 @@ import { Ground } from './ground.js';
 export const $QuitDataspace = new $Special("quit-dataspace");
 
 export class NestedDataspace extends Dataspace {
-    readonly outerFacet: Facet;
+    readonly outerFacet: Facet<{}>;
 
-    constructor(outerFacet: Facet, bootProc: Script<void>) {
+    constructor(outerFacet: Facet<{}>, bootProc: Script<void, {}>) {
         super(bootProc);
         this.outerFacet = outerFacet;
     }
@@ -42,7 +42,7 @@ export class NestedDataspace extends Dataspace {
         }
     }
 
-    endpointHook(facet: Facet, innerEp: Endpoint) {
+    endpointHook<InnerFields>(facet: Facet<InnerFields>, innerEp: Endpoint<InnerFields>) {
         super.endpointHook(facet, innerEp);
 
         const innerAssertion = innerEp.spec.assertion;
@@ -105,7 +105,7 @@ export class NestedDataspace extends Dataspace {
         return net;
     }
 
-    hookEndpointLifecycle(innerEp: Endpoint, outerEp: Endpoint) {
+    hookEndpointLifecycle<InnerFields>(innerEp: Endpoint<InnerFields>, outerEp: Endpoint<{}>) {
         const _refresh = innerEp.refresh;
         innerEp.refresh = function () {
             _refresh.call(this);
@@ -139,7 +139,7 @@ export class NestedDataspace extends Dataspace {
     }
 }
 
-export function inNestedDataspace(bootProc: Script<void>): Script<void> {
+export function inNestedDataspace(bootProc: Script<void, {}>): Script<void, {}> {
     return outerFacet => {
         outerFacet.addDataflow(function () {});
         // ^ eww! Dummy endpoint to keep the root facet of the relay alive.

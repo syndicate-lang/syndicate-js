@@ -40,17 +40,18 @@ export type FacetId = ActorId;
 export type EndpointId = ActorId;
 
 export type Task<T> = () => T;
-export type Script<T> = (f: Facet) => T;
+export type Script<T, Fields> = (this: Fields & DataflowObservableObject, f: Facet<Fields>) => T;
 
 export type MaybeValue = Value | undefined;
 export type EndpointSpec = { assertion: MaybeValue, analysis: Skeleton.Analysis | null };
 
-export type ObserverCallback = (facet: Facet, bindings: Array<Value>) => void;
+export type ObserverCallback<Fields> =
+    (this: Fields, facet: Facet<Fields>, bindings: Array<Value>) => void;
 
-export type ObserverCallbacks = {
-    add?: ObserverCallback;
-    del?: ObserverCallback;
-    msg?: ObserverCallback;
+export type ObserverCallbacks<Fields> = {
+    add?: ObserverCallback<Fields>;
+    del?: ObserverCallback<Fields>;
+    msg?: ObserverCallback<Fields>;
 }
 
 export const DataflowObservableObjectId = Symbol.for('DataflowObservableObjectId');
@@ -63,12 +64,12 @@ export function _canonicalizeDataflowObservable(i: DataflowObservable): string {
     return i[0][DataflowObservableObjectId]() + ',' + i[1];
 }
 
-export type DataflowDependent = Endpoint;
+export type DataflowDependent = Endpoint<any>;
 export function _canonicalizeDataflowDependent(i: DataflowDependent): string {
     return '' + i.id;
 }
 
-export type ActivationScript = Script<void>;
+export type ActivationScript = Script<void, {}>;
 
 export abstract class Dataspace {
     nextId: ActorId = 0;
@@ -81,7 +82,7 @@ export abstract class Dataspace {
     actors: IdentityMap<number, Actor> = new IdentityMap();
     activations: IdentitySet<ActivationScript> = new IdentitySet();
 
-    constructor(bootProc: Script<void>) {
+    constructor(bootProc: Script<void, {}>) {
         this.pendingTurns = [new Turn(null, [new Spawn(null, bootProc, new Set())])];
     }
 
@@ -129,7 +130,12 @@ export abstract class Dataspace {
         });
     }
 
-    addActor(name: any, bootProc: Script<void>, initialAssertions: Set, parentActor: Actor | null) {
+    addActor<SpawnFields>(
+        name: any,
+        bootProc: Script<void, SpawnFields>,
+        initialAssertions: Set,
+        parentActor: Actor | null)
+    {
         let ac = new Actor(this, name, initialAssertions, parentActor?.id);
         // debug('Spawn', ac && ac.toString());
         this.applyPatch(ac, ac.adhocAssertions);
@@ -181,7 +187,7 @@ export abstract class Dataspace {
         this.index.removeHandler(handler, handler.callback!);
     }
 
-    endpointHook(_facet: Facet, _endpoint: Endpoint) {
+    endpointHook<Fields>(_facet: Facet<Fields>, _endpoint: Endpoint<Fields>) {
         // Subclasses may override
     }
 }
@@ -190,7 +196,7 @@ export class Actor {
     readonly id: ActorId;
     readonly dataspace: Dataspace;
     readonly name: any;
-    rootFacet: Facet | null = null;
+    rootFacet: Facet<any> | null = null;
     isRunnable: boolean = false;
     readonly pendingTasks: Array<Array<Task<void>>>;
     pendingActions: Array<Action>;
@@ -253,11 +259,15 @@ export class Actor {
         this.pendingTasks[priority].push(task);
     }
 
-    addFacet(parentFacet: Facet | null, bootProc: Script<void>, checkInScript: boolean = false) {
+    addFacet<ParentFields, ChildFields extends ParentFields>(
+        parentFacet: Facet<ParentFields> | null,
+        bootProc: Script<void, ChildFields>,
+        checkInScript: boolean = false)
+    {
         if (checkInScript && parentFacet && !parentFacet.inScript) {
             throw new Error("Cannot add facet outside script; are you missing a `react { ... }`?");
         }
-        let f = new Facet(this, parentFacet);
+        let f = new Facet<ChildFields>(this, parentFacet);
         f.invokeScript(f => f.withNonScriptContext(() => bootProc.call(f.fields, f)));
         this.scheduleTask(() => {
             if ((parentFacet && !parentFacet.isLive) || f.isInert()) {
@@ -351,12 +361,12 @@ class Message extends Action {
     }
 }
 
-class Spawn extends Action {
+class Spawn<Fields> extends Action {
     readonly name: any;
-    readonly bootProc: Script<void>;
+    readonly bootProc: Script<void, Fields>;
     readonly initialAssertions: Set;
 
-    constructor(name: any, bootProc: Script<void>, initialAssertions: Set = new Set()) {
+    constructor(name: any, bootProc: Script<void, Fields>, initialAssertions: Set = new Set()) {
         super();
         this.name = name;
         this.bootProc = bootProc;
@@ -406,7 +416,7 @@ class Activation extends Action {
     perform(ds: Dataspace, ac: Actor | null): void {
         if (ds.activations.has(this.script)) return;
         ds.activations.add(this.script);
-        ds.addActor(this.name, rootFacet => rootFacet.addStartScript(this.script), new Set(), ac);
+        ds.addActor<{}>(this.name, rootFacet => rootFacet.addStartScript(this.script), new Set(), ac);
     }
 }
 
@@ -424,18 +434,18 @@ export class Turn {
     }
 }
 
-export class Facet {
+export class Facet<Fields> {
     readonly id: FacetId;
     isLive = true;
     readonly actor: Actor;
-    readonly parent: Facet | null;
-    readonly endpoints = new IdentityMap<EndpointId, Endpoint>();
-    readonly stopScripts: Array<Script<void>> = [];
-    readonly children = new IdentitySet<Facet>();
-    readonly fields: any;
+    readonly parent: Facet<any> | null;
+    readonly endpoints = new IdentityMap<EndpointId, Endpoint<Fields>>();
+    readonly stopScripts: Array<Script<void, Fields>> = [];
+    readonly children = new IdentitySet<Facet<any>>();
+    readonly fields: Fields & DataflowObservableObject;
     inScript = true;
 
-    constructor(actor: Actor, parent: Facet | null) {
+    constructor(actor: Actor, parent: Facet<any> | null) {
         this.id = actor.dataspace.nextId++;
         this.actor = actor;
         this.parent = parent;
@@ -513,11 +523,11 @@ export class Facet {
     }
 
     // This alias exists because of the naive expansion done by the parser.
-    _stop(continuation?: Script<void>) {
+    _stop(continuation?: Script<void, Fields>) {
         this.stop(continuation);
     }
 
-    stop(continuation?: Script<void>) {
+    stop(continuation?: Script<void, Fields>) {
         this.parent!.invokeScript(() => {
             this.actor.scheduleTask(() => {
                 this._terminate();
@@ -529,35 +539,35 @@ export class Facet {
         });
     }
 
-    addStartScript(s: Script<void>) {
+    addStartScript(s: Script<void, Fields>) {
         this.ensureFacetSetup('`on start`');
         this.scheduleScript(s);
     }
 
-    addStopScript(s: Script<void>) {
+    addStopScript(s: Script<void, Fields>) {
         this.ensureFacetSetup('`on stop`');
         this.stopScripts.push(s);
     }
 
-    addEndpoint(updateFun: Script<EndpointSpec>, isDynamic: boolean = true): Endpoint {
+    addEndpoint(updateFun: Script<EndpointSpec, Fields>, isDynamic: boolean = true): Endpoint<Fields> {
         const ep = new Endpoint(this, isDynamic, updateFun);
         this.actor.dataspace.endpointHook(this, ep);
         return ep;
     }
 
-    _addRawObserverEndpoint(specScript: Script<MaybeValue>, callbacks: ObserverCallbacks): Endpoint
+    _addRawObserverEndpoint(specScript: Script<MaybeValue, Fields>, callbacks: ObserverCallbacks<Fields>): Endpoint<Fields>
     {
         return this.addEndpoint(() => {
-            const spec = specScript(this);
+            const spec = specScript.call(this.fields, this);
             if (spec === void 0) {
                 return { assertion: void 0, analysis: null };
             } else {
                 const analysis = Skeleton.analyzeAssertion(spec);
                 analysis.callback = this.wrap((facet, evt, vs) => {
                     switch (evt) {
-                        case Skeleton.EventType.ADDED: callbacks.add?.(facet, vs); break;
-                        case Skeleton.EventType.REMOVED: callbacks.del?.(facet, vs); break;
-                        case Skeleton.EventType.MESSAGE: callbacks.msg?.(facet, vs); break;
+                        case Skeleton.EventType.ADDED: callbacks.add?.call(facet.fields, facet, vs); break;
+                        case Skeleton.EventType.REMOVED: callbacks.del?.call(facet.fields, facet, vs); break;
+                        case Skeleton.EventType.MESSAGE: callbacks.msg?.call(facet.fields, facet, vs); break;
                     }
                 });
                 return { assertion: Observe(spec), analysis };
@@ -565,9 +575,9 @@ export class Facet {
         });
     }
 
-    addObserverEndpoint(specThunk: (facet: Facet) => MaybeValue, callbacks: ObserverCallbacks): Endpoint {
-        const scriptify = (f?: ObserverCallback) =>
-            f && ((facet: Facet, vs: Array<Value>) =>
+    addObserverEndpoint(specThunk: (facet: Facet<Fields>) => MaybeValue, callbacks: ObserverCallbacks<Fields>): Endpoint<Fields> {
+        const scriptify = (f?: ObserverCallback<Fields>) =>
+            f && ((facet: Facet<Fields>, vs: Array<Value>) =>
                 facet.scheduleScript(() => f.call(facet.fields, facet, vs)));
         return this._addRawObserverEndpoint(specThunk, {
             add: scriptify(callbacks.add),
@@ -576,7 +586,7 @@ export class Facet {
         });
     }
 
-    addDataflow(subjectFun: Script<void>, priority?: Priority): Endpoint {
+    addDataflow(subjectFun: Script<void, Fields>, priority?: Priority): Endpoint<Fields> {
         return this.addEndpoint(() => {
             let subjectId = this.actor.dataspace.dataflow.currentSubjectId;
             this.scheduleScript(() => {
@@ -607,7 +617,7 @@ export class Facet {
         return s + ')';
     }
 
-    invokeScript<T>(script: Script<T>, propagateErrors = false): T | undefined {
+    invokeScript<T>(script: Script<T, Fields>, propagateErrors = false): T | undefined {
         try {
             // console.group('Facet', facet && facet.toString());
             return script.call(this.fields, this);
@@ -623,11 +633,18 @@ export class Facet {
         }
     }
 
-    wrap<T extends Array<any>, R>(fn: (f: Facet, ... args: T) => R): (... args: T) => R {
+    wrap<T extends Array<any>, R>(
+        fn: (this: Fields & DataflowObservableObject,
+             f: Facet<Fields>, ... args: T) => R
+    ): (... args: T) => R
+    {
         return (... actuals) => this.invokeScript(f => fn.call(f.fields, f, ... actuals), true)!;
     }
 
-    wrapExternal<T extends Array<any>>(fn: (f: Facet, ... args: T) => void): (... args: T) => void {
+    wrapExternal<T extends Array<any>>(
+        fn: (this: Fields & DataflowObservableObject,
+             f: Facet<Fields>, ... args: T) => void
+    ): (... args: T) => void {
         const ac = this.actor;
         return (... actuals) => {
             if (this.isLive) {
@@ -660,16 +677,16 @@ export class Facet {
     }
 
     // This alias exists because of the naive expansion done by the parser.
-    _spawn(name: any, bootProc: Script<void>, initialAssertions?: Set) {
+    _spawn<SpawnFields>(name: any, bootProc: Script<void, SpawnFields>, initialAssertions?: Set) {
         this.spawn(name, bootProc, initialAssertions);
     }
 
-    spawn(name: any, bootProc: Script<void>, initialAssertions?: Set) {
+    spawn<SpawnFields>(name: any, bootProc: Script<void, SpawnFields>, initialAssertions?: Set) {
         this.ensureNonFacetSetup('`spawn`');
         this.enqueueScriptAction(new Spawn(name, bootProc, initialAssertions));
     }
 
-    deferTurn(continuation: Script<void>) {
+    deferTurn(continuation: Script<void, Fields>) {
         this.ensureNonFacetSetup('`deferTurn`');
         this.enqueueScriptAction(new DeferredTurn(this.wrap(continuation)));
     }
@@ -679,7 +696,7 @@ export class Facet {
         this.enqueueScriptAction(new Activation(script, name ?? null));
     }
 
-    scheduleScript(script: Script<void>, priority?: Priority) {
+    scheduleScript(script: Script<void, Fields>, priority?: Priority) {
         this.actor.scheduleTask(this.wrap(script), priority);
     }
 
@@ -706,22 +723,22 @@ export class Facet {
     //     delete obj[prop];
     // }
 
-    addChildFacet(bootProc: Script<void>) {
+    addChildFacet<ChildFields extends Fields>(bootProc: Script<void, ChildFields>) {
         this.actor.addFacet(this, bootProc, true);
     }
 
-    withSelfDo(t: Script<void>) {
-        t(this);
+    withSelfDo(t: Script<void, Fields>) {
+        t.call(this.fields, this);
     }
 }
 
-export class Endpoint {
+export class Endpoint<Fields> {
     readonly id: EndpointId;
-    readonly facet: Facet;
-    readonly updateFun: Script<EndpointSpec>;
+    readonly facet: Facet<Fields>;
+    readonly updateFun: Script<EndpointSpec, Fields>;
     spec: EndpointSpec;
 
-    constructor(facet: Facet, isDynamic: boolean, updateFun: Script<EndpointSpec>) {
+    constructor(facet: Facet<Fields>, isDynamic: boolean, updateFun: Script<EndpointSpec, Fields>) {
         facet.ensureFacetSetup('add endpoint');
         let ac = facet.actor;
         let ds = ac.dataspace;
