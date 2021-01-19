@@ -1,5 +1,4 @@
 import yargs from 'yargs/yargs';
-import { Argv } from 'yargs';
 
 import fs from 'fs';
 import path from 'path';

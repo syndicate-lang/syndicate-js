@@ -16,12 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { N } from './protocol.js';
-activate import './box.js';
-activate import './client.js';
+export assertion type BoxState(value);
+export message type SetBox(newValue);
 
-console.time('box-and-client-' + N.toString());
-boot {
-  thisFacet.actor.dataspace.ground().addStopHandler(() =>
-    console.timeEnd('box-and-client-' + N.toString()));
-}
+export const N = 100000;

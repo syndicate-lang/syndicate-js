@@ -16,12 +16,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { N } from './protocol.js';
-activate import './box.js';
-activate import './client.js';
+import { BoxState, SetBox } from './protocol.js';
 
-console.time('box-and-client-' + N.toString());
 boot {
-  thisFacet.actor.dataspace.ground().addStopHandler(() =>
-    console.timeEnd('box-and-client-' + N.toString()));
+    spawn named 'client' {
+        on asserted BoxState($v: number) => send message SetBox(v + 1);
+        on retracted BoxState(_) => console.log('box gone');
+    }
 }

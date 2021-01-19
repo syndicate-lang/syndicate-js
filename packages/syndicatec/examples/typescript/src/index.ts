@@ -22,6 +22,6 @@ activate import './client.js';
 
 console.time('box-and-client-' + N.toString());
 boot {
-  thisFacet.actor.dataspace.ground().addStopHandler(() =>
-    console.timeEnd('box-and-client-' + N.toString()));
+    thisFacet.actor.dataspace.ground().addStopHandler(() =>
+        console.timeEnd('box-and-client-' + N.toString()));
 }

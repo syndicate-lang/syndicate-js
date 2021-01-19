@@ -16,12 +16,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-import { N } from './protocol.js';
-activate import './box.js';
-activate import './client.js';
+import { BoxState, SetBox, N } from './protocol.js';
 
-console.time('box-and-client-' + N.toString());
 boot {
-  thisFacet.actor.dataspace.ground().addStopHandler(() =>
-    console.timeEnd('box-and-client-' + N.toString()));
+    spawn named 'box' {
+        field this.value: number = 0;
+        assert BoxState(this.value);
+        stop on (this.value === N)
+            console.log('terminated box root facet');
+        on message SetBox($v: number) => this.value = v;
+    }
 }

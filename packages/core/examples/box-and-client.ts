@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S npx ts-node -O '{"module": "commonjs"}'
 //---------------------------------------------------------------------------
 // @syndicate-lang/core, an implementation of Syndicate dataspaces for JS.
 // Copyright (C) 2016-2021 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //---------------------------------------------------------------------------
 
-const { bootModule, Dataspace, Skeleton, Ground, Record, Discard, Capture, Observe } = require('..');
+import { bootModule, Skeleton, Record, Discard, Capture, Observe, Facet, DataflowObservableObject } from '..';
 const __ = Discard._instance;
 const _$ = Capture(__);
 
@@ -28,8 +28,10 @@ const N = 100000;
 
 console.time('box-and-client-' + N.toString());
 
-function boot(thisFacet) {
-  thisFacet.spawn('box', function (thisFacet) {
+function boot(thisFacet: Facet) {
+  thisFacet.spawn('box', function (this: DataflowObservableObject & {
+    value: number;
+  }, thisFacet: Facet) {
     thisFacet.declareField(this, 'value', 0);
     thisFacet.addEndpoint(() => {
       // console.log('recomputing published BoxState', this.value);
@@ -45,11 +47,12 @@ function boot(thisFacet) {
     });
     thisFacet.addEndpoint(() => {
       let analysis = Skeleton.analyzeAssertion(SetBox(_$));
-      analysis.callback = thisFacet.wrap((thisFacet, evt, vs) => {
+      analysis.callback = thisFacet.wrap((thisFacet, evt, [v]) => {
         if (evt === Skeleton.EventType.MESSAGE) {
+          if (typeof v !== 'number') return;
           thisFacet.scheduleScript(() => {
-            this.value = vs[0];
-            // console.log('box updated value', vs[0]);
+            this.value = v;
+            // console.log('box updated value', v);
           });
         }
       });
@@ -57,11 +60,12 @@ function boot(thisFacet) {
     });
   });
 
-  thisFacet.spawn('client', function (thisFacet) {
+  thisFacet.spawn('client', function (thisFacet: Facet) {
     thisFacet.addEndpoint(() => {
       let analysis = Skeleton.analyzeAssertion(BoxState(_$));
       analysis.callback = thisFacet.wrap((thisFacet, evt, [v]) => {
         if (evt === Skeleton.EventType.ADDED) {
+          if (typeof v !== 'number') return;
           thisFacet.scheduleScript(() => {
             // console.log('client sending SetBox', v + 1);
             thisFacet.send(SetBox(v + 1));

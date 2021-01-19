@@ -1,5 +1,5 @@
 import {
-    isToken, isTokenType, replace, commaJoin, startPos, fixPos, joinItems,
+    isToken, isTokenType, replace, commaJoin, startPos, fixPos, joinItems, anonymousTemplate,
 
     Items, Pattern, Templates, Substitution, TokenType,
     SourceMap, StringScanner, LaxReader, CodeWriter, TemplateFunction, Token,
@@ -46,6 +46,7 @@ export interface CompileOptions {
     runtime?: string,
     module?: ModuleType,
     global?: string,
+    typescript?: boolean,
 }
 
 export interface CompilerOutput {
@@ -62,10 +63,26 @@ export interface ActivationRecord {
     activationScriptId: Identifier;
 }
 
-export interface ExpansionContext {
-    moduleType: ModuleType;
-    activationRecords: Array<ActivationRecord>;
-    hasBootProc: boolean;
+export class ExpansionContext {
+    readonly moduleType: ModuleType;
+    readonly activationRecords: Array<ActivationRecord> = [];
+    hasBootProc: boolean = false;
+    readonly typescript: boolean;
+
+    constructor(moduleType: ModuleType,
+                typescript: boolean)
+    {
+        this.moduleType = moduleType;
+        this.typescript = typescript;
+    }
+
+    argDecl(name: Substitution, type: Substitution): Substitution {
+        return this.typescript ? anonymousTemplate`${name}: ${type}` : name;
+    }
+
+    get thisFacetDecl(): Substitution {
+        return this.argDecl('thisFacet', '__SYNDICATE__.Facet');
+    }
 }
 
 export function expand(tree: Items, ctx: ExpansionContext): Items {
@@ -73,7 +90,7 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
 
     function terminalWrap(t: TemplateFunction, isTerminal: boolean, body: Statement): Statement {
         if (isTerminal) {
-            return t`thisFacet._stop(function (thisFacet) {${body}})`
+            return t`thisFacet._stop(function (${ctx.thisFacetDecl}) {${body}})`
         } else {
             return body;
         }
@@ -93,7 +110,7 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
     xf(duringStatement, (s, t) => {
         // TODO: spawn during
         const sa = compilePattern(s.pattern);
-        return t`withSelfDo(function (thisFacet) {
+        return t`withSelfDo(function (${ctx.thisFacetDecl}) {
                    const _Facets = new __SYNDICATE__.Dictionary();
                    on asserted ${patternText(s.pattern)} => react {
                      _Facets.set([${commaJoin(sa.captureIds.map(t=>[t]))}], thisFacet);
@@ -109,7 +126,7 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
     });
 
     xf(spawn, (s, t) => {
-        let proc = t`function (thisFacet) {${walk(s.bootProcBody)}}`;
+        let proc = t`function (${ctx.thisFacetDecl}) {${walk(s.bootProcBody)}}`;
         if (s.isDataspace) proc = t`__SYNDICATE__.inNestedDataspace(${proc})`;
         let assertions = (s.initialAssertions.length > 0)
             ? t`, new __SYNDICATE__.Set([${commaJoin(s.initialAssertions.map(walk))}])`
@@ -137,17 +154,17 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
         }
     });
 
-    xf(dataflowStatement, (s, t) => t`addDataflow(function (thisFacet) {${walk(s.body)}});`);
+    xf(dataflowStatement, (s, t) => t`addDataflow(function (${ctx.thisFacetDecl}) {${walk(s.body)}});`);
 
     xf(eventHandlerEndpointStatement, (s, t) => {
         switch (s.triggerType) {
             case 'dataflow':
-                return t`withSelfDo(function (thisFacet) { dataflow { if (${walk(s.predicate)}) { ${terminalWrap(t, s.terminal, walk(s.body))} } } });`;
+                return t`withSelfDo(function (${ctx.thisFacetDecl}) { dataflow { if (${walk(s.predicate)}) { ${terminalWrap(t, s.terminal, walk(s.body))} } } });`;
 
             case 'start':
             case 'stop': {
                 const m = s.triggerType === 'start' ? 'addStartScript' : 'addStopScript';
-                return t`${m}(function (thisFacet) {${walk(s.body)}});`;
+                return t`${m}(function (${ctx.thisFacetDecl}) {${walk(s.body)}});`;
             }
 
             case 'asserted':
@@ -185,7 +202,7 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
 
     xf(messageSendStatement, (s, t) => t`_send(${walk(s.expr)});`);
 
-    xf(reactStatement, (s, t) => t`addChildFacet(function (thisFacet) {${walk(s.body)}});`);
+    xf(reactStatement, (s, t) => t`addChildFacet(function (${ctx.thisFacetDecl}) {${walk(s.body)}});`);
 
     x(activationImport, (s, t) => {
         const activationScriptId: Token = {
@@ -205,15 +222,15 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
         const body = t`${joinItems(activationStatements)}${walk(s)}`;
         switch (ctx.moduleType) {
             case 'es6':
-                return t`export function ${BootProc}(thisFacet) {${body}}`;
+                return t`export function ${BootProc}(${ctx.thisFacetDecl}) {${body}}`;
             case 'require':
-                return t`module.exports.${BootProc} = function (thisFacet) {${body}};`;
+                return t`module.exports.${BootProc} = function (${ctx.thisFacetDecl}) {${body}};`;
             case 'global':
-                return t`function ${BootProc}(thisFacet) {${body}}`;
+                return t`function ${BootProc}(${ctx.thisFacetDecl}) {${body}}`;
         }
     });
 
-    xf(stopStatement, (s, t) => t`_stop(function (thisFacet) {${walk(s.body)}});`)
+    xf(stopStatement, (s, t) => t`_stop(function (${ctx.thisFacetDecl}) {${walk(s.body)}});`)
 
     return tree;
 }
@@ -222,6 +239,7 @@ export function compile(options: CompileOptions): CompilerOutput {
     const inputFilename = options.name ?? '/dev/stdin';
     const source = options.source;
     const moduleType = options.module ?? 'es6';
+    const typescript = options.typescript ?? false;
 
     const start = startPos(inputFilename);
     const scanner = new StringScanner(start, source);
@@ -231,11 +249,7 @@ export function compile(options: CompileOptions): CompilerOutput {
 
     let macro = new Templates();
 
-    const ctx: ExpansionContext = {
-        moduleType,
-        activationRecords: [],
-        hasBootProc: false,
-    }
+    const ctx = new ExpansionContext(moduleType, typescript);
 
     tree = expand(tree, ctx);
 
