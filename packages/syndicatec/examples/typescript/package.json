@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "prepare": "npm run compile && npm run rollup",
-    "compile": "npx syndicatec -d lib -b src 'src/**/*.js'",
+    "compile": "../../bin/syndicate-tsc.js",
     "rollup": "npx rollup -c",
     "clean": "rm -rf lib/ index.js index.js.map"
   },

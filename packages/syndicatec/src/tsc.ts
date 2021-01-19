@@ -3,6 +3,7 @@ import ts from 'typescript';
 import crypto from 'crypto';
 
 import { compile } from '@syndicate-lang/compiler';
+import { dataURL, sourceMappingComment } from './util.js';
 
 function reportDiagnostic(diagnostic: ts.Diagnostic) {
     if (diagnostic.file) {
@@ -49,15 +50,18 @@ function createProgram(rootNames: readonly string[] | undefined,
                     onError?.(`Could not read input file ${fileName}`);
                     return undefined;
                 }
-                const expandedText = compile({
+                const { text: baseExpandedText, map: sourceMap } = compile({
                     source: inputText,
                     name: fileName,
                     typescript: true,
-                }).text;
-                console.log('\n\n', fileName);
-                expandedText.split(/\n/).forEach((line, i) => {
-                    console.log(i, line);
                 });
+                sourceMap.sourcesContent = [inputText];
+                const expandedText = baseExpandedText + sourceMappingComment(dataURL(JSON.stringify(sourceMap)));
+
+                // console.log('\n\n', fileName);
+                // expandedText.split(/\n/).forEach((line, i) => {
+                //     console.log(i + 1, line);
+                // });
                 const sf = ts.createSourceFile(fileName, expandedText, languageVersion, true);
                 (sf as any).version = crypto.createHash('sha256').update(expandedText).digest('hex');
                 return sf;

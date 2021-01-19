@@ -1,29 +1,21 @@
 import {
-    isToken, isTokenType, replace, commaJoin, startPos, fixPos, joinItems, anonymousTemplate,
+    isToken, isTokenType, replace, commaJoin, startPos, fixPos, joinItems,
+    anonymousTemplate, laxRead,
 
     Items, Pattern, Templates, Substitution, TokenType,
-    SourceMap, StringScanner, LaxReader, CodeWriter, TemplateFunction, Token,
+    SourceMap, CodeWriter, TemplateFunction, Token, itemText,
 } from '../syntax/index.js';
 import {
-    FacetAction, Statement,
+    SyndicateParser, SyndicateTypedParser,
+    Identifier,
+    FacetAction,
+    Statement,
+    ActivationImport,
+    FacetFields,
+    Binder,
 
     compilePattern,
     patternText,
-
-    spawn,
-    fieldDeclarationStatement,
-    assertionEndpointStatement,
-    dataflowStatement,
-    eventHandlerEndpointStatement,
-    duringStatement,
-    typeDefinitionStatement,
-    messageSendStatement,
-    reactStatement,
-    bootStatement,
-    stopStatement,
-    Identifier,
-    activationImport,
-    ActivationImport,
 } from './grammar.js';
 import {
     BootProc,
@@ -64,14 +56,17 @@ export interface ActivationRecord {
 }
 
 export class ExpansionContext {
+    readonly parser: SyndicateParser;
     readonly moduleType: ModuleType;
     readonly activationRecords: Array<ActivationRecord> = [];
     hasBootProc: boolean = false;
     readonly typescript: boolean;
+    _collectedFields: FacetFields | null = null;
 
     constructor(moduleType: ModuleType,
                 typescript: boolean)
     {
+        this.parser = typescript ? new SyndicateTypedParser : new SyndicateParser();
         this.moduleType = moduleType;
         this.typescript = typescript;
     }
@@ -80,9 +75,57 @@ export class ExpansionContext {
         return this.typescript ? anonymousTemplate`${name}: ${type}` : name;
     }
 
-    get thisFacetDecl(): Substitution {
-        return this.argDecl('thisFacet', '__SYNDICATE__.Facet');
+    get collectedFields(): FacetFields {
+        if (this._collectedFields === null) {
+            throw new Error("Internal error: this.collectedFields === null");
+        }
+        return this._collectedFields;
     }
+
+    collectField(f: Binder) {
+        this.collectedFields.push(f);
+    }
+
+    withCollectedFields<T>(fs: FacetFields, f: () => T): T {
+        const oldCollectedFields = this._collectedFields;
+        try {
+            this._collectedFields = fs;
+            return f();
+        } finally {
+            this._collectedFields = oldCollectedFields;
+        }
+    }
+}
+
+function stringifyId(i: Identifier): Items {
+    return [ { ... i, type: TokenType.STRING, text: JSON.stringify(i.text) } ];
+}
+
+function facetFieldObjectType(t: TemplateFunction, fs: FacetFields): Substitution {
+    function formatBinder(binder: Binder) {
+        const hasType = (binder.type !== void 0);
+        return t`${[binder.id]}${hasType ? ': ': ''}${binder.type ?? ''}`;
+    }
+    return t`{${commaJoin(fs.map(formatBinder))}}`;
+}
+
+function binderTypeGuard(t: TemplateFunction): (binder: Binder) => Items {
+    return (binder) => {
+        if (binder.type === void 0) {
+            return t`${`/* ${binder.id.text} is a plain Value */`}`;
+        } else {
+            const typeText = itemText(binder.type);
+            switch (typeText) {
+                case 'boolean':
+                case 'string':
+                case 'number':
+                case 'symbol':
+                    return t`if (typeof (${[binder.id]}) !== ${JSON.stringify(typeText)}) return;\n`;
+                default:
+                    throw new Error(`Unhandled binding type: ${JSON.stringify(typeText)}`);
+            }
+        }
+    };
 }
 
 export function expand(tree: Items, ctx: ExpansionContext): Items {
@@ -90,7 +133,7 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
 
     function terminalWrap(t: TemplateFunction, isTerminal: boolean, body: Statement): Statement {
         if (isTerminal) {
-            return t`thisFacet._stop(function (${ctx.thisFacetDecl}) {${body}})`
+            return t`thisFacet._stop(function (thisFacet) {${body}})`
         } else {
             return body;
         }
@@ -107,44 +150,42 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
     const walk = (tree: Items): Items => expand(tree, ctx);
     const maybeWalk = (tree?: Items) : Items | undefined => (tree === void 0) ? tree : walk(tree);
 
-    xf(duringStatement, (s, t) => {
+    xf(ctx.parser.duringStatement, (s, t) => {
         // TODO: spawn during
         const sa = compilePattern(s.pattern);
-        return t`withSelfDo(function (${ctx.thisFacetDecl}) {
+        const body = ctx.withCollectedFields(s.facetFields, () => walk(s.body));
+        return t`withSelfDo(function (thisFacet) {
                    const _Facets = new __SYNDICATE__.Dictionary();
                    on asserted ${patternText(s.pattern)} => react {
-                     _Facets.set([${commaJoin(sa.captureIds.map(t=>[t]))}], thisFacet);
+                     _Facets.set([${commaJoin(sa.captureBinders.map(t=>[t.id]))}], thisFacet);
                      dataflow void 0; // TODO: horrible hack to keep the facet alive if no other endpoints
-                     ${s.body}
+                     ${body}
                    }
                    on retracted ${patternText(s.pattern)} => {
-                     const _Key = [${commaJoin(sa.captureIds.map(t=>[t]))}];
+                     const _Key = [${commaJoin(sa.captureBinders.map(t=>[t.id]))}];
                      _Facets.get(_Key)._stop();
                      _Facets.delete(_Key);
                    }
                  });`;
     });
 
-    xf(spawn, (s, t) => {
-        let proc = t`function (${ctx.thisFacetDecl}) {${walk(s.bootProcBody)}}`;
+    xf(ctx.parser.spawn, (s, t) => {
+        let body = ctx.withCollectedFields(s.facetFields, () => walk(s.body));
+        let proc = t`function (thisFacet) {${body}}`;
         if (s.isDataspace) proc = t`__SYNDICATE__.inNestedDataspace(${proc})`;
         let assertions = (s.initialAssertions.length > 0)
             ? t`, new __SYNDICATE__.Set([${commaJoin(s.initialAssertions.map(walk))}])`
             : ``;
-        return t`_spawn(${maybeWalk(s.name) ?? 'null'}, ${proc}${assertions});`;
+        let fieldTypeParam = ctx.typescript ? t`<${facetFieldObjectType(t, s.facetFields)}>` : '';
+        return t`_spawn${fieldTypeParam}(${maybeWalk(s.name) ?? 'null'}, ${proc}${assertions});`;
     });
 
-    xf(fieldDeclarationStatement, (s, t) => {
-        const prop = ('name' in s.property)
-            ? [ { start: s.property.name.start,
-                  end: s.property.name.end,
-                  type: TokenType.STRING,
-                  text: JSON.stringify(s.property.name.text) } ]
-            : walk(s.property.expr);
-        return t`declareField(${walk(s.target)}, ${prop}, ${maybeWalk(s.init) ?? 'void 0'});`;
+    xf(ctx.parser.fieldDeclarationStatement, (s, t) => {
+        ctx.collectField(s.property);
+        return t`declareField(this, ${stringifyId(s.property.id)}, ${maybeWalk(s.init) ?? 'void 0'});`;
     });
 
-    xf(assertionEndpointStatement, (s, t) => {
+    xf(ctx.parser.assertionEndpointStatement, (s, t) => {
         if (s.test == void 0) {
             return t`addEndpoint(thisFacet => ({ assertion: ${walk(s.template)}, analysis: null }));`;
         } else {
@@ -154,17 +195,18 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
         }
     });
 
-    xf(dataflowStatement, (s, t) => t`addDataflow(function (${ctx.thisFacetDecl}) {${walk(s.body)}});`);
+    xf(ctx.parser.dataflowStatement, (s, t) =>
+        t`addDataflow(function (thisFacet) {${walk(s.body)}});`);
 
-    xf(eventHandlerEndpointStatement, (s, t) => {
+    xf(ctx.parser.eventHandlerEndpointStatement, (s, t) => {
         switch (s.triggerType) {
             case 'dataflow':
-                return t`withSelfDo(function (${ctx.thisFacetDecl}) { dataflow { if (${walk(s.predicate)}) { ${terminalWrap(t, s.terminal, walk(s.body))} } } });`;
+                return t`withSelfDo(function (thisFacet) { dataflow { if (${walk(s.predicate)}) { ${terminalWrap(t, s.terminal, walk(s.body))} } } });`;
 
             case 'start':
             case 'stop': {
                 const m = s.triggerType === 'start' ? 'addStartScript' : 'addStopScript';
-                return t`${m}(function (${ctx.thisFacetDecl}) {${walk(s.body)}});`;
+                return t`${m}(function (thisFacet) {${walk(s.body)}});`;
             }
 
             case 'asserted':
@@ -176,6 +218,8 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
                     'retracted': 'REMOVED',
                     'message': 'MESSAGE',
                 })[s.triggerType];
+                const destructure = sa.captureBinders.length === 0 ? '__vs'
+                    : t`[${commaJoin(sa.captureBinders.map(i=>[i.id]))}]`;
                 return t`addEndpoint(thisFacet => ({
                            assertion: __SYNDICATE__.Observe(${walk(sa.assertion)}),
                            analysis: {
@@ -183,8 +227,9 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
                              constPaths: ${JSON.stringify(sa.constPaths)},
                              constVals: [${commaJoin(sa.constVals.map(walk))}],
                              capturePaths: ${JSON.stringify(sa.capturePaths)},
-                             callback: thisFacet.wrap((thisFacet, __Evt, [${commaJoin(sa.captureIds.map(i=>[i]))}]) => {
+                             callback: thisFacet.wrap((thisFacet, __Evt, ${destructure}) => {
                                if (__Evt === __SYNDICATE__.Skeleton.EventType.${expectedEvt}) {
+${ctx.typescript ? joinItems(sa.captureBinders.map(binderTypeGuard(t)), '\n') : ''}
                                  thisFacet.scheduleScript(() => {${terminalWrap(t, s.terminal, walk(s.body))}});
                                }
                              })
@@ -194,17 +239,23 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
         }
     });
 
-    x(typeDefinitionStatement, (s, t) => {
+    x(ctx.parser.typeDefinitionStatement, (s, t) => {
         const l = JSON.stringify(s.label.text);
-        const fs = JSON.stringify(s.fields.map(f => f.text));
+        const fs = JSON.stringify(s.fields.map(f => f.id.text));
         return t`const ${[s.label]} = __SYNDICATE__.Record.makeConstructor(${maybeWalk(s.wireName) ?? l}, ${fs});`;
     });
 
-    xf(messageSendStatement, (s, t) => t`_send(${walk(s.expr)});`);
+    xf(ctx.parser.messageSendStatement, (s, t) => t`_send(${walk(s.expr)});`);
 
-    xf(reactStatement, (s, t) => t`addChildFacet(function (${ctx.thisFacetDecl}) {${walk(s.body)}});`);
+    xf(ctx.parser.reactStatement, (s, t) => {
+        const body = ctx.withCollectedFields(s.facetFields, () => walk(s.body));
+        const fieldTypeParam = ctx.typescript
+            ? t`<${facetFieldObjectType(t, ctx.collectedFields)}, ${facetFieldObjectType(t, s.facetFields)}>`
+            : '';
+        return t`addChildFacet${fieldTypeParam}(function (thisFacet) {${body}});`;
+    });
 
-    x(activationImport, (s, t) => {
+    x(ctx.parser.activationImport, (s) => {
         const activationScriptId: Token = {
             start: s.activationKeyword.start,
             end: s.activationKeyword.end,
@@ -215,36 +266,39 @@ export function expand(tree: Items, ctx: ExpansionContext): Items {
         return [];
     }),
 
-    x(bootStatement, (s, t) => {
+    x(ctx.parser.bootStatement, (s, t) => {
         ctx.hasBootProc = true;
         const activationStatements = ctx.activationRecords.map(({ activationScriptId: id }) =>
             t`thisFacet.activate(${[id]}); `);
         const body = t`${joinItems(activationStatements)}${walk(s)}`;
+        const facetDecl = ctx.typescript ? 'thisFacet: __SYNDICATE__.Facet<{}>' : 'thisFacet';
         switch (ctx.moduleType) {
             case 'es6':
-                return t`export function ${BootProc}(${ctx.thisFacetDecl}) {${body}}`;
+                return t`export function ${BootProc}(${facetDecl}) {${body}}`;
             case 'require':
-                return t`module.exports.${BootProc} = function (${ctx.thisFacetDecl}) {${body}};`;
+                return t`module.exports.${BootProc} = function (${facetDecl}) {${body}};`;
             case 'global':
-                return t`function ${BootProc}(${ctx.thisFacetDecl}) {${body}}`;
+                return t`function ${BootProc}(${facetDecl}) {${body}}`;
         }
     });
 
-    xf(stopStatement, (s, t) => t`_stop(function (${ctx.thisFacetDecl}) {${walk(s.body)}});`)
+    xf(ctx.parser.stopStatement, (s, t) =>
+        t`_stop(function (thisFacet) {${walk(s.body)}});`)
 
     return tree;
 }
 
 export function compile(options: CompileOptions): CompilerOutput {
     const inputFilename = options.name ?? '/dev/stdin';
+
+    console.info(`Syndicate: compiling ${inputFilename}`);
+
     const source = options.source;
     const moduleType = options.module ?? 'es6';
     const typescript = options.typescript ?? false;
 
     const start = startPos(inputFilename);
-    const scanner = new StringScanner(start, source);
-    const reader = new LaxReader(scanner);
-    let tree = stripShebang(reader.readToEnd());
+    let tree = stripShebang(laxRead(source, { start, extraDelimiters: ':' }));
     const end = tree.length > 0 ? tree[tree.length - 1].end : start;
 
     let macro = new Templates();

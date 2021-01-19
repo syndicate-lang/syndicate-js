@@ -5,6 +5,7 @@ import path from 'path';
 import { glob } from 'glob';
 
 import { compile } from '@syndicate-lang/compiler';
+import { dataURL, sourceMappingComment} from './util.js';
 
 export type ModuleChoice = 'es6' | 'require' | 'global';
 const moduleChoices: ReadonlyArray<ModuleChoice> = ['es6', 'require', 'global'];
@@ -18,6 +19,7 @@ export type CommandLineArguments = {
     mapExtension?: string;
     runtime: string;
     module: ModuleChoice;
+    typed: boolean;
 }
 
 function checkModuleChoice<T>(t: T & { module: string }): T & { module: ModuleChoice } {
@@ -97,6 +99,12 @@ export function main(argv: string[]) {
                          description: 'Path to require or import to get the Syndicate runtime',
                          default: '@syndicate-lang/core',
                      })
+                     .option('typed', {
+                         alias: 't',
+                         type: 'boolean',
+                         description: 'Enable TypeScript-typed translation',
+                         default: false,
+                     })
                      .option('module', {
                          choices: moduleChoices,
                          type: 'string',
@@ -132,13 +140,9 @@ export function main(argv: string[]) {
             name: inputFilename,
             runtime: options.runtime,
             module: options.module,
+            typescript: options.typed,
         });
         map.sourcesContent = [source];
-
-        function mapDataURL() {
-            const mapData = Buffer.from(JSON.stringify(map)).toString('base64')
-            return `data:application/json;base64,${mapData}`;
-        }
 
         if (inputFilename !== STDIN) {
             fs.mkdirSync(path.dirname(outputFilename), { recursive: true });
@@ -148,10 +152,10 @@ export function main(argv: string[]) {
             fs.writeFileSync(outputFilename, text);
         } else if (options.mapExtension && inputFilename !== STDIN) {
             const mapFilename = outputFilename + options.mapExtension;
-            fs.writeFileSync(outputFilename, text + `\n//# sourceMappingURL=${mapFilename}`);
+            fs.writeFileSync(outputFilename, text + sourceMappingComment(mapFilename));
             fs.writeFileSync(mapFilename, JSON.stringify(map));
         } else {
-            fs.writeFileSync(outputFilename, text + `\n//# sourceMappingURL=${mapDataURL()}`);
+            fs.writeFileSync(outputFilename, text + sourceMappingComment(dataURL(JSON.stringify(map))));
         }
     }
 }

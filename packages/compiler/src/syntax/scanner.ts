@@ -130,8 +130,9 @@ export abstract class Scanner implements IterableIterator<Token> {
                     buf = buf + this.shiftChar();
                     while (true) {
                         ch = this.shiftChar();
-                        if ((ch === null) ||((ch === '/') && seenStar)) break;
+                        if (ch === null) break;
                         buf = buf + ch;
+                        if ((ch === '/') && seenStar) break;
                         seenStar = (ch === '*');
                     }
                     return this._collectSpace(buf, start);
@@ -168,16 +169,15 @@ export abstract class Scanner implements IterableIterator<Token> {
             case '`':
                 return this._str(false);
 
-            case '.':
-            case ',':
-            case ';':
-                return this._punct(TokenType.ATOM);
-
             case '/':
                 return this._maybeComment();
 
             default:
-                return this._atom(this.mark(), this.shiftChar()!);
+                if (this.isDelimiter(ch)) {
+                    return this._punct(TokenType.ATOM);
+                } else {
+                    return this._atom(this.mark(), this.shiftChar()!);
+                }
         }
     }
 

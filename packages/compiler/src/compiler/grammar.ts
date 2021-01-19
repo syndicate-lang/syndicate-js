@@ -11,97 +11,38 @@ import {
 import * as Matcher from '../syntax/matcher.js';
 import { Path, Skeleton } from './internals.js';
 
+//---------------------------------------------------------------------------
+// AST types
+
 export type Expr = Items;
 export type Statement = Items;
 export type Identifier = Token;
-
-export const block = (acc: Items) => group('{', map(rest, items => acc.push(... items)));
-
-export const statementBoundary = alt<any>(atom(';'), Matcher.newline);
-export const exprBoundary = alt<any>(atom(';'), atom(','), group('{', discard), Matcher.end);
-
-export const identifier: Pattern<Identifier> = atom();
-
-export function expr(... extraStops: Pattern<any>[]): Pattern<Expr> {
-    return withoutSpace(upTo(alt(exprBoundary, ... extraStops)));
-}
-
-export function statement(acc: Items): Pattern<any> {
-    return alt<any>(block(acc),
-                    withoutSpace(seq(map(upTo(statementBoundary), items => acc.push(... items)),
-                                     map(statementBoundary, i => i ? acc.push(i) : void 0))));
-}
+export type Type = Items;
+export type Binder = { id: Identifier, type?: Type };
 
 export interface FacetAction {
     implicitFacet: boolean;
 }
 
-export function facetAction<I extends FacetAction, T extends I>(
-    pattern: (scope: T) => Pattern<any>): Pattern<T>
-{
-    return i => {
-        const scope = Object.create(null);
-        scope.implicitFacet = true;
-        const p = seq(option(map(atom('.'), _ => scope.implicitFacet = false)), pattern(scope));
-        const r = p(i);
-        if (r === null) return null;
-        return [scope, r[1]];
-    };
+export type FacetFields = Binder[];
+
+export interface FacetProducingAction extends FacetAction {
+    body: Statement;
+    facetFields: FacetFields;
 }
 
-export interface SpawnStatement extends FacetAction {
+export interface SpawnStatement extends FacetProducingAction {
     isDataspace: boolean;
     name?: Expr;
     initialAssertions: Expr[];
-    parentIds: Identifier[];
+    parentBinders: Binder[];
     parentInits: Expr[];
-    bootProcBody: Statement;
 }
-
-export const spawn: Pattern<SpawnStatement> & { headerExpr: Pattern<Expr> } =
-    Object.assign(facetAction((o: SpawnStatement) => {
-        o.isDataspace = false;
-        o.initialAssertions = [];
-        o.parentIds = [];
-        o.parentInits = [];
-        o.bootProcBody = [];
-        return seq(atom('spawn'),
-                   option(seq(atom('dataspace'), exec(() => o.isDataspace = true))),
-                   option(seq(atom('named'),
-                              bind(o, 'name', spawn.headerExpr))),
-                   repeat(alt(seq(atom(':asserting'),
-                                  map(spawn.headerExpr, e => o.initialAssertions.push(e))),
-                              map(scope((l: { id: Identifier, init: Expr }) =>
-                                  seq(atom(':let'),
-                                      bind(l, 'id', identifier),
-                                      atom('='),
-                                      bind(l, 'init', spawn.headerExpr))),
-                                  l => {
-                                      o.parentIds.push(l.id);
-                                      o.parentInits.push(l.init);
-                                  }))),
-                   block(o.bootProcBody));
-    }), {
-        headerExpr: expr(atom(':asserting'), atom(':let')),
-    });
 
 export interface FieldDeclarationStatement extends FacetAction {
-    target: Expr;
-    property: { name: Identifier } | { expr: Expr };
+    property: Binder;
     init?: Expr;
 }
-
-// Principal: Dataspace, but only for implementation reasons, so really Facet
-export const fieldDeclarationStatement: Pattern<FieldDeclarationStatement> =
-    facetAction(o => {
-        const prop = alt(seq(atom('.'), map(identifier, name => o.property = {name})),
-                         seq(group('[', map(expr(), expr => o.property = {expr}))));
-        return seq(atom('field'),
-                   bind(o, 'target', expr(seq(prop, alt(atom('='), statementBoundary)))),
-                   prop,
-                   option(seq(atom('='), bind(o, 'init', expr()))),
-                   statementBoundary);
-    });
 
 export interface AssertionEndpointStatement extends FacetAction {
     isDynamic: boolean,
@@ -109,30 +50,9 @@ export interface AssertionEndpointStatement extends FacetAction {
     test?: Expr,
 }
 
-// Principal: Facet
-export const assertionEndpointStatement: Pattern<AssertionEndpointStatement> =
-    facetAction(o => {
-        o.isDynamic = true;
-        return seq(atom('assert'),
-                   option(map(atom(':snapshot'), _ => o.isDynamic = false)),
-                   bind(o, 'template', expr(seq(atom('when'), group('(', discard)))),
-                   option(seq(atom('when'), group('(', bind(o, 'test', expr())))),
-                   statementBoundary);
-    });
-
 export interface StatementFacetAction extends FacetAction {
     body: Statement;
 }
-
-export function blockFacetAction(kw: Pattern<any>): Pattern<StatementFacetAction> {
-    return facetAction(o => {
-        o.body = [];
-        return seq(kw, block(o.body));
-    });
-}
-
-// Principal: Facet
-export const dataflowStatement = blockFacetAction(atom('dataflow'));
 
 export interface GenericEventEndpointStatement extends StatementFacetAction {
     terminal: boolean;
@@ -156,115 +76,35 @@ export interface AssertionEventEndpointStatement extends GenericEventEndpointSta
 export type EventHandlerEndpointStatement =
     DataflowEndpointStatement | PseudoEventEndpointStatement | AssertionEventEndpointStatement;
 
-export function mandatoryIfNotTerminal(o: GenericEventEndpointStatement, p: Pattern<any>): Pattern<any> {
-    return i => {
-        return (o.terminal) ? option(p)(i) : p(i);
-    };
-}
-
-// Principal: Facet
-export const eventHandlerEndpointStatement: Pattern<EventHandlerEndpointStatement> =
-    facetAction(o => {
-        o.terminal = false;
-        o.isDynamic = true;
-        o.body = [];
-        return seq(option(map(atom('stop'), _ => o.terminal = true)),
-                   atom('on'),
-                   alt<any>(seq(map(group('(', bind(o as DataflowEndpointStatement, 'predicate',
-                                                    expr())),
-                                    _ => o.triggerType = 'dataflow'),
-                                mandatoryIfNotTerminal(o, statement(o.body))),
-                            mapm(seq(bind(o, 'triggerType',
-                                          alt(atomString('start'), atomString('stop'))),
-                                     option(statement(o.body))),
-                                 v => o.terminal ? fail : succeed(v)),
-                            seq(bind(o, 'triggerType',
-                                     alt(atomString('asserted'),
-                                         atomString('retracted'),
-                                         atomString('message'))),
-                                option(map(atom(':snapshot'), _ => o.isDynamic = false)),
-                                bind(o as AssertionEventEndpointStatement, 'pattern',
-                                     valuePattern(atom('=>'))),
-                                mandatoryIfNotTerminal(o, seq(atom('=>'), statement(o.body))))));
-    });
-
 export interface TypeDefinitionStatement {
     expectedUse: 'message' | 'assertion';
     label: Identifier;
-    fields: Identifier[];
+    fields: Binder[];
     wireName?: Expr;
 }
-
-// Principal: none
-export const typeDefinitionStatement: Pattern<TypeDefinitionStatement> =
-    scope(o => seq(bind(o, 'expectedUse', alt(atomString('message'), atomString('assertion'))),
-                   atom('type'),
-                   bind(o, 'label', identifier),
-                   group('(', bind(o, 'fields', repeat(identifier, { separator: atom(',') }))),
-                   option(seq(atom('='),
-                              bind(o, 'wireName', withoutSpace(upTo(statementBoundary))))),
-                   statementBoundary));
 
 export interface MessageSendStatement extends FacetAction {
     expr: Expr;
 }
 
-// Principal: Facet
-export const messageSendStatement: Pattern<MessageSendStatement> =
-    facetAction(o => seq(atom('send'),
-                         atom('message'),
-                         not(statementBoundary),
-                         bind(o, 'expr', withoutSpace(upTo(statementBoundary))),
-                         statementBoundary));
-
-export interface DuringStatement extends FacetAction {
+export interface DuringStatement extends FacetProducingAction {
     pattern: ValuePattern;
-    body: Statement;
 }
 
-// Principal: Facet
-export const duringStatement: Pattern<DuringStatement> =
-    facetAction(o => {
-        o.body = [];
-        return seq(atom('during'),
-                   bind(o, 'pattern', valuePattern(atom('=>'))),
-                   seq(atom('=>'), statement(o.body)));
-    });
-
-// Principal: Facet
-export const reactStatement = blockFacetAction(atom('react'));
-
-// Principal: none
-export const bootStatement: Pattern<Statement> =
-    value(o => {
-        o.value = [];
-        return seq(atom('boot'), block(o.value));
-    });
-
-// Principal: Facet
-export const stopStatement = blockFacetAction(atom('stop'));
+export interface ReactStatement extends FacetProducingAction {
+}
 
 export interface ActivationImport {
     activationKeyword: Identifier;
     target: { type: 'import', moduleName: Token } | { type: 'expr', moduleExpr: Expr };
 }
 
-// Principal: none
-export const activationImport: Pattern<ActivationImport> =
-    scope(o => seq(bind(o, 'activationKeyword', atom('activate')),
-                   follows(alt<any>(seq(atom('import'),
-                                        upTo(seq(
-                                            map(atom(void 0, { tokenType: TokenType.STRING }),
-                                                n => o.target = { type: 'import', moduleName: n }),
-                                            statementBoundary))),
-                                    map(expr(), e => o.target = { type: 'expr', moduleExpr: e })))));
-
 //---------------------------------------------------------------------------
-// Syntax of patterns over Value, used in endpoints
+// Value pattern AST types
 
 export interface PCapture {
     type: 'PCapture',
-    binder: Identifier,
+    binder: Binder,
     inner: ValuePattern,
 }
 
@@ -290,108 +130,10 @@ export interface PArray {
 
 export type ValuePattern = PCapture | PDiscard | PConstructor | PConstant | PArray;
 
-const pCaptureId: Pattern<Identifier> =
-    mapm(identifier, i => i.text.startsWith('$')
-        ? succeed({ ... i, text: i.text.slice(1) })
-        : fail);
-
-const pDiscard: Pattern<void> = mapm(identifier, i => i.text === '_' ? succeed(void 0) : fail);
-
-function hasCapturesOrDiscards(e: Expr): boolean {
-    return foldItems(e,
-                     t => match(alt<any>(pCaptureId, pDiscard), [t], null) !== null,
-                     (_g, b, _k) => b,
-                     bs => bs.some(b => b));
-}
-
-// $id - capture of discard
-// _ - discard
-//
-// expr(pat, ...) - record ctor
-// $id(pat) - nested capture
-// [pat, ...] - array pat
-//
-// expr(expr, ...) - constant
-// [expr, ...] - constant
-// other - constant
-
 interface RawCall {
     items: Items;
     callee: Expr;
     arguments: Expr[];
-}
-
-function pRawCall(... extraStops: Pattern<any>[]): Pattern<RawCall> {
-    return scope((o: RawCall) => seq(bind(o, 'callee',
-                                          expr(seq(group('(', discard),
-                                                   alt(exprBoundary, ... extraStops)))),
-                                     seq(map(anything({ advance: false }),
-                                             g => o.items = [... o.callee, g]),
-                                         group('(', bind(o, 'arguments',
-                                                         separatedBy(expr(), atom(',')))))));
-}
-
-function isConstant(o: RawCall) {
-    return (!(hasCapturesOrDiscards(o.callee) || o.arguments.some(hasCapturesOrDiscards)));
-}
-
-export function valuePattern(... extraStops: Pattern<any>[]): Pattern<ValuePattern> {
-    return alt<ValuePattern>(
-        scope<PCapture>(o => {
-            o.type = 'PCapture';
-            o.inner = { type: 'PDiscard' };
-            return bind(o, 'binder', pCaptureId);
-        }),
-        scope(o => map(pDiscard, _ => o.type = 'PDiscard')),
-        mapm<RawCall, ValuePattern>(
-            pRawCall(... extraStops),
-            o => {
-                if (isConstant(o)) {
-                    return succeed({ type: 'PConstant', value: o.items });
-                } else if (hasCapturesOrDiscards(o.callee)) {
-                    const r = match(pCaptureId, o.callee, null);
-                    if (r !== null && o.arguments.length === 1)
-                    {
-                        const argPat = match(valuePattern(), o.arguments[0], null);
-                        if (argPat === null) return fail;
-                        return succeed({
-                            type: 'PCapture',
-                            inner: argPat,
-                            binder: r
-                        });
-                    } else {
-                        return fail;
-                    }
-                } else {
-                    const argPats = o.arguments.map(a => match(valuePattern(), a, null));
-                    if (argPats.some(p => p === null)) return fail;
-                    return succeed({
-                        type: 'PConstructor',
-                        ctor: o.callee,
-                        arguments: argPats as ValuePattern[]
-                    });
-                }
-            }),
-        map(expr(), e => ({ type: 'PConstant', value: e }))
-    );
-}
-
-export function patternText(p: ValuePattern): Items {
-    switch (p.type) {
-        case 'PDiscard': return template`_`;
-        case 'PConstant': return p.value;
-        case 'PCapture':
-            {
-                const binder = { ... p.binder, text: '$' + p.binder.text };
-                if (p.inner.type === 'PDiscard') {
-                    return [binder];
-                } else {
-                    return template`${[binder]}(${patternText(p.inner)})`;
-                }
-            }
-        case 'PArray': return template`[${commaJoin(p.elements.map(patternText))}]`;
-        case 'PConstructor': return template`${p.ctor}(${commaJoin(p.arguments.map(patternText))})`;
-    }
 }
 
 export interface StaticAnalysis {
@@ -399,8 +141,322 @@ export interface StaticAnalysis {
     constPaths: Path[];
     constVals: Expr[];
     capturePaths: Path[];
-    captureIds: Identifier[];
+    captureBinders: Binder[];
     assertion: Expr;
+}
+
+//---------------------------------------------------------------------------
+// Parsers
+
+export class SyndicateParser {
+    block(acc?: Items): Pattern<Items> {
+        return group('{', map(rest, items => (acc?.push(... items), items)));
+    }
+
+    readonly statementBoundary = alt<any>(atom(';'), Matcher.newline);
+    readonly exprBoundary = alt<any>(atom(';'), atom(','), group('{', discard), Matcher.end);
+
+    readonly identifier: Pattern<Identifier> = atom();
+    get binder(): Pattern<Binder> { return scope(o => bind(o, 'id', this.identifier)); }
+
+    expr(... extraStops: Pattern<any>[]): Pattern<Expr> {
+        return withoutSpace(upTo(alt(this.exprBoundary, ... extraStops)));
+    }
+
+    readonly type: (... extraStops: Pattern<any>[]) => Pattern<Type> = this.expr;
+
+    statement(acc: Items): Pattern<any> {
+        return alt<any>(this.block(acc),
+                        withoutSpace(seq(map(upTo(this.statementBoundary),
+                                             items => acc.push(... items)),
+                                         map(this.statementBoundary,
+                                             i => i ? acc.push(i) : void 0))));
+    }
+
+    facetAction<T extends FacetAction>(pattern: (scope: T) => Pattern<any>): Pattern<T> {
+        return i => {
+            const scope = Object.create(null);
+            scope.implicitFacet = true;
+            const p = seq(option(map(atom('.'), _ => scope.implicitFacet = false)), pattern(scope));
+            const r = p(i);
+            if (r === null) return null;
+            return [scope, r[1]];
+        };
+    }
+
+    readonly headerExpr = this.expr(atom(':asserting'), atom(':let'));
+
+    // Principal: Facet
+    readonly spawn: Pattern<SpawnStatement> =
+        this.facetAction(o => {
+            o.isDataspace = false;
+            o.initialAssertions = [];
+            o.parentBinders = [];
+            o.parentInits = [];
+            o.body = [];
+            o.facetFields = [];
+            return seq(atom('spawn'),
+                       option(seq(atom('dataspace'), exec(() => o.isDataspace = true))),
+                       option(seq(atom('named'),
+                                  bind(o, 'name', this.headerExpr))),
+                       repeat(alt(seq(atom(':asserting'),
+                                      map(this.headerExpr, e => o.initialAssertions.push(e))),
+                                  map(scope((l: { b: Binder, init: Expr }) =>
+                                      seq(atom(':let'),
+                                          bind(l, 'b', this.binder),
+                                          atom('='),
+                                          bind(l, 'init', this.headerExpr))),
+                                      l => {
+                                          o.parentBinders.push(l.b);
+                                          o.parentInits.push(l.init);
+                                      }))),
+                       this.block(o.body));
+        });
+
+    // Principal: Dataspace, but only for implementation reasons, so really Facet
+    readonly fieldDeclarationStatement: Pattern<FieldDeclarationStatement> =
+        this.facetAction(o => {
+            return seq(atom('field'),
+                       bind(o, 'property', this.binder),
+                       option(seq(atom('='), bind(o, 'init', this.expr()))),
+                       this.statementBoundary);
+        });
+
+    // Principal: Facet
+    readonly assertionEndpointStatement: Pattern<AssertionEndpointStatement> =
+        this.facetAction(o => {
+            o.isDynamic = true;
+            return seq(atom('assert'),
+                       option(map(atom(':snapshot'), _ => o.isDynamic = false)),
+                       bind(o, 'template', this.expr(seq(atom('when'), group('(', discard)))),
+                       option(seq(atom('when'), group('(', bind(o, 'test', this.expr())))),
+                       this.statementBoundary);
+        });
+
+    blockFacetAction(kw: Pattern<any>): Pattern<StatementFacetAction> {
+        return this.facetAction(o => {
+            o.body = [];
+            return seq(kw, this.block(o.body));
+        });
+    }
+
+    // Principal: Facet
+    readonly dataflowStatement = this.blockFacetAction(atom('dataflow'));
+
+    mandatoryIfNotTerminal(o: GenericEventEndpointStatement, p: Pattern<any>): Pattern<any> {
+        return i => {
+            return (o.terminal) ? option(p)(i) : p(i);
+        };
+    }
+
+    // Principal: Facet
+    readonly eventHandlerEndpointStatement: Pattern<EventHandlerEndpointStatement> =
+        this.facetAction(o => {
+            o.terminal = false;
+            o.isDynamic = true;
+            o.body = [];
+            return seq(option(map(atom('stop'), _ => o.terminal = true)),
+                       atom('on'),
+                       alt<any>(seq(map(group('(', bind(o as DataflowEndpointStatement, 'predicate',
+                                                        this.expr())),
+                                        _ => o.triggerType = 'dataflow'),
+                                    this.mandatoryIfNotTerminal(o, this.statement(o.body))),
+                                mapm(seq(bind(o, 'triggerType',
+                                              alt(atomString('start'), atomString('stop'))),
+                                         option(this.statement(o.body))),
+                                     v => o.terminal ? fail : succeed(v)),
+                                seq(bind(o, 'triggerType',
+                                         alt(atomString('asserted'),
+                                             atomString('retracted'),
+                                             atomString('message'))),
+                                    option(map(atom(':snapshot'), _ => o.isDynamic = false)),
+                                    bind(o as AssertionEventEndpointStatement, 'pattern',
+                                         this.valuePattern(atom('=>'))),
+                                    this.mandatoryIfNotTerminal(
+                                        o, seq(atom('=>'), this.statement(o.body))))));
+        });
+
+    // Principal: none
+    readonly typeDefinitionStatement: Pattern<TypeDefinitionStatement> =
+        scope(o => seq(bind(o, 'expectedUse', alt(atomString('message'), atomString('assertion'))),
+                       atom('type'),
+                       bind(o, 'label', this.identifier),
+                       group('(', bind(o, 'fields',
+                                       repeat(this.binder, { separator: atom(',') }))),
+                       option(seq(atom('='),
+                                  bind(o, 'wireName', withoutSpace(upTo(this.statementBoundary))))),
+                       this.statementBoundary));
+
+    // Principal: Facet
+    readonly messageSendStatement: Pattern<MessageSendStatement> =
+        this.facetAction(o => seq(atom('send'),
+                                  atom('message'),
+                                  not(this.statementBoundary),
+                                  bind(o, 'expr', withoutSpace(upTo(this.statementBoundary))),
+                                  this.statementBoundary));
+
+    // Principal: Facet
+    readonly duringStatement: Pattern<DuringStatement> =
+        this.facetAction(o => {
+            o.body = [];
+            o.facetFields = [];
+            return seq(atom('during'),
+                       bind(o, 'pattern', this.valuePattern(atom('=>'))),
+                       seq(atom('=>'), this.statement(o.body)));
+        });
+
+    // Principal: Facet
+    readonly reactStatement: Pattern<ReactStatement> =
+        this.facetAction(o => {
+            o.body = [];
+            o.facetFields = [];
+            return seq(atom('react'), this.block(o.body));
+        });
+
+    // Principal: none
+    readonly bootStatement: Pattern<Statement> =
+        value(o => {
+            o.value = [];
+            return seq(atom('boot'), this.block(o.value));
+        });
+
+    // Principal: Facet
+    readonly stopStatement = this.blockFacetAction(atom('stop'));
+
+    // Principal: none
+    readonly activationImport: Pattern<ActivationImport> =
+        scope(o => seq(bind(o, 'activationKeyword', atom('activate')),
+                       follows(alt<any>(seq(atom('import'),
+                                            upTo(seq(
+                                                map(atom(void 0, { tokenType: TokenType.STRING }),
+                                                    n => o.target = {
+                                                        type: 'import',
+                                                        moduleName: n
+                                                    }),
+                                                this.statementBoundary))),
+                                        map(this.expr(), e => o.target = {
+                                            type: 'expr',
+                                            moduleExpr: e
+                                        })))));
+
+    //---------------------------------------------------------------------------
+    // Syntax of patterns over Value, used in endpoints
+
+    readonly pCaptureBinder: Pattern<Binder> =
+        mapm(this.binder, i => {
+            return i.id.text.startsWith('$')
+                ? succeed({ id: { ... i.id, text: i.id.text.slice(1) }, type: i.type })
+                : fail;
+        });
+
+    readonly pDiscard: Pattern<void> =
+        mapm(this.identifier, i => i.text === '_' ? succeed(void 0) : fail);
+
+    hasCapturesOrDiscards(e: Expr): boolean {
+        return foldItems(e,
+                         t => match(alt<any>(this.pCaptureBinder, this.pDiscard), [t], null) !== null,
+                         (_g, b, _k) => b,
+                         bs => bs.some(b => b));
+    }
+
+    // $id - capture of discard
+    // _ - discard
+    //
+    // expr(pat, ...) - record ctor
+    // $id(pat) - nested capture
+    // [pat, ...] - array pat
+    //
+    // expr(expr, ...) - constant
+    // [expr, ...] - constant
+    // other - constant
+
+    pRawCall(... extraStops: Pattern<any>[]): Pattern<RawCall> {
+        return scope((o: RawCall) =>
+            seq(bind(o, 'callee',
+                     this.expr(seq(group('(', discard),
+                                   alt(this.exprBoundary, ... extraStops)))),
+                seq(map(anything({ advance: false }),
+                        g => o.items = [... o.callee, g]),
+                    group('(', bind(o, 'arguments',
+                                    separatedBy(this.expr(), atom(',')))))));
+    }
+
+    isConstant(o: RawCall): boolean {
+        return (!(this.hasCapturesOrDiscards(o.callee) ||
+            o.arguments.some(a => this.hasCapturesOrDiscards(a))));
+    }
+
+    valuePattern(... extraStops: Pattern<any>[]): Pattern<ValuePattern> {
+        return alt<ValuePattern>(
+            scope<PCapture>(o => {
+                o.type = 'PCapture';
+                o.inner = { type: 'PDiscard' };
+                return bind(o, 'binder', this.pCaptureBinder);
+            }),
+            scope(o => map(this.pDiscard, _ => o.type = 'PDiscard')),
+            mapm<RawCall, ValuePattern>(
+                this.pRawCall(... extraStops),
+                o => {
+                    if (this.isConstant(o)) {
+                        return succeed({ type: 'PConstant', value: o.items });
+                    } else if (this.hasCapturesOrDiscards(o.callee)) {
+                        const r = match(this.pCaptureBinder, o.callee, null);
+                        if (r !== null && o.arguments.length === 1)
+                        {
+                            const argPat = match(this.valuePattern(), o.arguments[0], null);
+                            if (argPat === null) return fail;
+                            return succeed({
+                                type: 'PCapture',
+                                inner: argPat,
+                                binder: r
+                            });
+                        } else {
+                            return fail;
+                        }
+                    } else {
+                        const argPats = o.arguments.map(a => match(this.valuePattern(), a, null));
+                        if (argPats.some(p => p === null)) return fail;
+                        return succeed({
+                            type: 'PConstructor',
+                            ctor: o.callee,
+                            arguments: argPats as ValuePattern[]
+                        });
+                    }
+                }),
+            map(this.expr(), e => ({ type: 'PConstant', value: e }))
+        );
+    }
+}
+
+export class SyndicateTypedParser extends SyndicateParser {
+    get binder(): Pattern<Binder> {
+        return scope(o => seq(bind(o, 'id', this.identifier),
+                              option(seq(atom(':'),
+                                         bind(o, 'type', this.type(atom('=')))))));
+    }
+}
+
+//---------------------------------------------------------------------------
+// Value pattern utilities
+
+export function patternText(p: ValuePattern): Items {
+    switch (p.type) {
+        case 'PDiscard': return template`_`;
+        case 'PConstant': return p.value;
+        case 'PCapture':
+            {
+                const binderId = { ... p.binder.id, text: '$' + p.binder.id.text };
+                const affix =
+                    (p.inner.type === 'PDiscard') ? [] : template`(${patternText(p.inner)})`;
+                if (p.binder.type !== void 0) {
+                    return template`${[binderId]}:${p.binder.type}${affix}`;
+                } else {
+                    return template`${[binderId]}${affix}`;
+                }
+            }
+        case 'PArray': return template`[${commaJoin(p.elements.map(patternText))}]`;
+        case 'PConstructor': return template`${p.ctor}(${commaJoin(p.arguments.map(patternText))})`;
+    }
 }
 
 const eDiscard: Expr = template`(__SYNDICATE__.Discard._instance)`;
@@ -410,7 +466,7 @@ export function compilePattern(pattern: ValuePattern): StaticAnalysis {
     const constPaths: Path[] = [];
     const constVals: Expr[] = [];
     const capturePaths: Path[] = [];
-    const captureIds: Identifier[] = [];
+    const captureBinders: Binder[] = [];
 
     const currentPath: Path = [];
 
@@ -420,7 +476,7 @@ export function compilePattern(pattern: ValuePattern): StaticAnalysis {
                 return [null, eDiscard];
             case 'PCapture': {
                 capturePaths.push(currentPath.slice());
-                captureIds.push(pattern.binder);
+                captureBinders.push(pattern.binder);
                 const [s, a] = walk(pattern.inner);
                 return [s, eCapture(a)];
             }
@@ -473,7 +529,7 @@ export function compilePattern(pattern: ValuePattern): StaticAnalysis {
         constPaths,
         constVals,
         capturePaths,
-        captureIds,
+        captureBinders,
         assertion,
     };
 }

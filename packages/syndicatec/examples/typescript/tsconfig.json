@@ -9,7 +9,7 @@
     "declarationDir": "./lib",
     "esModuleInterop": true,
     "moduleResolution": "node",
-    "module": "commonjs",
+    "module": "es6",
     "sourceMap": true,
     "strict": true
   },

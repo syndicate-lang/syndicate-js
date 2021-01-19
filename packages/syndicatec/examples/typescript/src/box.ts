@@ -20,7 +20,7 @@ import { BoxState, SetBox, N } from './protocol.js';
 
 boot {
     spawn named 'box' {
-        field this.value: number = 0;
+        field value: number = 0;
         assert BoxState(this.value);
         stop on (this.value === N)
             console.log('terminated box root facet');
