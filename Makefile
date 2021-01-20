@@ -8,9 +8,12 @@ node_modules/lerna:
 PACKAGE_JSONS=$(wildcard packages/*/package.json)
 PACKAGE_DIRS=$(PACKAGE_JSONS:/package.json=)
 
-clean veryclean:
+clean:
 	rm -f deps.mk
 	for d in $(PACKAGE_DIRS); do make -C $$d $@; done
+
+veryclean: clean
+	rm -rf node_modules
 
 all: $(PACKAGE_DIRS:=/.phony_all)
 
