@@ -1,5 +1,5 @@
 all:
-	npm run prepare
+	npm i
 
 clean:
 	rm -rf lib dist .nyc_output coverage tsconfig.tsbuildinfo
