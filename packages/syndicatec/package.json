@@ -20,6 +20,7 @@
     "yargs": "^16.2.0"
   },
   "bin": {
+    "syndicate-maptool": "./bin/syndicate-maptool.js",
     "syndicate-tsc": "./bin/syndicate-tsc.js",
     "syndicatec": "./bin/syndicatec.js"
   },

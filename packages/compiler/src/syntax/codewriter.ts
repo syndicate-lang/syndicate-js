@@ -51,6 +51,7 @@ export class CodeWriter {
     readonly sources: Array<string> = [];
     readonly chunks: Array<string> = [];
     readonly mappings: Array<Array<NonEmptyMapping>> = [];
+    readonly positionMap: Array<[number, Pos]> = [];
     previous: Partial<SourceNameMapping> = {};
     previousPos: Pos | null = null;
 
@@ -144,14 +145,24 @@ export class CodeWriter {
         this.mappings[this.mappings.length - 1].push(n);
     }
 
+    augmentPositionMap(p: Pos) {
+        if (this.positionMap.length > 0) {
+            const prev = this.positionMap[this.positionMap.length - 1][1];
+            if ((prev.name === p.name) && (prev.pos === p.pos)) return;
+        }
+        this.positionMap.push([this.pos.pos, { ... p }]);
+    }
+
     chunk(p: Pos, s: string, type: TokenType) {
         p = { ... p };
         this.chunks.push(s);
+        this.augmentPositionMap(p);
         if (this.mappings.length === 0) this.finishLine();
         this.addMapping(p, type);
         for (const ch of s) {
             advancePos(p, ch);
             if (advancePos(this.pos, ch)) {
+                this.augmentPositionMap(p);
                 this.finishLine();
                 this.addMapping(p, type);
             }

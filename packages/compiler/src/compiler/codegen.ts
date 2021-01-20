@@ -2,7 +2,7 @@ import {
     isToken, isTokenType, replace, commaJoin, startPos, fixPos, joinItems,
     anonymousTemplate, laxRead,
 
-    Items, Pattern, Templates, Substitution, TokenType,
+    Items, Pattern, Templates, Substitution, TokenType, Pos,
     SourceMap, CodeWriter, TemplateFunction, Token, itemText,
 } from '../syntax/index.js';
 import {
@@ -41,9 +41,16 @@ export interface CompileOptions {
     typescript?: boolean,
 }
 
+// Essentially the same as a SourceMap, but indexed differently
+// (originally for use with the TypeScript compiler).
+export interface SourcePositionIndex {
+    sourcePositionAt(pos: number): Pos;
+}
+
 export interface CompilerOutput {
     text: string,
     map: SourceMap,
+    positionIndex: SourcePositionIndex,
 }
 
 function receiverFor(s: FacetAction): Substitution {
@@ -354,8 +361,40 @@ export function compile(options: CompileOptions): CompilerOutput {
     const cw = new CodeWriter(inputFilename);
     cw.emit(tree);
 
+    const positionMap = cw.positionMap;
+
     return {
         text: cw.text,
         map: cw.map,
+        positionIndex: {
+            sourcePositionAt(pos: number): Pos {
+                if (positionMap.length === 0) return start;
+
+                let lo = 0;
+                let hi = positionMap.length;
+
+                // console.log(`\nsearching for ${pos}`);
+                while (true) {
+                    if (lo === hi) {
+                        const e = positionMap[lo - 1] ?? [0, start];
+                        if (e[0] > pos) throw new Error();
+                        if (positionMap[lo]?.[0] <= pos) throw new Error();
+                        // console.log(`found ${JSON.stringify(e)}`);
+                        return e[1];
+                    }
+
+                    const mid = (lo + hi) >> 1;
+                    const e = positionMap[mid];
+
+                    // console.log(`${pos} lo ${lo} hi ${hi} mid ${mid} probe ${JSON.stringify([e[0], e[1].pos])}`);
+
+                    if (e[0] <= pos) {
+                        lo = mid + 1;
+                    } else {
+                        hi = mid;
+                    }
+                }
+            }
+        }
     };
 }
