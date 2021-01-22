@@ -11,7 +11,10 @@
     "moduleResolution": "node",
     "module": "es6",
     "sourceMap": true,
-    "strict": true
+    "strict": true,
+    "plugins": [
+      { "name": "@syndicate-lang/syndicatec/lib/tsserver-plugin.js" }
+    ]
   },
   "include": ["src/**/*"]
 }

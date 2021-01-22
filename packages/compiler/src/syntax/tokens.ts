@@ -12,6 +12,7 @@ export enum TokenType {
 export interface TokenBase {
     start: Pos;
     end: Pos;
+    synthetic?: boolean; // default: false
 }
 
 export interface Token extends TokenBase {

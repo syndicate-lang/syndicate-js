@@ -128,11 +128,12 @@ export interface LaxReadOptions {
     start?: Pos,
     name?: string,
     extraDelimiters?: string,
+    synthetic?: boolean,
 }
 
 export function laxRead(source: string, options: LaxReadOptions = {}): Items {
     const start = options.start ?? startPos(options.name ?? null);
-    const scanner = new StringScanner(start, source);
+    const scanner = new StringScanner(start, source, options.synthetic);
     if (options.extraDelimiters) scanner.addDelimiters(options.extraDelimiters);
     const reader = new LaxReader(scanner);
     return reader.readToEnd();

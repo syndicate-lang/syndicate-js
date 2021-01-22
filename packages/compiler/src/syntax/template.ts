@@ -10,7 +10,7 @@ const substPat = M.scope((o: { pos: Pos }) =>
 export type Substitution = Items | string;
 
 function toItems(s: Substitution, pos: Pos): Items {
-    return typeof s === 'string' ? laxRead(s, { start: pos }) : s;
+    return typeof s === 'string' ? laxRead(s, { start: pos, synthetic: true }) : s;
 }
 
 export type TemplateFunction = (consts: TemplateStringsArray, ... vars: Substitution[]) => Items;
@@ -42,7 +42,7 @@ export class Templates {
                 }
             }
             let i = 0;
-            return M.replace(laxRead(source, { start, extraDelimiters: '$' }),
+            return M.replace(laxRead(source, { start, extraDelimiters: '$', synthetic: true }),
                              substPat,
                              sub => toItems(vars[i++], sub.pos));
         };

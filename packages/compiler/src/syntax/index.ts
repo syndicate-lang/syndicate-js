@@ -4,6 +4,7 @@ export * from './matcher.js';
 export * from './position.js';
 export * from './reader.js';
 export * from './scanner.js';
+export * from './span.js';
 export * from './template.js';
 export * from './tokens.js';
 export * from './vlq.js';

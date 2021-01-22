@@ -2,7 +2,7 @@ import ts from 'typescript';
 import crypto from 'crypto';
 
 import { compile } from '@syndicate-lang/compiler';
-import { SourcePositionIndex } from '@syndicate-lang/compiler/lib/compiler/codegen';
+import { SpanIndex, Token } from '@syndicate-lang/compiler/lib/syntax';
 
 function reportDiagnostic(diagnostic: ts.Diagnostic) {
     if (diagnostic.file) {
@@ -22,7 +22,8 @@ function reportErrorSummary(n: number) {
 
 interface SyndicateInfo {
     originalSource: string;
-    positionIndex: SourcePositionIndex;
+    targetToSourceMap: SpanIndex<Token>;
+    sourceToTargetMap: SpanIndex<number>;
 }
 
 const syndicateInfo: Map<string, SyndicateInfo> = new Map();
@@ -56,19 +57,21 @@ function createProgram(rootNames: readonly string[] | undefined,
                     onError?.(`Could not read input file ${fileName}`);
                     return undefined;
                 }
-                const { text: expandedText, positionIndex } = compile({
+                const { text: expandedText, targetToSourceMap, sourceToTargetMap } = compile({
                     source: inputText,
                     name: fileName,
                     typescript: true,
                 });
                 syndicateInfo.set(fileName, {
                     originalSource: inputText,
-                    positionIndex,
+                    targetToSourceMap,
+                    sourceToTargetMap,
                 });
                 const sf = ts.createSourceFile(fileName, expandedText, languageVersion, true);
                 (sf as any).version = crypto.createHash('sha256').update(expandedText).digest('hex');
                 return sf;
             } catch (e) {
+                console.error(e);
                 onError?.(e.message);
                 return undefined;
             }
@@ -85,36 +88,25 @@ function createProgram(rootNames: readonly string[] | undefined,
                                                              projectReferences);
 }
 
-export function fixSourceMap(ctx: ts.TransformationContext): ts.Transformer<ts.SourceFile> {
+export function fixSourceMap(_ctx: ts.TransformationContext): ts.Transformer<ts.SourceFile> {
     return sf => {
         const fileName = sf.fileName;
         const info = syndicateInfo.get(fileName);
         if (info === void 0) throw new Error("No Syndicate info available for " + fileName);
-        const positionIndex = info.positionIndex;
-
-        // console.log('fixSourceMap', fileName, sf.text.length, info.originalSource.length);
-
+        const targetToSourceMap = info.targetToSourceMap;
         const syndicateSource = ts.createSourceMapSource(fileName, info.originalSource);
-        const expandedSource = ts.createSourceMapSource(fileName + '.expanded', sf.text);
 
         function adjustSourceMap(n: ts.Node) {
-            const ps = positionIndex.sourcePositionAt(n.pos);
-            const pe = positionIndex.sourcePositionAt(n.end);
-            if (ps.name === fileName && pe.name === fileName) {
-                ts.setSourceMapRange(n, { pos: ps.pos, end: pe.pos, source: syndicateSource });
-                // console.group(ts.SyntaxKind[n.kind], `${n.pos}-${n.end} ==> ${ps.pos}-${pe.pos}`);
-            } else if (ps.name === null && pe.name === null) {
-                ts.setSourceMapRange(n, { pos: ps.pos, end: pe.pos, source: expandedSource });
-                // console.group(ts.SyntaxKind[n.kind], n.pos, 'synthetic');
-            } else if (ps.name === null) {
-                ts.setSourceMapRange(n, { pos: pe.pos, end: pe.pos, source: expandedSource });
-                // console.group(ts.SyntaxKind[n.kind], n.pos, 'mixed end');
-            } else {
-                ts.setSourceMapRange(n, { pos: ps.pos, end: ps.pos, source: expandedSource });
-                // console.group(ts.SyntaxKind[n.kind], n.pos, 'mixed start');
+            const ps = targetToSourceMap.get(n.pos);
+            const pe = targetToSourceMap.get(n.end);
+            if (ps !== null && pe !== null) {
+                ts.setSourceMapRange(n, {
+                    pos: ps.firstItem.start.pos + ps.offset,
+                    end: pe.lastItem.start.pos + pe.offset,
+                    source: syndicateSource,
+                });
             }
             ts.forEachChild(n, adjustSourceMap);
-            // console.groupEnd();
         }
 
         adjustSourceMap(sf);
@@ -123,7 +115,7 @@ export function fixSourceMap(ctx: ts.TransformationContext): ts.Transformer<ts.S
     };
 }
 
-export function main(argv: string[]) {
+export function main(_argv: string[]) {
     const sbh = ts.createSolutionBuilderHost(ts.sys,
                                              createProgram,
                                              reportDiagnostic,

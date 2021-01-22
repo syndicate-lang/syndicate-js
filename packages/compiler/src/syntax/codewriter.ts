@@ -1,6 +1,7 @@
-import { TokenType, Item, Items, isGroup } from './tokens.js';
+import { Token, TokenType, Item, Items, isGroup } from './tokens.js';
 import { Pos, startPos, advancePos } from './position.js';
 import { vlqEncode } from './vlq.js';
+import { SpanInfo } from './span.js';
 
 export interface SourceMap {
     version: 3;
@@ -51,7 +52,8 @@ export class CodeWriter {
     readonly sources: Array<string> = [];
     readonly chunks: Array<string> = [];
     readonly mappings: Array<Array<NonEmptyMapping>> = [];
-    readonly positionMap: Array<[number, Pos]> = [];
+    readonly targetToSourceMap = new SpanInfo<Token>();
+    readonly sourceToTargetMap = new SpanInfo<number>();
     previous: Partial<SourceNameMapping> = {};
     previousPos: Pos | null = null;
 
@@ -145,24 +147,14 @@ export class CodeWriter {
         this.mappings[this.mappings.length - 1].push(n);
     }
 
-    augmentPositionMap(p: Pos) {
-        if (this.positionMap.length > 0) {
-            const prev = this.positionMap[this.positionMap.length - 1][1];
-            if ((prev.name === p.name) && (prev.pos === p.pos)) return;
-        }
-        this.positionMap.push([this.pos.pos, { ... p }]);
-    }
-
     chunk(p: Pos, s: string, type: TokenType) {
         p = { ... p };
         this.chunks.push(s);
-        this.augmentPositionMap(p);
         if (this.mappings.length === 0) this.finishLine();
         this.addMapping(p, type);
         for (const ch of s) {
             advancePos(p, ch);
             if (advancePos(this.pos, ch)) {
-                this.augmentPositionMap(p);
                 this.finishLine();
                 this.addMapping(p, type);
             }
@@ -179,7 +171,10 @@ export class CodeWriter {
         } else if (i === null) {
             // Do nothing.
         } else {
+            const targetStart = this.pos.pos;
+            if (!i.synthetic) this.sourceToTargetMap.add(i.start.pos, i.end.pos, targetStart);
             this.chunk(i.start, i.text, i.type);
+            this.targetToSourceMap.add(targetStart, this.pos.pos, i);
         }
     }
 }

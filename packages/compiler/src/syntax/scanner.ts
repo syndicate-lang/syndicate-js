@@ -3,12 +3,14 @@ import { Pos, advancePos } from './position.js';
 
 export abstract class Scanner implements IterableIterator<Token> {
     readonly pos: Pos;
+    readonly synthetic: boolean | undefined;
     charBuffer: string | null = null;
     tokenBuffer: Token | null = null;
     delimiters = ' \t\n\r\'"`.,;()[]{}/';
 
-    constructor(pos: Pos) {
+    constructor(pos: Pos, synthetic?: boolean) {
         this.pos = { ... pos };
+        this.synthetic = synthetic;
     }
 
     [Symbol.iterator](): IterableIterator<Token> {
@@ -40,11 +42,11 @@ export abstract class Scanner implements IterableIterator<Token> {
     }
 
     makeToken(start: Pos, type: TokenType, text: string): Token {
-        return { type, start, end: this.mark(), text };
+        return { type, start, end: this.mark(), text, ... this.synthetic && { synthetic: true } };
     }
 
     makeGroupInProgress(open: Token, items: Array<Item> = []): GroupInProgress {
-        return { start: open.start, open, close: null, items };
+        return { start: open.start, open, close: null, items, ... this.synthetic && { synthetic: true } };
     }
 
     mark(): Pos {
@@ -211,8 +213,8 @@ export class StringScanner extends Scanner {
     readonly input: string;
     index: number;
 
-    constructor(pos: Pos, input: string) {
-        super(pos);
+    constructor(pos: Pos, input: string, synthetic?: boolean) {
+        super(pos, synthetic);
         this.input = input;
         this.index = 0;
     }
