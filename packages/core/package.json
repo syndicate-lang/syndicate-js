@@ -1,6 +1,6 @@
 {
   "name": "@syndicate-lang/core",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Syndicate/JS for browser and node.js",
   "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/core",
   "license": "GPL-3.0+",
