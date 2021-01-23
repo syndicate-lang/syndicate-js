@@ -292,7 +292,7 @@ ${ctx.typescript ? joinItems(sa.captureBinders.map(binderTypeGuard(t)), '\n') : 
 export function compile(options: CompileOptions): CompilerOutput {
     const inputFilename = options.name ?? '/dev/stdin';
 
-    console.info(`Syndicate: compiling ${inputFilename}`);
+    // console.info(`Syndicate: compiling ${inputFilename}`);
 
     const source = options.source;
     const moduleType = options.module ?? 'es6';

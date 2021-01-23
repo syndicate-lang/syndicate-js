@@ -1,27 +1,18 @@
+import yargs from 'yargs/yargs';
+
 import ts from 'typescript';
 import crypto from 'crypto';
 
 import { compile } from '@syndicate-lang/compiler';
 import { SpanIndex, Token } from '@syndicate-lang/compiler/lib/syntax';
 
-function reportDiagnostic(diagnostic: ts.Diagnostic) {
-    if (diagnostic.file) {
-        let { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!);
-        let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
-        console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
-    } else {
-        console.log(ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
-    }
-}
-
-function reportErrorSummary(n: number) {
-    if (n > 0) {
-        console.log(`\n - ${n} errors reported`);
-    }
-}
+export type CommandLineArguments = {
+    verbose: boolean;
+};
 
 interface SyndicateInfo {
     originalSource: string;
+    languageVersion: ts.ScriptTarget;
     targetToSourceMap: SpanIndex<Token>;
     sourceToTargetMap: SpanIndex<number>;
 }
@@ -64,6 +55,7 @@ function createProgram(rootNames: readonly string[] | undefined,
                 });
                 syndicateInfo.set(fileName, {
                     originalSource: inputText,
+                    languageVersion,
                     targetToSourceMap,
                     sourceToTargetMap,
                 });
@@ -115,15 +107,69 @@ export function fixSourceMap(_ctx: ts.TransformationContext): ts.Transformer<ts.
     };
 }
 
-export function main(_argv: string[]) {
+const syntheticSourceFiles = new Map<string, ts.SourceFile>();
+function fixupDiagnostic(d: ts.Diagnostic) {
+    if (d.file !== void 0 && d.start !== void 0) {
+        const info = syndicateInfo.get(d.file.fileName);
+        if (info === void 0)
+            return;
+
+        if (!syntheticSourceFiles.has(d.file.fileName)) {
+            syntheticSourceFiles.set(
+                d.file.fileName,
+                ts.createSourceFile(d.file.fileName,
+                                    info.originalSource,
+                                    info.languageVersion,
+                                    false,
+                                    ts.ScriptKind.Unknown));
+        }
+        d.file = syntheticSourceFiles.get(d.file.fileName);
+        const p = info.targetToSourceMap.get(d.start)!;
+        d.start = p.firstItem.start.pos + p.offset;
+    }
+}
+
+export function main(argv: string[]) {
+    const options: CommandLineArguments = yargs(argv)
+        .option('verbose', {
+            type: 'boolean',
+            default: false,
+            description: "Enable verbose solution builder output",
+        })
+        .argv;
+
+    let problemCount = 0;
+    let hasErrors = false;
+
+    const formatDiagnosticsHost: ts.FormatDiagnosticsHost = {
+        getCurrentDirectory: () => ts.sys.getCurrentDirectory(),
+        getNewLine: () => ts.sys.newLine,
+        getCanonicalFileName: f => f,
+    };
+
+    function reportDiagnostic(d: ts.Diagnostic) {
+        if (d.category === ts.DiagnosticCategory.Error) problemCount++;
+        fixupDiagnostic(d);
+        console.log(ts.formatDiagnosticsWithColorAndContext([d], formatDiagnosticsHost).trimEnd());
+    }
+
+    function reportErrorSummary(n: number) {
+        if (n > 0) {
+            console.error(`\n - ${n} errors reported`);
+            hasErrors = true;
+        }
+    }
+
     const sbh = ts.createSolutionBuilderHost(ts.sys,
                                              createProgram,
                                              reportDiagnostic,
                                              reportDiagnostic,
                                              reportErrorSummary);
+
     const sb = ts.createSolutionBuilder(sbh, ['.'], {
-        verbose: true,
+        verbose: options.verbose,
     });
+
     while (true) {
         const project = sb.getNextInvalidatedProject();
         if (project === void 0) break;
@@ -131,5 +177,6 @@ export function main(_argv: string[]) {
             before: [fixSourceMap]
         });
     }
-    ts.sys.exit(0);
+
+    ts.sys.exit(((problemCount > 0) || hasErrors) ? 1 : 0);
 }
