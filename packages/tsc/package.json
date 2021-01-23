@@ -1,8 +1,8 @@
 {
-  "name": "@syndicate-lang/syndicatec",
+  "name": "@syndicate-lang/tsc",
   "version": "0.0.1",
-  "description": "Syndicate/JS compiler command-line tool",
-  "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/syndicatec",
+  "description": "Syndicate for TypeScript compiler command-line tool",
+  "homepage": "https://github.com/syndicate-lang/syndicate-js/tree/master/packages/tsc",
   "license": "GPL-3.0+",
   "publishConfig": {
     "access": "public"
@@ -20,11 +20,13 @@
     "yargs": "^16.2.0"
   },
   "bin": {
-    "syndicate-maptool": "./bin/syndicate-maptool.js",
-    "syndicatec": "./bin/syndicatec.js"
+    "syndicate-tsc": "./bin/syndicate-tsc.js"
   },
   "devDependencies": {
     "@types/yargs": "^15.0.12",
+    "typescript": "^4.1.3"
+  },
+  "peerDependencies": {
     "typescript": "^4.1.3"
   }
 }

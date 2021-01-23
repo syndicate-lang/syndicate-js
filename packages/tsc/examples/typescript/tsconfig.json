@@ -3,8 +3,8 @@
     "target": "ES2017",
     "lib": ["ES2017", "DOM"],
     "declaration": true,
-    "baseUrl": "./src.ts",
-    "rootDir": "./src.ts",
+    "baseUrl": "./src",
+    "rootDir": "./src",
     "outDir": "./lib",
     "declarationDir": "./lib",
     "esModuleInterop": true,
@@ -13,5 +13,5 @@
     "sourceMap": true,
     "strict": true
   },
-  "include": ["src.ts/**/*"]
+  "include": ["src/**/*"]
 }

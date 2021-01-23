@@ -583,8 +583,19 @@ const boot: tslib.server.PluginModuleFactory = ({ typescript: ts }) => {
             throw new Error('Method not implemented.');
         }
 
-        toLineColumnOffset?(fileName: string, position: number): ts.LineAndCharacter {
-            throw new Error('Method not implemented.');
+        toLineColumnOffset(fileName: string, position: number): ts.LineAndCharacter {
+            function search(t: string | undefined, position: number): ts.LineAndCharacter {
+                if (t === void 0) return { line: 0, character: 0 };
+                const p = Syntax.startPos(fileName);
+                for (let i = 0; i < position; i++) Syntax.advancePos(p, t[i]);
+                return { line: p.line - 1, character: p.column };
+            }
+            return withFileName(
+                fileName,
+                () => (this.inner.toLineColumnOffset?.(fileName, position) ??
+                    search(this.inner.getProgram()?.getSourceFile(fileName)?.text, position)),
+                (fixup) =>
+                    search(fixup.info.originalSource, position));
         }
 
         // getSourceMapper(): ts.SourceMapper {

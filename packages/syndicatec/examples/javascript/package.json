@@ -1,7 +1,7 @@
 {
   "name": "@syndicate-lang/syndicatec-javascript-example",
   "version": "0.0.0",
-  "description": "Simple syndicatec example",
+  "description": "Simple syndicatec example in JavaScript",
   "main": "index.js",
   "scripts": {
     "prepare": "npm run compile && npm run rollup",

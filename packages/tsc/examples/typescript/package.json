@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "prepare": "npm run compile && npm run rollup",
-    "compile": "npx syndicatec -t -d src.ts -b src 'src/**/*.ts' && npx tsc",
+    "compile": "npx syndicate-tsc",
     "rollup": "npx rollup -c",
-    "clean": "rm -rf lib/ src.ts/ index.js index.js.map"
+    "clean": "rm -rf lib/ index.js index.js.map"
   },
   "author": "Tony Garnock-Jones <tonyg@leastfixedpoint.com>",
   "license": "GPL-3.0+",
