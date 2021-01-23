@@ -1,6 +1,7 @@
 import { compile, Syntax } from '@syndicate-lang/compiler';
 import tslib from 'typescript/lib/tsserverlibrary';
 import crypto from 'crypto';
+import path from 'path';
 
 const boot: tslib.server.PluginModuleFactory = ({ typescript: ts }) => {
 
@@ -615,6 +616,9 @@ const boot: tslib.server.PluginModuleFactory = ({ typescript: ts }) => {
             }
             if (options.rootDirs !== void 0) {
                 options.rootDirs.forEach(d => syndicateRootDirs.add(d));
+            }
+            if (options.rootDir === void 0 && options.rootDirs === void 0) {
+                syndicateRootDirs.add(path.resolve('.'));
             }
             return new SyndicateLanguageService(createInfo.languageService);
         }
